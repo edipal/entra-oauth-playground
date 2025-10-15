@@ -1,0 +1,25 @@
+{
+  "Nav": {
+    "title": "Next.js + PrimeReact + i18n",
+    "home": "Home"
+  },
+  "Home": {
+    "title": "Home",
+    "intro": "This is a simple landing page. Use the left menu to explore."
+  },
+  "Sidebar": {
+    "home": "Home",
+    "authorizationCode": "Authorization Code",
+    "language": "Language",
+    "switchTo": "Switch to {lang}"
+  },
+  "AuthorizationCode": {
+    "title": "Authorization Code Flow",
+    "placeholder": "Placeholder page – implementation coming soon."
+  },
+  "Error": {
+    "title": "Something went wrong.",
+    "description": "We hit an unexpected error. You can try to recover.",
+    "tryAgain": "Try again"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "Nav": {
+    "title": "Next.js + PrimeReact + i18n",
+    "home": "Startseite"
+  },
+  "Home": {
+    "title": "Startseite",
+    "intro": "Dies ist eine einfache Landing Page. Verwenden Sie das linke Menü."
+  },
+  "Sidebar": {
+    "home": "Startseite",
+    "authorizationCode": "Authorization Code",
+    "language": "Sprache",
+    "switchTo": "Wechseln zu {lang}"
+  },
+  "AuthorizationCode": {
+    "title": "Authorization-Code-Flow",
+    "placeholder": "Platzhalterseite – Implementierung folgt."
+  },
+  "Error": {
+    "title": "Etwas ist schief gelaufen.",
+    "description": "Ein unerwarteter Fehler ist aufgetreten. Sie können es erneut versuchen.",
+    "tryAgain": "Erneut versuchen"
+  }
+}
