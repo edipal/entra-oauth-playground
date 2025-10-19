@@ -2,12 +2,12 @@
 import {useTranslations} from 'next-intl';
 import {Card} from 'primereact/card';
 
-export default function AuthorizationCodePage() {
+export default function AuthorizationCodeConfidentialClientPage() {
   const t = useTranslations('AuthorizationCode');
   return (
     <div className="p-4">
-      <Card title={t('title')}>
-        <p>{t('placeholder')}</p>
+      <Card title={t('confidentialClientTitle')}>
+        <p>{t('confidentialClientPlaceholder')}</p>
       </Card>
     </div>
   );

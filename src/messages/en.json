@@ -10,12 +10,26 @@
   "Sidebar": {
     "home": "Home",
     "authorizationCode": "Authorization Code",
+    "authorizationCodePublicClient": "Authorization Code - Public Client",
+  "authorizationCodeConfidentialClient": "Authorization Code - Confidential Client",
+    "settings": "Settings",
     "language": "Language",
     "switchTo": "Switch to {lang}"
   },
+  "Settings": {
+    "title": "Settings",
+    "placeholder": "Placeholder page for Settings – implementation coming soon."
+  ,
+    "entraTenantIdLabel": "Entra Tenant Id",
+    "entraTenantIdHint": "Your Entra tenant id. This will be available throughout the app.",
+    "save": "Save"
+  },
   "AuthorizationCode": {
-    "title": "Authorization Code Flow",
-    "placeholder": "Placeholder page – implementation coming soon."
+    "publicClientTitle": "Authorization Code (Public Client)",
+    "publicClientPlaceholder": "Placeholder page for Authorization Code - Public Client – implementation coming soon."
+  ,
+    "confidentialClientTitle": "Authorization Code (Confidential Client)",
+    "confidentialClientPlaceholder": "Placeholder page for Authorization Code - Confidential Client – implementation coming soon."
   },
   "Error": {
     "title": "Something went wrong.",

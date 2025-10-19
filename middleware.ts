@@ -39,5 +39,6 @@ export default function middleware(req: NextRequest) {
 
 export const config = {
   // Skip all paths that should not be internationalized
-  matcher: ['/((?!_next|.*\\..*|api|favicon.ico).*)']
+  // Exclude /callback/* so auth redirects are not locale-prefixed
+  matcher: ['/((?!_next|.*\\..*|api|favicon.ico|callback/.*).*)']
 };

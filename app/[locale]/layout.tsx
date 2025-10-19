@@ -57,7 +57,7 @@ export default async function LocaleLayout({
         <>
           <Providers locale={locale} messages={messages} timeZone={timeZone}>
             <Sidebar locale={locale} />
-            <ScrollPanel style={{height: '100vh', marginLeft: 260}} className="p-0">
+            <ScrollPanel style={{height: '100vh', marginLeft: 520}} className="p-0">
               {children}
             </ScrollPanel>
           </Providers>

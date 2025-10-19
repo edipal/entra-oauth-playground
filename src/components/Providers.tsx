@@ -1,6 +1,7 @@
 "use client";
 import {NextIntlClientProvider} from 'next-intl';
 import {ReactNode} from 'react';
+import {SettingsProvider} from './SettingsContext';
 
 type ProvidersProps = {
   locale: string;
@@ -28,7 +29,9 @@ export function Providers({locale, messages, children, timeZone}: OptionalProvid
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages} timeZone={timeZone} onError={onError}>
-      {children}
+      <SettingsProvider>
+        {children}
+      </SettingsProvider>
     </NextIntlClientProvider>
   );
 }

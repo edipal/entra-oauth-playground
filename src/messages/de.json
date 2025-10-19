@@ -10,12 +10,26 @@
   "Sidebar": {
     "home": "Startseite",
     "authorizationCode": "Authorization Code",
+    "authorizationCodePublicClient": "Authorization Code - Public Client",
+  "authorizationCodeConfidentialClient": "Authorization Code - Confidential Client",
+    "settings": "Einstellungen",
     "language": "Sprache",
     "switchTo": "Wechseln zu {lang}"
   },
+  "Settings": {
+    "title": "Einstellungen",
+    "placeholder": "Platzhalterseite für Einstellungen – Implementierung folgt."
+  ,
+    "entraTenantIdLabel": "Entra Tenant Id",
+    "entraTenantIdHint": "Ihre Entra Tenant Id. Diese wird in der gesamten App verfügbar sein.",
+    "save": "Speichern"
+  },
   "AuthorizationCode": {
-    "title": "Authorization-Code-Flow",
-    "placeholder": "Platzhalterseite – Implementierung folgt."
+    "publicClientTitle": "Authorization Code (Public Client)",
+    "publicClientPlaceholder": "Platzhalterseite für Authorization Code - Public Client – Implementierung folgt."
+  ,
+    "confidentialClientTitle": "Authorization Code (Confidential Client)",
+    "confidentialClientPlaceholder": "Platzhalterseite für Authorization Code - Confidential Client – Implementierung folgt."
   },
   "Error": {
     "title": "Etwas ist schief gelaufen.",

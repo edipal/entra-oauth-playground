@@ -16,7 +16,20 @@ export default function Sidebar({locale}: {locale: string}) {
     },
     {
       label: t('authorizationCode'),
-      command: () => router.push(`/${locale}/authorization-code`)
+      items: [
+        {
+          label: t('authorizationCodePublicClient'),
+          command: () => router.push(`/${locale}/authorization-code/public-client`)
+        },
+        {
+          label: t('authorizationCodeConfidentialClient'),
+          command: () => router.push(`/${locale}/authorization-code/confidential-client`)
+        }
+      ]
+    },
+    {
+      label: t('settings'),
+      command: () => router.push(`/${locale}/settings`)
     },
     {
       label: t('language'),
