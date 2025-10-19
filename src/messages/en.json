@@ -11,25 +11,172 @@
     "home": "Home",
     "authorizationCode": "Authorization Code",
     "authorizationCodePublicClient": "Authorization Code - Public Client",
-  "authorizationCodeConfidentialClient": "Authorization Code - Confidential Client",
+    "authorizationCodeConfidentialClient": "Authorization Code - Confidential Client",
     "settings": "Settings",
     "language": "Language",
     "switchTo": "Switch to {lang}"
   },
   "Settings": {
     "title": "Settings",
-    "placeholder": "Placeholder page for Settings – implementation coming soon."
-  ,
+    "placeholder": "Placeholder page for Settings – implementation coming soon.",
     "entraTenantIdLabel": "Entra Tenant Id",
     "entraTenantIdHint": "Your Entra tenant id. This will be available throughout the app.",
     "save": "Save"
   },
   "AuthorizationCode": {
     "publicClientTitle": "Authorization Code (Public Client)",
-    "publicClientPlaceholder": "Placeholder page for Authorization Code - Public Client – implementation coming soon."
-  ,
+    "publicClientPlaceholder": "Placeholder page for Authorization Code - Public Client – implementation coming soon.",
     "confidentialClientTitle": "Authorization Code (Confidential Client)",
-    "confidentialClientPlaceholder": "Placeholder page for Authorization Code - Confidential Client – implementation coming soon."
+    "confidentialClientPlaceholder": "Placeholder page for Authorization Code - Confidential Client – implementation coming soon.",
+    "PublicClient": {
+      "title": "Authorization Code (Public Client)",
+      "steps": {
+        "overview": "Overview",
+        "settings": "Settings",
+        "pkce": "PKCE",
+        "authorize": "Authorize",
+        "callback": "Callback",
+        "tokens": "Tokens",
+        "decode": "Decode",
+        "callApi": "Call API"
+      },
+      "sections": {
+        "settings": {
+          "title": "Settings",
+          "description": "Configure your environment for the OAuth flow. Provide your Entra tenant (GUID) and public client ID. The redirect URI is auto-detected from the current origin (read-only) and must be registered in your app. Scopes determine what you’ll be asked to consent to. Tenant is required.",
+          "flowPanelTitle": "How the Authorization Code + PKCE flow works",
+          "flowIntro": "This app demonstrates the OAuth 2.0 Authorization Code flow with PKCE for public clients. In short: you build an authorization URL, sign in (popup), get a code at the redirect, then exchange it for tokens using the code_verifier.",
+          "flowDiagram": "Client (Browser)\n   |\n   | 1) Generate code_verifier + code_challenge (S256)\n   v\nAuthorize Endpoint ------------------------------>\n   |   GET .../authorize?client_id=...&redirect_uri=...\n   |        &response_type=code&scope=...&state=...\n   |        &code_challenge=...&code_challenge_method=S256\n   |\n   | 2) User signs in and consents\n   v\nRedirect (Callback) <------------------------------\n   |   http(s)://your-app/callback/auth-code?code=...&state=...\n   |\n   | 3) Exchange code for tokens with code_verifier\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=authorization_code\n   |        &client_id=...\n   |        &code=...\n   |        &redirect_uri=...\n   |        &code_verifier=...\n   |\n   | 4) Receive tokens (access_token, id_token, ... )\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer <access_token>\n   v\n  Response"
+        },
+        "pkce": {
+          "title": "Generate PKCE (code_verifier & code_challenge)",
+          "description": "PKCE secures public clients. Click Generate to create a high-entropy code_verifier and its code_challenge (S256 by default). Next becomes available when both fields are populated."
+        },
+        "authorize": {
+          "title": "Build authorization request URL",
+          "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state/nonce, and PKCE parameters. Click ‘Open popup’ to sign in and consent. After completing sign-in, the popup will redirect back and step 3 will auto-fill with the code. You can click Next once the URL looks correct (but you’ll need to actually sign in to get a code)."
+        },
+        "callback": {
+          "title": "Handle redirect (auto-pasted from popup)",
+          "description": "When the IdP redirects to your callback, this page receives the URL from the popup and extracts code and state. If nothing appears, ensure the redirect URI exactly matches your app registration and that the popup flow wasn’t blocked. Click Next when a code is present."
+        },
+        "tokens": {
+          "title": "Exchange code for tokens",
+          "description": "Send a POST to the token endpoint with grant_type=authorization_code, your client_id, the received code, redirect_uri, and code_verifier. Click ‘Send’ to exchange. Next unlocks once an access_token is present in the response."
+        },
+        "decode": {
+          "title": "Decode tokens (JWT)",
+          "description": "Access and ID tokens are JWTs. Click ‘Decode’ to view the header and payload claims in a readable form. Use these to verify audience (aud), scopes/roles, issuer (iss), tenant (tid), subject (sub), and expiry (exp). Click Next to proceed to an API call."
+        },
+        "callApi": {
+          "title": "Call protected API",
+          "description": "Call a protected endpoint using the Bearer access token. Some APIs (like Microsoft Graph) support browser CORS; others may require a server proxy in production. Click ‘Send GET’ to execute the request and inspect the response."
+        }
+      },
+      "labels": {
+  "tenantId": "Entra Tenant ID",
+        "clientId": "Client ID",
+        "redirectUri": "Redirect URI",
+        "scopes": "Scopes (space-separated)",
+        "authEndpoint": "Authorization Endpoint",
+        "tokenEndpoint": "Token Endpoint",
+        "pkceMethod": "Code Challenge Method",
+        "codeVerifier": "Code Verifier",
+        "codeChallenge": "Code Challenge",
+        "responseType": "response_type",
+        "state": "state",
+        "nonce": "nonce",
+        "authUrlPreview": "Authorization URL preview",
+        "callbackUrl": "Callback URL",
+        "extractedCode": "Extracted code",
+        "extractedState": "Extracted state",
+        "tokenRequest": "Token request (x-www-form-urlencoded)",
+        "responsePreview": "Response preview",
+        "accessToken": "Access token (JWT)",
+        "idToken": "ID token (JWT)",
+        "accessHeader": "Access token header",
+        "accessPayload": "Access token payload",
+        "idHeader": "ID token header",
+        "idPayload": "ID token payload",
+        "apiEndpoint": "API endpoint",
+        "apiHeaders": "Request headers",
+        "apiResponse": "Response preview"
+      },
+      "placeholders": {
+  "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "redirectUri": "http://localhost:3000/callback/auth-code",
+        "scopes": "openid profile offline_access api://.../scope.read",
+  "authEndpoint": "https://login.microsoftonline.com/\u007Btenant\u007D/oauth2/v2.0/authorize",
+  "tokenEndpoint": "https://login.microsoftonline.com/\u007Btenant\u007D/oauth2/v2.0/token",
+        "selectMethod": "Select method",
+        "codeVerifier": "Random high-entropy string",
+        "codeChallenge": "Derived from code_verifier (S256/plain)",
+        "state": "Optional state (recommended)",
+        "nonce": "Optional nonce",
+        "authUrlPreview": "https://login.microsoftonline.com/.../authorize?...",
+        "callbackUrl": "http://localhost:3000/callback/auth-code?code=...&state=...",
+        "extractedCode": "exchange me for tokens",
+        "extractedState": "(if provided)",
+        "tokenRequest": "grant_type=authorization_code&client_id=...&code=...&redirect_uri=...&code_verifier=...",
+        "tokenResponse": "{\"access_token\":\"...\",\"refresh_token\":\"...\",\"id_token\":\"...\"}",
+        "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9....",
+        "idToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9....",
+        "accessHeader": "{\"alg\":\"RS256\",\"kid\":\"...\"}",
+        "accessPayload": "{\"aud\":\"...\",\"scp\":\"...\",\"exp\":...}",
+        "idHeader": "{\"alg\":\"RS256\",\"kid\":\"...\"}",
+        "idPayload": "{\"sub\":\"...\",\"name\":\"...\",\"email\":\"...\"}",
+        "apiEndpoint": "https://graph.microsoft.com/v1.0/me",
+        "apiHeaders": "Authorization: Bearer <access_token>",
+        "apiResponse": "{\"displayName\":\"...\"}"
+      },
+      "buttons": {
+        "generate": "Generate",
+        "openPopup": "Open popup",
+        "copyUrl": "Copy URL",
+        "sending": "Sending…",
+        "send": "Send",
+        "copyRequest": "Copy request",
+        "decode": "Decode",
+        "sendGet": "Send GET",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "help": {
+        "tenantId": "Directory (tenant) GUID of your Entra ID instance.",
+        "clientId": "Application (client) ID of your public client app registration.",
+        "redirectUri": "Callback URL for this app. Must match the redirect URI in the app registration.",
+        "scopes": "Space-separated scopes to request (e.g., openid profile offline_access api://.../scope.read).",
+  "authEndpoint": "OAuth 2.0 v2 authorize endpoint. Tenant is substituted in \u007Btenant\u007D.",
+  "tokenEndpoint": "OAuth 2.0 v2 token endpoint. Tenant is substituted in \u007Btenant\u007D.",
+        "codeVerifier": "High-entropy random string kept secret by the client (PKCE).",
+        "codeChallenge": "Base64url-encoded SHA-256 hash of the code_verifier (S256).",
+        "responseType": "OAuth response_type parameter; for PKCE it is 'code'.",
+        "state": "Opaque value to maintain state between request and callback; helps prevent CSRF.",
+        "nonce": "A string to associate a client session with an ID token; helps mitigate replay attacks.",
+        "authUrlPreview": "The full authorization URL that will open in the popup.",
+        "callbackUrl": "The full callback URL captured from the popup after sign-in.",
+        "extractedCode": "The authorization code extracted from the callback URL.",
+        "extractedState": "The state value extracted from the callback URL (if set).",
+        "tokenRequest": "The POST body used to exchange the code for tokens.",
+        "responsePreview": "Raw response from the token endpoint (pretty-printed if JSON).",
+        "accessToken": "Access token to call APIs. Shown as a JWT string.",
+        "idToken": "ID token representing the user identity. Shown as a JWT string.",
+        "accessHeader": "Decoded JWT header of the access token.",
+        "accessPayload": "Decoded JWT payload of the access token.",
+        "idHeader": "Decoded JWT header of the ID token.",
+        "idPayload": "Decoded JWT payload of the ID token.",
+        "apiEndpoint": "HTTP endpoint to call with the access token (e.g., Microsoft Graph).",
+        "apiHeaders": "HTTP headers used for the API call (includes Authorization).",
+        "apiResponse": "Raw response from the API call (pretty-printed if JSON)."
+      },
+      "errors": {
+  "tenantIdInvalid": "Tenant is required and must be a GUID",
+        "clientIdRequired": "Client ID is required",
+        "clientIdInvalid": "Client ID must be a GUID",
+        "redirectUriInvalid": "Redirect URI must be a valid http(s) URL"
+      }
+    }
   },
   "Error": {
     "title": "Something went wrong.",

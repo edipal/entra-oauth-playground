@@ -11,25 +11,172 @@
     "home": "Startseite",
     "authorizationCode": "Authorization Code",
     "authorizationCodePublicClient": "Authorization Code - Public Client",
-  "authorizationCodeConfidentialClient": "Authorization Code - Confidential Client",
+    "authorizationCodeConfidentialClient": "Authorization Code - Confidential Client",
     "settings": "Einstellungen",
     "language": "Sprache",
     "switchTo": "Wechseln zu {lang}"
   },
   "Settings": {
     "title": "Einstellungen",
-    "placeholder": "Platzhalterseite für Einstellungen – Implementierung folgt."
-  ,
+    "placeholder": "Platzhalterseite für Einstellungen – Implementierung folgt.",
     "entraTenantIdLabel": "Entra Tenant Id",
     "entraTenantIdHint": "Ihre Entra Tenant Id. Diese wird in der gesamten App verfügbar sein.",
     "save": "Speichern"
   },
   "AuthorizationCode": {
     "publicClientTitle": "Authorization Code (Public Client)",
-    "publicClientPlaceholder": "Platzhalterseite für Authorization Code - Public Client – Implementierung folgt."
-  ,
+    "publicClientPlaceholder": "Platzhalterseite für Authorization Code - Public Client – Implementierung folgt.",
     "confidentialClientTitle": "Authorization Code (Confidential Client)",
-    "confidentialClientPlaceholder": "Platzhalterseite für Authorization Code - Confidential Client – Implementierung folgt."
+    "confidentialClientPlaceholder": "Platzhalterseite für Authorization Code - Confidential Client – Implementierung folgt.",
+    "PublicClient": {
+      "title": "Authorization Code (Public Client)",
+      "steps": {
+        "overview": "Überblick",
+        "settings": "Einstellungen",
+        "pkce": "PKCE",
+        "authorize": "Autorisieren",
+        "callback": "Callback",
+        "tokens": "Tokens",
+        "decode": "Dekodieren",
+        "callApi": "API aufrufen"
+      },
+      "sections": {
+        "settings": {
+          "title": "Einstellungen",
+          "description": "Konfigurieren Sie Ihre Umgebung für den OAuth-Flow. Geben Sie Ihren Entra-Tenant (GUID) und die Public-Client-ID an. Die Redirect-URI wird automatisch aus dem aktuellen Origin ermittelt (schreibgeschützt) und muss in Ihrer App registriert sein. Scopes bestimmen, worum Sie um Zustimmung gebeten werden. Tenant ist erforderlich.",
+          "flowPanelTitle": "So funktioniert der Authorization Code + PKCE Flow",
+          "flowIntro": "Diese App demonstriert den OAuth 2.0 Authorization Code Flow mit PKCE für Public Clients. Kurz gesagt: URL für die Autorisierung bauen, im Popup anmelden, Code an der Redirect-URI erhalten und dann mithilfe des code_verifier gegen Tokens tauschen.",
+          "flowDiagram": "Client (Browser)\n   |\n   | 1) Generate code_verifier + code_challenge (S256)\n   v\nAuthorize Endpoint ------------------------------>\n   |   GET .../authorize?client_id=...&redirect_uri=...\n   |        &response_type=code&scope=...&state=...\n   |        &code_challenge=...&code_challenge_method=S256\n   |\n   | 2) User signs in and consents\n   v\nRedirect (Callback) <------------------------------\n   |   http(s)://your-app/callback/auth-code?code=...&state=...\n   |\n   | 3) Exchange code for tokens with code_verifier\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=authorization_code\n   |        &client_id=...\n   |        &code=...\n   |        &redirect_uri=...\n   |        &code_verifier=...\n   |\n   | 4) Receive tokens (access_token, id_token, ... )\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer <access_token>\n   v\n  Response"
+        },
+        "pkce": {
+          "title": "PKCE generieren (code_verifier & code_challenge)",
+          "description": "PKCE schützt Public Clients. Klicken Sie auf Generieren, um einen hochentropischen code_verifier und die zugehörige code_challenge (standardmäßig S256) zu erstellen. Weiter ist verfügbar, wenn beide Felder ausgefüllt sind."
+        },
+        "authorize": {
+          "title": "Autorisierungs-URL erstellen",
+          "description": "Wir erstellen die Autorisierungs-URL inkl. client_id, redirect_uri, Scopes, optional state/nonce und PKCE-Parametern. Klicken Sie auf ‚Popup öffnen‘, um sich anzumelden und zuzustimmen. Nach der Anmeldung leitet das Popup zurück, und Schritt 3 füllt den Code automatisch aus. Weiter können Sie klicken, sobald die URL korrekt aussieht (für einen Code müssen Sie sich tatsächlich anmelden)."
+        },
+        "callback": {
+          "title": "Redirect verarbeiten (automatisch aus dem Popup)",
+          "description": "Wenn der IdP zu Ihrer Callback-URL umleitet, empfängt diese Seite die URL aus dem Popup und extrahiert Code und State. Wenn nichts erscheint, stellen Sie sicher, dass die Redirect-URI genau Ihrer App-Registrierung entspricht und der Popup-Flow nicht blockiert wurde. Klicken Sie auf Weiter, wenn ein Code vorhanden ist."
+        },
+        "tokens": {
+          "title": "Code gegen Tokens tauschen",
+          "description": "Senden Sie einen POST an den Token-Endpunkt mit grant_type=authorization_code, Ihrer client_id, dem erhaltenen Code, redirect_uri und code_verifier. Klicken Sie auf ‚Senden‘, um zu tauschen. Weiter wird freigeschaltet, sobald ein access_token in der Antwort enthalten ist."
+        },
+        "decode": {
+          "title": "Tokens dekodieren (JWT)",
+          "description": "Access- und ID-Tokens sind JWTs. Klicken Sie auf ‚Dekodieren‘, um Header und Payload lesbar anzuzeigen. Prüfen Sie z. B. audience (aud), scopes/roles, issuer (iss), Tenant (tid), subject (sub) und expiry (exp). Klicken Sie auf Weiter, um einen API-Aufruf zu tätigen."
+        },
+        "callApi": {
+          "title": "Geschützte API aufrufen",
+          "description": "Rufen Sie einen geschützten Endpunkt mit dem Bearer Access Token auf. Einige APIs (z. B. Microsoft Graph) unterstützen Browser-CORS; andere erfordern in Produktion ggf. einen Server-Proxy. Klicken Sie auf ‚GET senden‘, um die Anfrage auszuführen und die Antwort zu prüfen."
+        }
+      },
+      "labels": {
+        "tenantId": "Entra Tenant ID",
+        "clientId": "Client ID",
+        "redirectUri": "Redirect URI",
+        "scopes": "Scopes (mit Leerzeichen getrennt)",
+        "authEndpoint": "Authorization Endpoint",
+        "tokenEndpoint": "Token Endpoint",
+        "pkceMethod": "Code-Challenge-Methode",
+        "codeVerifier": "Code Verifier",
+        "codeChallenge": "Code Challenge",
+        "responseType": "response_type",
+        "state": "state",
+        "nonce": "nonce",
+        "authUrlPreview": "Vorschau der Autorisierungs-URL",
+        "callbackUrl": "Callback-URL",
+        "extractedCode": "Extrahierter Code",
+        "extractedState": "Extrahierter State",
+        "tokenRequest": "Token-Anfrage (x-www-form-urlencoded)",
+        "responsePreview": "Antwortvorschau",
+        "accessToken": "Access Token (JWT)",
+        "idToken": "ID Token (JWT)",
+        "accessHeader": "Access-Token-Header",
+        "accessPayload": "Access-Token-Payload",
+        "idHeader": "ID-Token-Header",
+        "idPayload": "ID-Token-Payload",
+        "apiEndpoint": "API-Endpunkt",
+        "apiHeaders": "Request-Header",
+        "apiResponse": "Antwortvorschau"
+      },
+      "placeholders": {
+  "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "redirectUri": "http://localhost:3000/callback/auth-code",
+        "scopes": "openid profile offline_access api://.../scope.read",
+  "authEndpoint": "https://login.microsoftonline.com/\u007Btenant\u007D/oauth2/v2.0/authorize",
+  "tokenEndpoint": "https://login.microsoftonline.com/\u007Btenant\u007D/oauth2/v2.0/token",
+        "selectMethod": "Methode auswählen",
+        "codeVerifier": "Zufälliger String mit hoher Entropie",
+        "codeChallenge": "Abgeleitet aus code_verifier (S256/plain)",
+        "state": "Optionaler State (empfohlen)",
+        "nonce": "Optionale Nonce",
+        "authUrlPreview": "https://login.microsoftonline.com/.../authorize?...",
+        "callbackUrl": "http://localhost:3000/callback/auth-code?code=...&state=...",
+        "extractedCode": "tausche mich gegen Tokens",
+        "extractedState": "(falls gesetzt)",
+        "tokenRequest": "grant_type=authorization_code&client_id=...&code=...&redirect_uri=...&code_verifier=...",
+        "tokenResponse": "{\"access_token\":\"...\",\"refresh_token\":\"...\",\"id_token\":\"...\"}",
+        "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9....",
+        "idToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9....",
+        "accessHeader": "{\"alg\":\"RS256\",\"kid\":\"...\"}",
+        "accessPayload": "{\"aud\":\"...\",\"scp\":\"...\",\"exp\":...}",
+        "idHeader": "{\"alg\":\"RS256\",\"kid\":\"...\"}",
+        "idPayload": "{\"sub\":\"...\",\"name\":\"...\",\"email\":\"...\"}",
+        "apiEndpoint": "https://graph.microsoft.com/v1.0/me",
+        "apiHeaders": "Authorization: Bearer <access_token>",
+        "apiResponse": "{\"displayName\":\"...\"}"
+      },
+      "buttons": {
+        "generate": "Generieren",
+        "openPopup": "Popup öffnen",
+        "copyUrl": "URL kopieren",
+        "sending": "Senden…",
+        "send": "Senden",
+        "copyRequest": "Anfrage kopieren",
+        "decode": "Dekodieren",
+        "sendGet": "GET senden",
+        "previous": "Zurück",
+        "next": "Weiter"
+      },
+      "help": {
+        "tenantId": "Directory-(Tenant-)GUID Ihrer Entra ID Instanz.",
+        "clientId": "Anwendungs-(Client-)ID Ihrer Public-Client-App-Registrierung.",
+        "redirectUri": "Callback-URL für diese App. Muss in der App-Registrierung hinterlegt sein.",
+        "scopes": "Durch Leerzeichen getrennte Scopes (z. B. openid profile offline_access api://.../scope.read).",
+  "authEndpoint": "OAuth 2.0 v2 Autorisierungsendpunkt. Tenant wird in \u007Btenant\u007D eingesetzt.",
+  "tokenEndpoint": "OAuth 2.0 v2 Tokenendpunkt. Tenant wird in \u007Btenant\u007D eingesetzt.",
+        "codeVerifier": "Zufälliger String mit hoher Entropie, der vom Client geheim gehalten wird (PKCE).",
+        "codeChallenge": "Base64url-kodierter SHA-256-Hash des code_verifier (S256).",
+        "responseType": "OAuth-Parameter response_type; für PKCE ist es 'code'.",
+        "state": "Undurchsichtiger Wert zur Sitzungszuordnung; hilft, CSRF zu verhindern.",
+        "nonce": "String zur Verknüpfung einer Client-Sitzung mit einem ID Token; mindert Replay-Angriffe.",
+        "authUrlPreview": "Die vollständige Autorisierungs-URL, die im Popup geöffnet wird.",
+        "callbackUrl": "Die vollständige Callback-URL, die nach der Anmeldung aus dem Popup übernommen wird.",
+        "extractedCode": "Der Autorisierungscode, der aus der Callback-URL extrahiert wurde.",
+        "extractedState": "Der State-Wert aus der Callback-URL (falls gesetzt).",
+        "tokenRequest": "Der POST-Body zum Tauschen des Codes gegen Tokens.",
+        "responsePreview": "Rohantwort des Tokenendpunkts (falls JSON, formatiert).",
+        "accessToken": "Access Token zum Aufrufen von APIs. Wird als JWT-String angezeigt.",
+        "idToken": "ID Token, das die Benutzeridentität darstellt. Wird als JWT-String angezeigt.",
+        "accessHeader": "Dekodierter JWT-Header des Access Tokens.",
+        "accessPayload": "Dekodierte JWT-Payload des Access Tokens.",
+        "idHeader": "Dekodierter JWT-Header des ID Tokens.",
+        "idPayload": "Dekodierte JWT-Payload des ID Tokens.",
+        "apiEndpoint": "HTTP-Endpunkt, der mit dem Access Token aufgerufen wird (z. B. Microsoft Graph).",
+        "apiHeaders": "HTTP-Header, die für den API-Aufruf verwendet werden (einschließlich Authorization).",
+        "apiResponse": "Rohantwort des API-Aufrufs (falls JSON, formatiert)."
+      },
+      "errors": {
+  "tenantIdInvalid": "Tenant ist erforderlich und muss eine GUID sein",
+        "clientIdRequired": "Client ID ist erforderlich",
+        "clientIdInvalid": "Client ID muss eine GUID sein",
+        "redirectUriInvalid": "Redirect URI muss eine gültige http(s)-URL sein"
+      }
+    }
   },
   "Error": {
     "title": "Etwas ist schief gelaufen.",

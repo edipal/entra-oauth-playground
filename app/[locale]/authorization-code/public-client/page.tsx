@@ -2,26 +2,44 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useTranslations} from 'next-intl';
 import {Card} from 'primereact/card';
-import {Panel} from 'primereact/panel';
-import {Accordion, AccordionTab} from 'primereact/accordion';
+import {Steps} from 'primereact/steps';
+import type {MenuItem} from 'primereact/menuitem';
 import {InputText} from 'primereact/inputtext';
 import {InputTextarea} from 'primereact/inputtextarea';
-import {Dropdown} from 'primereact/dropdown';
 import {Button} from 'primereact/button';
-import {Divider} from 'primereact/divider';
 
-type PkceMethod = 'S256' | 'plain';
 
 export default function AuthorizationCodePublicClientPage() {
-  const t = useTranslations('AuthorizationCode');
+  const t = useTranslations('AuthorizationCode.PublicClient');
+  // Helper to return literal strings even if they contain {tenant}
+  const safeT = (key: string): string => {
+    try {
+      const anyT = t as any;
+      if (typeof anyT.raw === 'function') {
+        const raw = anyT.raw(key);
+        if (typeof raw === 'string') return raw;
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      // Provide a dummy value to satisfy interpolation if required
+      return t(key as any, { tenant: '{tenant}' } as any);
+    } catch {
+      return '';
+    }
+  };
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState(0); // 0..6
+  const [maxCompletedStep, setMaxCompletedStep] = useState(0);
   // Settings state (UI only)
   const [tenantId, setTenantId] = useState('');
   const [clientId, setClientId] = useState('');
-  const [redirectUri, setRedirectUri] = useState('http://localhost:3000/callback/auth-code');
+  const [redirectUri, setRedirectUri] = useState('');
   const [scopes, setScopes] = useState('openid profile offline_access');
   const [authEndpoint, setAuthEndpoint] = useState('https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize');
   const [tokenEndpoint, setTokenEndpoint] = useState('https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token');
-  const [pkceMethod, setPkceMethod] = useState<PkceMethod>('S256');
+  // PKCE uses S256 only (plain not supported here)
 
   // Step 1: PKCE fields (UI only, no generation wired yet)
   const [codeVerifier, setCodeVerifier] = useState('');
@@ -56,12 +74,85 @@ export default function AuthorizationCodePublicClientPage() {
 
   // Popup window ref
   const popupRef = useRef<Window | null>(null);
+  // Overview step replaces the old collapsible panel
+
+  // Fallback diagram in case i18n key is missing
+  const fallbackFlowDiagram = `Client (Browser)
+  |
+  | 1) Generate code_verifier + code_challenge (S256)
+  v
+Authorize Endpoint ------------------------------>
+  |   GET .../authorize?client_id=...&redirect_uri=...
+  |        &response_type=code&scope=...&state=...
+  |        &code_challenge=...&code_challenge_method=S256
+  |
+  | 2) User signs in and consents
+  v
+Redirect (Callback) <------------------------------
+  |   http(s)://your-app/callback/auth-code?code=...&state=...
+  |
+  | 3) Exchange code for tokens with code_verifier
+  v
+Token Endpoint ----------------------------------->
+  |   POST grant_type=authorization_code
+  |        &client_id=...
+  |        &code=...
+  |        &redirect_uri=...
+  |        &code_verifier=...
+  |
+  | 4) Receive tokens (access_token, id_token, ... )
+  v
+Protected API (e.g., Graph) --------------------->
+  |   Authorization: Bearer <access_token>
+  v
+  Response`;
+
+  // Resolved endpoints: substitute tenant when valid, otherwise keep {tenant}
+  // (defined after validation helpers to avoid use-before-declare)
+
+  // Small helper to render labels with a help icon + tooltip
+  const LabelWithHelp = ({id, text, help}: {id?: string; text: string; help: string}) => (
+    <label htmlFor={id} className="block mb-2">
+      {text}
+      <span className="pi pi-question-circle ml-2" title={help} aria-label={help} />
+    </label>
+  );
+
+  // Initialize redirectUri from current origin so it works in dev and prod
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setRedirectUri(`${window.location.origin}/callback/auth-code`);
+    }
+  }, []);
+
+  // Validation helpers (Settings step) — hoisted before use
+  const isGuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s);
+  const isValidHttpUrl = (s: string) => {
+    try {
+      const u = new URL(s);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+  const tenantIdValid = tenantId.trim().length > 0 && isGuid(tenantId);
+  const clientIdValid = isGuid(clientId);
+  const redirectUriValid = isValidHttpUrl(redirectUri);
+
+  // Resolved endpoints: substitute tenant when valid, otherwise keep {tenant}
+  const resolvedAuthEndpoint = useMemo(() => {
+    const tenant = tenantIdValid ? tenantId.trim() : '{tenant}';
+    return authEndpoint.replace('{tenant}', tenant);
+  }, [authEndpoint, tenantId, tenantIdValid]);
+  const resolvedTokenEndpoint = useMemo(() => {
+    const tenant = tenantIdValid ? tenantId.trim() : '{tenant}';
+    return tokenEndpoint.replace('{tenant}', tenant);
+  }, [tokenEndpoint, tenantId, tenantIdValid]);
 
   // Build the authorize URL preview from inputs (no validation for now)
   const authUrlPreview = useMemo(() => {
-    if (!clientId) return '';
-    const tenant = tenantId || 'common';
-    const base = authEndpoint.replace('{tenant}', tenant);
+    if (!clientId || !tenantIdValid) return '';
+    const base = authEndpoint.replace('{tenant}', tenantId.trim());
     const url = new URL(base);
     url.searchParams.set('client_id', clientId);
     url.searchParams.set('response_type', responseType);
@@ -71,10 +162,10 @@ export default function AuthorizationCodePublicClientPage() {
     if (nonce) url.searchParams.set('nonce', nonce);
     if (codeChallenge) {
       url.searchParams.set('code_challenge', codeChallenge);
-      url.searchParams.set('code_challenge_method', pkceMethod);
+      url.searchParams.set('code_challenge_method', 'S256');
     }
     return url.toString();
-  }, [authEndpoint, clientId, codeChallenge, nonce, pkceMethod, redirectUri, responseType, scopes, stateParam, tenantId]);
+  }, [authEndpoint, clientId, codeChallenge, nonce, redirectUri, responseType, scopes, stateParam, tenantId, tenantIdValid]);
 
   // Listen for postMessage from callback window
   useEffect(() => {
@@ -117,6 +208,8 @@ export default function AuthorizationCodePublicClientPage() {
     popupRef.current?.focus();
   };
 
+  // (Validation helpers already hoisted above)
+
   // Helpers: PKCE generation
   const base64UrlEncode = (input: ArrayBuffer) => {
     const bytes = new Uint8Array(input);
@@ -145,12 +238,8 @@ export default function AuthorizationCodePublicClientPage() {
   const handleGeneratePkce = async () => {
     const v = randomCodeVerifier();
     setCodeVerifier(v);
-    if (pkceMethod === 'S256') {
-      const ch = await computeS256Challenge(v);
-      setCodeChallenge(ch);
-    } else {
-      setCodeChallenge(v);
-    }
+    const ch = await computeS256Challenge(v);
+    setCodeChallenge(ch);
   };
 
   // Compute token request preview (x-www-form-urlencoded)
@@ -167,7 +256,7 @@ export default function AuthorizationCodePublicClientPage() {
   }, [authCode, clientId, codeVerifier, redirectUri, scopes]);
 
   const handleExchangeTokens = async () => {
-    if (!authCode || !clientId || !redirectUri || !codeVerifier || !tokenEndpoint) return;
+    if (!authCode || !clientId || !redirectUri || !codeVerifier || !tokenEndpoint || !tenantIdValid) return;
     setExchanging(true);
     setTokenResponseText('');
     setAccessToken('');
@@ -177,8 +266,7 @@ export default function AuthorizationCodePublicClientPage() {
     setDecodedIdHeader('');
     setDecodedIdPayload('');
     try {
-      const tenant = tenantId || 'common';
-      const url = tokenEndpoint.replace('{tenant}', tenant);
+      const url = tokenEndpoint.replace('{tenant}', tenantId.trim());
       const body = new URLSearchParams();
       body.set('grant_type', 'authorization_code');
       body.set('client_id', clientId);
@@ -276,174 +364,280 @@ export default function AuthorizationCodePublicClientPage() {
       setCallingApi(false);
     }
   };
+
+  // Wizard validation per step
+  const validators: Array<() => boolean> = [
+    () => true, // 0 Overview
+    () => clientIdValid && redirectUriValid && tenantIdValid, // 1 Settings
+    () => !!codeVerifier && !!codeChallenge, // 2 PKCE
+    () => !!authUrlPreview, // 3 Authorize URL
+    () => !!authCode, // 4 Callback has code
+    () => !!accessToken, // 5 Token exchange
+    () => true, // 6 Decode
+    () => false // 7 Call API (final)
+  ];
+
+  const canPrev = currentStep > 0;
+  const canNext = currentStep < 7 && validators[currentStep]();
+
+  const goPrev = () => {
+    if (!canPrev) return;
+    setCurrentStep((s) => Math.max(0, s - 1));
+  };
+  const goNext = () => {
+    if (!canNext) return;
+    setCurrentStep((s) => {
+      const next = Math.min(7, s + 1);
+      setMaxCompletedStep((m) => Math.max(m, next));
+      return next;
+    });
+  };
+
+  const stepLabels = [
+    t('steps.overview'),
+    t('steps.settings'),
+    t('steps.pkce'),
+    t('steps.authorize'),
+    t('steps.callback'),
+    t('steps.tokens'),
+    t('steps.decode'),
+    t('steps.callApi')
+  ];
+  const stepItems: MenuItem[] = stepLabels.map((label, idx) => ({
+    label,
+    disabled: idx > maxCompletedStep && idx > currentStep,
+    command: () => {
+      if (idx <= maxCompletedStep || idx <= currentStep) setCurrentStep(idx);
+    }
+  }));
   return (
     <div className="p-4">
-      <Card title={t('publicClientTitle')}>
-        {/* Common settings panel */}
-        <Panel header="Common Settings" toggleable>
-          <div className="grid formgrid p-fluid">
-            <div className="col-12 md:col-6">
-              <label htmlFor="tenantId" className="block mb-2">Entra Tenant ID</label>
-              <InputText id="tenantId" value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-            </div>
-            <div className="col-12 md:col-6">
-              <label htmlFor="clientId" className="block mb-2">Client ID</label>
-              <InputText id="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="App Registration (Public Client) ID" />
-            </div>
-            <div className="col-12 md:col-6">
-              <label htmlFor="redirectUri" className="block mb-2">Redirect URI</label>
-              <InputText id="redirectUri" value={redirectUri} onChange={(e) => setRedirectUri(e.target.value)} placeholder="http://localhost:3000/callback/auth-code" />
-            </div>
-            <div className="col-12 md:col-6">
-              <label htmlFor="scopes" className="block mb-2">Scopes (space-separated)</label>
-              <InputText id="scopes" value={scopes} onChange={(e) => setScopes(e.target.value)} placeholder="openid profile offline_access api://.../scope.read" />
-            </div>
-            <div className="col-12 md:col-6">
-              <label htmlFor="authEndpoint" className="block mb-2">Authorization Endpoint</label>
-              <InputText id="authEndpoint" value={authEndpoint} onChange={(e) => setAuthEndpoint(e.target.value)} placeholder="https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize" />
-            </div>
-            <div className="col-12 md:col-6">
-              <label htmlFor="tokenEndpoint" className="block mb-2">Token Endpoint</label>
-              <InputText id="tokenEndpoint" value={tokenEndpoint} onChange={(e) => setTokenEndpoint(e.target.value)} placeholder="https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token" />
-            </div>
-            <div className="col-12 md:col-6">
-              <label htmlFor="pkceMethod" className="block mb-2">Code Challenge Method</label>
-              <Dropdown id="pkceMethod" value={pkceMethod} onChange={(e) => setPkceMethod(e.value)} placeholder="Select method" options={[{label: 'S256', value: 'S256'}, {label: 'plain', value: 'plain'}]} />
-            </div>
-          </div>
-        </Panel>
+  <Card title={t('title')}>
+        {/* Steps header */}
+        <div className="mb-4">
+          <Steps model={stepItems} activeIndex={currentStep} readOnly={false} />
+        </div>
 
-        <Divider />
+        {/* Step content */}
+        {currentStep === 0 && (
+          <section>
+            <h3 className="mt-0 mb-3">{t('sections.settings.flowPanelTitle')}</h3>
+            <p className="mb-3">{t('sections.settings.flowIntro')}</p>
+            {(() => {
+              const keyPath = 'sections.settings.flowDiagram';
+              let value: string | undefined;
+              try {
+                const anyT = t as any;
+                value = typeof anyT.raw === 'function' ? anyT.raw(keyPath) : t(keyPath as any);
+              } catch {
+                value = undefined;
+              }
+              const expectedPath = `AuthorizationCode.PublicClient.${keyPath}`;
+              const text = value && value !== expectedPath ? value : fallbackFlowDiagram;
+              return <pre style={{whiteSpace: 'pre-wrap'}}>{text}</pre>;
+            })()}
+          </section>
+        )}
 
-        {/* OAuth flow steps */}
-        <Accordion multiple>
-          <AccordionTab header="1. Generate PKCE (code_verifier & code_challenge)">
-            <div className="grid formgrid p-fluid">
-              <div className="col-12 md:col-8">
-                <label htmlFor="codeVerifier" className="block mb-2">Code Verifier</label>
-                <InputText id="codeVerifier" value={codeVerifier} onChange={(e) => setCodeVerifier(e.target.value)} placeholder="Random high-entropy string" />
-              </div>
-              <div className="col-12 md:col-4 flex align-items-end">
-                <Button type="button" label="Generate" icon="pi pi-refresh" className="w-full md:w-auto" onClick={handleGeneratePkce} />
-              </div>
-              <div className="col-12 md:col-8">
-                <label htmlFor="codeChallenge" className="block mb-2">Code Challenge</label>
-                <InputText id="codeChallenge" value={codeChallenge} onChange={(e) => setCodeChallenge(e.target.value)} placeholder="Derived from code_verifier (S256/plain)" readOnly />
-              </div>
-            </div>
-          </AccordionTab>
-
-          <AccordionTab header="2. Build authorization request URL">
+        {currentStep === 1 && (
+          <section>
+            <h3 className="mt-0 mb-3">{t('sections.settings.title')}</h3>
+            <p className="mb-3">{t('sections.settings.description')}</p>
             <div className="grid formgrid p-fluid">
               <div className="col-12 md:col-6">
-                <label htmlFor="responseType" className="block mb-2">response_type</label>
+                <LabelWithHelp id="tenantId" text={t('labels.tenantId')} help={t('help.tenantId')} />
+                <InputText id="tenantId" value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder={t('placeholders.tenantId')} className={!tenantIdValid ? 'p-invalid' : ''} />
+                {!tenantIdValid && (
+                  <small className="p-error block mt-1">{t('errors.tenantIdInvalid')}</small>
+                )}
+              </div>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="clientId" text={t('labels.clientId')} help={t('help.clientId')} />
+                <InputText id="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder={t('placeholders.clientId')} className={!clientIdValid ? 'p-invalid' : ''} />
+                {!clientIdValid && (
+                  <small className="p-error block mt-1">{clientId ? t('errors.clientIdInvalid') : t('errors.clientIdRequired')}</small>
+                )}
+              </div>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="redirectUri" text={t('labels.redirectUri')} help={t('help.redirectUri')} />
+                <InputText id="redirectUri" value={redirectUri} readOnly placeholder={t('placeholders.redirectUri')} className={!redirectUriValid ? 'p-invalid' : ''} />
+                {!redirectUriValid && (
+                  <small className="p-error block mt-1">{t('errors.redirectUriInvalid')}</small>
+                )}
+              </div>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="scopes" text={t('labels.scopes')} help={t('help.scopes')} />
+                <InputText id="scopes" value={scopes} onChange={(e) => setScopes(e.target.value)} placeholder={t('placeholders.scopes')} />
+              </div>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="authEndpoint" text={t('labels.authEndpoint')} help={safeT('help.authEndpoint')} />
+                <InputText id="authEndpoint" value={resolvedAuthEndpoint} readOnly placeholder={safeT('placeholders.authEndpoint')} />
+              </div>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="tokenEndpoint" text={t('labels.tokenEndpoint')} help={safeT('help.tokenEndpoint')} />
+                <InputText id="tokenEndpoint" value={resolvedTokenEndpoint} readOnly placeholder={safeT('placeholders.tokenEndpoint')} />
+              </div>
+              {/* PKCE method is fixed to S256 (no dropdown) */}
+            </div>
+          </section>
+        )}
+
+        {currentStep === 2 && (
+          <section>
+            <h3 className="mt-0 mb-3">{t('sections.pkce.title')}</h3>
+            <p className="mb-3">{t('sections.pkce.description')}</p>
+            <div className="grid formgrid p-fluid">
+              <div className="col-12 md:col-8">
+                <LabelWithHelp id="codeVerifier" text={t('labels.codeVerifier')} help={t('help.codeVerifier')} />
+                <InputText id="codeVerifier" value={codeVerifier} onChange={(e) => setCodeVerifier(e.target.value)} placeholder={t('placeholders.codeVerifier')} />
+              </div>
+              <div className="col-12 md:col-4 flex align-items-end">
+                <Button type="button" label={t('buttons.generate')} icon="pi pi-refresh" className="w-full md:w-auto" onClick={handleGeneratePkce} />
+              </div>
+              <div className="col-12 md:col-8">
+                <LabelWithHelp id="codeChallenge" text={t('labels.codeChallenge')} help={t('help.codeChallenge')} />
+                <InputText id="codeChallenge" value={codeChallenge} onChange={(e) => setCodeChallenge(e.target.value)} placeholder={t('placeholders.codeChallenge')} readOnly />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {currentStep === 3 && (
+          <section>
+            <h3 className="mt-0 mb-3">{t('sections.authorize.title')}</h3>
+            <p className="mb-3">{t('sections.authorize.description')}</p>
+            <div className="grid formgrid p-fluid">
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="responseType" text={t('labels.responseType')} help={t('help.responseType')} />
                 <InputText id="responseType" value={responseType} readOnly />
               </div>
               <div className="col-12 md:col-6">
-                <label htmlFor="state" className="block mb-2">state</label>
-                <InputText id="state" value={stateParam} onChange={(e) => setStateParam(e.target.value)} placeholder="Optional state (recommended)" />
+                <LabelWithHelp id="state" text={t('labels.state')} help={t('help.state')} />
+                <InputText id="state" value={stateParam} onChange={(e) => setStateParam(e.target.value)} placeholder={t('placeholders.state')} />
               </div>
               <div className="col-12 md:col-6">
-                <label htmlFor="nonce" className="block mb-2">nonce</label>
-                <InputText id="nonce" value={nonce} onChange={(e) => setNonce(e.target.value)} placeholder="Optional nonce" />
+                <LabelWithHelp id="nonce" text={t('labels.nonce')} help={t('help.nonce')} />
+                <InputText id="nonce" value={nonce} onChange={(e) => setNonce(e.target.value)} placeholder={t('placeholders.nonce')} />
               </div>
               <div className="col-12">
-                <label htmlFor="authUrlPreview" className="block mb-2">Authorization URL preview</label>
-                <InputTextarea id="authUrlPreview" rows={3} autoResize value={authUrlPreview} placeholder="https://login.microsoftonline.com/.../authorize?..." />
+                <LabelWithHelp id="authUrlPreview" text={t('labels.authUrlPreview')} help={t('help.authUrlPreview')} />
+                <InputTextarea id="authUrlPreview" rows={3} autoResize value={authUrlPreview} placeholder={t('placeholders.authUrlPreview')} />
               </div>
               <div className="col-12 flex gap-2">
-                <Button type="button" label="Open popup" icon="pi pi-external-link" onClick={openAuthorizePopup} disabled={!authUrlPreview} />
-                <Button type="button" label="Copy URL" icon="pi pi-copy" disabled />
+                <Button type="button" label={t('buttons.openPopup')} icon="pi pi-external-link" onClick={openAuthorizePopup} disabled={!authUrlPreview} />
+                <Button type="button" label={t('buttons.copyUrl')} icon="pi pi-copy" disabled />
               </div>
             </div>
-          </AccordionTab>
+          </section>
+        )}
 
-          <AccordionTab header="3. Handle redirect (auto-pasted from popup)">
+        {currentStep === 4 && (
+          <section>
+            <h3 className="mt-0 mb-3">{t('sections.callback.title')}</h3>
+            <p className="mb-3">{t('sections.callback.description')}</p>
             <div className="grid formgrid p-fluid">
               <div className="col-12">
-                <label htmlFor="callbackUrl" className="block mb-2">Callback URL</label>
-                <InputTextarea id="callbackUrl" rows={3} autoResize value={callbackUrl} placeholder="http://localhost:3000/callback/auth-code?code=...&state=..." />
+                <LabelWithHelp id="callbackUrl" text={t('labels.callbackUrl')} help={t('help.callbackUrl')} />
+                <InputTextarea id="callbackUrl" rows={3} autoResize value={callbackUrl} placeholder={t('placeholders.callbackUrl')} />
               </div>
               <div className="col-12 md:col-6">
-                <label htmlFor="authCode" className="block mb-2">Extracted code</label>
-                <InputText id="authCode" value={authCode} placeholder="exchange me for tokens" readOnly />
+                <LabelWithHelp id="authCode" text={t('labels.extractedCode')} help={t('help.extractedCode')} />
+                <InputText id="authCode" value={authCode} placeholder={t('placeholders.extractedCode')} readOnly />
               </div>
               <div className="col-12 md:col-6">
-                <label htmlFor="extractedState" className="block mb-2">Extracted state</label>
-                <InputText id="extractedState" value={extractedState} placeholder="(if provided)" readOnly />
+                <LabelWithHelp id="extractedState" text={t('labels.extractedState')} help={t('help.extractedState')} />
+                <InputText id="extractedState" value={extractedState} placeholder={t('placeholders.extractedState')} readOnly />
               </div>
             </div>
-          </AccordionTab>
+          </section>
+        )}
 
-          <AccordionTab header="4. Exchange code for tokens">
+        {currentStep === 5 && (
+          <section>
+            <h3 className="mt-0 mb-3">{t('sections.tokens.title')}</h3>
+            <p className="mb-3">{t('sections.tokens.description')}</p>
             <div className="grid formgrid p-fluid">
               <div className="col-12">
-                <label htmlFor="tokenRequestBody" className="block mb-2">Token request (x-www-form-urlencoded)</label>
-                <InputTextarea id="tokenRequestBody" rows={4} autoResize value={tokenRequestPreview} placeholder="grant_type=authorization_code&client_id=...&code=...&redirect_uri=...&code_verifier=..." />
+                <LabelWithHelp id="tokenRequestBody" text={t('labels.tokenRequest')} help={t('help.tokenRequest')} />
+                <InputTextarea id="tokenRequestBody" rows={4} autoResize value={tokenRequestPreview} placeholder={t('placeholders.tokenRequest')} />
               </div>
               <div className="col-12 flex gap-2">
-                <Button type="button" label={exchanging ? 'Sending…' : 'Send'} icon="pi pi-send" onClick={handleExchangeTokens} disabled={exchanging || !tokenRequestPreview} />
-                <Button type="button" label="Copy request" icon="pi pi-copy" disabled />
+                <Button type="button" label={exchanging ? t('buttons.sending') : t('buttons.send')} icon="pi pi-send" onClick={handleExchangeTokens} disabled={exchanging || !tokenRequestPreview} />
+                <Button type="button" label={t('buttons.copyRequest')} icon="pi pi-copy" disabled />
               </div>
               <div className="col-12">
-                <label htmlFor="tokenResponse" className="block mb-2">Response preview</label>
-                <InputTextarea id="tokenResponse" rows={8} autoResize value={tokenResponseText} placeholder='{"access_token":"...","refresh_token":"...","id_token":"..."}' />
+                <LabelWithHelp id="tokenResponse" text={t('labels.responsePreview')} help={t('help.responsePreview')} />
+                <InputTextarea id="tokenResponse" rows={8} autoResize value={tokenResponseText} placeholder={t('placeholders.tokenResponse')} />
               </div>
             </div>
-          </AccordionTab>
+          </section>
+        )}
 
-          <AccordionTab header="5. Decode tokens (JWT)">
+        {currentStep === 6 && (
+          <section>
+            <h3 className="mt-0 mb-3">{t('sections.decode.title')}</h3>
+            <p className="mb-3">{t('sections.decode.description')}</p>
             <div className="grid formgrid p-fluid">
               <div className="col-12">
-                <label htmlFor="accessToken" className="block mb-2">Access token (JWT)</label>
-                <InputTextarea id="accessToken" rows={3} autoResize value={accessToken} placeholder="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...." readOnly />
+                <LabelWithHelp id="accessToken" text={t('labels.accessToken')} help={t('help.accessToken')} />
+                <InputTextarea id="accessToken" rows={3} autoResize value={accessToken} placeholder={t('placeholders.accessToken')} readOnly />
               </div>
               <div className="col-12">
-                <label htmlFor="idToken" className="block mb-2">ID token (JWT)</label>
-                <InputTextarea id="idToken" rows={3} autoResize value={idToken} placeholder="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...." readOnly />
+                <LabelWithHelp id="idToken" text={t('labels.idToken')} help={t('help.idToken')} />
+                <InputTextarea id="idToken" rows={3} autoResize value={idToken} placeholder={t('placeholders.idToken')} readOnly />
               </div>
               <div className="col-12 flex gap-2">
-                <Button type="button" label="Decode" icon="pi pi-code" onClick={handleDecodeTokens} disabled={!accessToken && !idToken} />
+                <Button type="button" label={t('buttons.decode')} icon="pi pi-code" onClick={handleDecodeTokens} disabled={!accessToken && !idToken} />
               </div>
               <div className="col-12 md:col-6">
-                <label htmlFor="accessHeader" className="block mb-2">Access token header</label>
-                <InputTextarea id="accessHeader" rows={6} autoResize value={decodedAccessHeader} placeholder='{"alg":"RS256","kid":"..."}' />
+                <LabelWithHelp id="accessHeader" text={t('labels.accessHeader')} help={t('help.accessHeader')} />
+                <InputTextarea id="accessHeader" rows={6} autoResize value={decodedAccessHeader} placeholder={t('placeholders.accessHeader')} />
               </div>
               <div className="col-12 md:col-6">
-                <label htmlFor="accessPayload" className="block mb-2">Access token payload</label>
-                <InputTextarea id="accessPayload" rows={6} autoResize value={decodedAccessPayload} placeholder='{"aud":"...","scp":"...","exp":...}' />
+                <LabelWithHelp id="accessPayload" text={t('labels.accessPayload')} help={t('help.accessPayload')} />
+                <InputTextarea id="accessPayload" rows={6} autoResize value={decodedAccessPayload} placeholder={t('placeholders.accessPayload')} />
               </div>
               <div className="col-12 md:col-6">
-                <label htmlFor="idHeader" className="block mb-2">ID token header</label>
-                <InputTextarea id="idHeader" rows={6} autoResize value={decodedIdHeader} placeholder='{"alg":"RS256","kid":"..."}' />
+                <LabelWithHelp id="idHeader" text={t('labels.idHeader')} help={t('help.idHeader')} />
+                <InputTextarea id="idHeader" rows={6} autoResize value={decodedIdHeader} placeholder={t('placeholders.idHeader')} />
               </div>
               <div className="col-12 md:col-6">
-                <label htmlFor="idPayload" className="block mb-2">ID token payload</label>
-                <InputTextarea id="idPayload" rows={6} autoResize value={decodedIdPayload} placeholder='{"sub":"...","name":"...","email":"..."}' />
+                <LabelWithHelp id="idPayload" text={t('labels.idPayload')} help={t('help.idPayload')} />
+                <InputTextarea id="idPayload" rows={6} autoResize value={decodedIdPayload} placeholder={t('placeholders.idPayload')} />
               </div>
             </div>
-          </AccordionTab>
+          </section>
+        )}
 
-          <AccordionTab header="6. Call protected API">
+        {currentStep === 7 && (
+          <section>
+            <h3 className="mt-0 mb-3">{t('sections.callApi.title')}</h3>
+            <p className="mb-3">{t('sections.callApi.description')}</p>
             <div className="grid formgrid p-fluid">
               <div className="col-12 md:col-8">
-                <label htmlFor="apiEndpoint" className="block mb-2">API endpoint</label>
-                <InputText id="apiEndpoint" value={apiEndpointUrl} onChange={(e) => setApiEndpointUrl(e.target.value)} placeholder="https://graph.microsoft.com/v1.0/me" />
+                <LabelWithHelp id="apiEndpoint" text={t('labels.apiEndpoint')} help={t('help.apiEndpoint')} />
+                <InputText id="apiEndpoint" value={apiEndpointUrl} onChange={(e) => setApiEndpointUrl(e.target.value)} placeholder={t('placeholders.apiEndpoint')} />
               </div>
               <div className="col-12 md:col-4 flex align-items-end">
-                <Button type="button" label={callingApi ? 'Sending…' : 'Send GET'} icon="pi pi-send" className="w-full md:w-auto" onClick={handleCallProtectedApi} disabled={callingApi || !apiEndpointUrl || !accessToken} />
+                <Button type="button" label={callingApi ? t('buttons.sending') : t('buttons.sendGet')} icon="pi pi-send" className="w-full md:w-auto" onClick={handleCallProtectedApi} disabled={callingApi || !apiEndpointUrl || !accessToken} />
               </div>
               <div className="col-12">
-                <label htmlFor="apiHeaders" className="block mb-2">Request headers</label>
-                <InputTextarea id="apiHeaders" rows={3} autoResize value={accessToken ? `Authorization: Bearer ${accessToken}` : ''} placeholder="Authorization: Bearer <access_token>" />
+                <LabelWithHelp id="apiHeaders" text={t('labels.apiHeaders')} help={t('help.apiHeaders')} />
+                <InputTextarea id="apiHeaders" rows={3} autoResize value={accessToken ? `Authorization: Bearer ${accessToken}` : ''} placeholder={t('placeholders.apiHeaders')} />
               </div>
               <div className="col-12">
-                <label htmlFor="apiResponse" className="block mb-2">Response preview</label>
-                <InputTextarea id="apiResponse" rows={8} autoResize value={apiResponseText} placeholder='{"displayName":"..."}' />
+                <LabelWithHelp id="apiResponse" text={t('labels.apiResponse')} help={t('help.apiResponse')} />
+                <InputTextarea id="apiResponse" rows={8} autoResize value={apiResponseText} placeholder={t('placeholders.apiResponse')} />
               </div>
             </div>
-          </AccordionTab>
-        </Accordion>
+          </section>
+        )}
+
+        {/* Wizard navigation */}
+        <div className="flex justify-content-between align-items-center mt-4">
+          <Button type="button" label={t('buttons.previous')} icon="pi pi-arrow-left" onClick={goPrev} disabled={!canPrev} className="p-button-secondary" />
+          <Button type="button" label={t('buttons.next')} iconPos="right" icon="pi pi-arrow-right" onClick={goNext} disabled={!canNext} />
+        </div>
       </Card>
     </div>
   );
