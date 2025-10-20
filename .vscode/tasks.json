@@ -1,0 +1,115 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Typecheck project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build after validation changes",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build after UI details",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build after validation changes",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build after UI details",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Typecheck project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "npm run -s build",
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}

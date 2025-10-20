@@ -38,6 +38,7 @@
         "callback": "Callback",
         "tokens": "Tokens",
         "decode": "Dekodieren",
+        "validate": "Validieren",
         "callApi": "API aufrufen"
       },
       "sections": {
@@ -54,7 +55,7 @@
         },
         "authorize": {
           "title": "Autorisierungs-URL erstellen",
-          "description": "Wir erstellen die Autorisierungs-URL inkl. client_id, redirect_uri, Scopes, optional state/nonce und PKCE-Parametern. Klicken Sie auf ‚Popup öffnen‘, um sich anzumelden und zuzustimmen. Nach der Anmeldung leitet das Popup zurück, und Schritt 3 füllt den Code automatisch aus. Weiter können Sie klicken, sobald die URL korrekt aussieht (für einen Code müssen Sie sich tatsächlich anmelden)."
+          "description": "Wir erstellen die Autorisierungs-URL inkl. client_id, redirect_uri, Scopes, optional state/nonce und PKCE-Parametern. Klicken Sie auf ‚Popup öffnen‘, um sich anzumelden und zuzustimmen. Nach der Anmeldung leitet das Popup zurück, und Schritt 5 füllt den Code automatisch aus. Weiter können Sie klicken, sobald die URL korrekt aussieht (für einen Code müssen Sie sich tatsächlich anmelden)."
         },
         "callback": {
           "title": "Redirect verarbeiten (automatisch aus dem Popup)",
@@ -67,6 +68,10 @@
         "decode": {
           "title": "Tokens dekodieren (JWT)",
           "description": "Access- und ID-Tokens sind JWTs. Klicken Sie auf ‚Dekodieren‘, um Header und Payload lesbar anzuzeigen. Prüfen Sie z. B. audience (aud), scopes/roles, issuer (iss), Tenant (tid), subject (sub) und expiry (exp). Klicken Sie auf Weiter, um einen API-Aufruf zu tätigen."
+        },
+        "validate": {
+          "title": "Tokens validieren (Signatur und Claims)",
+          "description": "Diese Anleitung zeigt, wie Sie die erhaltenen ID- und Access-Tokens validieren: zuerst die Signaturprüfung (kid -> Metadata -> JWKS -> Verify), danach die üblichen Claim-Prüfungen (aud, iss, tid, nonce, scopes/roles, exp, nbf, iat)."
         },
         "callApi": {
           "title": "Geschützte API aufrufen",
@@ -86,6 +91,9 @@
         "responseType": "response_type",
         "state": "state",
         "nonce": "nonce",
+  "responseMode": "response_mode",
+  "prompt": "prompt",
+  "loginHint": "login_hint",
         "authUrlPreview": "Vorschau der Autorisierungs-URL",
         "callbackUrl": "Callback-URL",
         "extractedCode": "Extrahierter Code",
@@ -114,6 +122,9 @@
         "codeChallenge": "Abgeleitet aus code_verifier (S256/plain)",
         "state": "Optionaler State (empfohlen)",
         "nonce": "Optionale Nonce",
+  "responseMode": "query | form_post",
+  "prompt": "login | consent | select_account | create | none",
+  "loginHint": "user@domain.com",
         "authUrlPreview": "https://login.microsoftonline.com/.../authorize?...",
         "callbackUrl": "http://localhost:3000/callback/auth-code?code=...&state=...",
         "extractedCode": "tausche mich gegen Tokens",
@@ -154,6 +165,9 @@
         "responseType": "OAuth-Parameter response_type; für PKCE ist es 'code'.",
         "state": "Undurchsichtiger Wert zur Sitzungszuordnung; hilft, CSRF zu verhindern.",
         "nonce": "String zur Verknüpfung einer Client-Sitzung mit einem ID Token; mindert Replay-Angriffe.",
+  "responseMode": "Wohin die Antwort geliefert werden soll (query oder form_post).",
+  "prompt": "Steuert das Verhalten: login, consent, select_account, create oder none.",
+  "loginHint": "Benutzernamen/Anmeldehinweis vorbefüllen (z. B. E-Mail).",
         "authUrlPreview": "Die vollständige Autorisierungs-URL, die im Popup geöffnet wird.",
         "callbackUrl": "Die vollständige Callback-URL, die nach der Anmeldung aus dem Popup übernommen wird.",
         "extractedCode": "Der Autorisierungscode, der aus der Callback-URL extrahiert wurde.",
@@ -169,6 +183,9 @@
         "apiEndpoint": "HTTP-Endpunkt, der mit dem Access Token aufgerufen wird (z. B. Microsoft Graph).",
         "apiHeaders": "HTTP-Header, die für den API-Aufruf verwendet werden (einschließlich Authorization).",
         "apiResponse": "Rohantwort des API-Aufrufs (falls JSON, formatiert)."
+      ,
+        "stateValid": "State stimmt überein",
+        "stateInvalid": "State stimmt nicht überein"
       },
       "errors": {
   "tenantIdInvalid": "Tenant ist erforderlich und muss eine GUID sein",

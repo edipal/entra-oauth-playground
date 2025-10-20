@@ -38,6 +38,7 @@
         "callback": "Callback",
         "tokens": "Tokens",
         "decode": "Decode",
+        "validate": "Validate",
         "callApi": "Call API"
       },
       "sections": {
@@ -54,7 +55,7 @@
         },
         "authorize": {
           "title": "Build authorization request URL",
-          "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state/nonce, and PKCE parameters. Click ‘Open popup’ to sign in and consent. After completing sign-in, the popup will redirect back and step 3 will auto-fill with the code. You can click Next once the URL looks correct (but you’ll need to actually sign in to get a code)."
+          "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state/nonce, and PKCE parameters. Click ‘Open popup’ to sign in and consent. After completing sign-in, the popup will redirect back and step 5 will auto-fill with the code. You can click Next once the URL looks correct (but you’ll need to actually sign in to get a code)."
         },
         "callback": {
           "title": "Handle redirect (auto-pasted from popup)",
@@ -67,6 +68,10 @@
         "decode": {
           "title": "Decode tokens (JWT)",
           "description": "Access and ID tokens are JWTs. Click ‘Decode’ to view the header and payload claims in a readable form. Use these to verify audience (aud), scopes/roles, issuer (iss), tenant (tid), subject (sub), and expiry (exp). Click Next to proceed to an API call."
+        },
+        "validate": {
+          "title": "Validate tokens (signature and claims)",
+          "description": "This guide walks through how to validate the ID and Access tokens you received: first, how signature validation works (kid -> metadata -> jwks -> verify), then the common claim checks you should perform (aud, iss, tid, nonce, scopes/roles, exp, nbf, iat)."
         },
         "callApi": {
           "title": "Call protected API",
@@ -86,6 +91,9 @@
         "responseType": "response_type",
         "state": "state",
         "nonce": "nonce",
+  "responseMode": "response_mode",
+  "prompt": "prompt",
+  "loginHint": "login_hint",
         "authUrlPreview": "Authorization URL preview",
         "callbackUrl": "Callback URL",
         "extractedCode": "Extracted code",
@@ -114,6 +122,9 @@
         "codeChallenge": "Derived from code_verifier (S256/plain)",
         "state": "Optional state (recommended)",
         "nonce": "Optional nonce",
+  "responseMode": "query | form_post",
+  "prompt": "login | consent | select_account | create | none",
+  "loginHint": "user@domain.com",
         "authUrlPreview": "https://login.microsoftonline.com/.../authorize?...",
         "callbackUrl": "http://localhost:3000/callback/auth-code?code=...&state=...",
         "extractedCode": "exchange me for tokens",
@@ -154,6 +165,9 @@
         "responseType": "OAuth response_type parameter; for PKCE it is 'code'.",
         "state": "Opaque value to maintain state between request and callback; helps prevent CSRF.",
         "nonce": "A string to associate a client session with an ID token; helps mitigate replay attacks.",
+  "responseMode": "Where the response should be returned (query or form_post).",
+  "prompt": "Controls the behavior: login, consent, select_account, create, or none.",
+  "loginHint": "Prefill the username or sign-in hint (e.g., email).",
         "authUrlPreview": "The full authorization URL that will open in the popup.",
         "callbackUrl": "The full callback URL captured from the popup after sign-in.",
         "extractedCode": "The authorization code extracted from the callback URL.",
@@ -168,7 +182,9 @@
         "idPayload": "Decoded JWT payload of the ID token.",
         "apiEndpoint": "HTTP endpoint to call with the access token (e.g., Microsoft Graph).",
         "apiHeaders": "HTTP headers used for the API call (includes Authorization).",
-        "apiResponse": "Raw response from the API call (pretty-printed if JSON)."
+        "apiResponse": "Raw response from the API call (pretty-printed if JSON).",
+        "stateValid": "state matches",
+        "stateInvalid": "state does not match"
       },
       "errors": {
   "tenantIdInvalid": "Tenant is required and must be a GUID",

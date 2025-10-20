@@ -4,9 +4,19 @@ import {useTranslations} from 'next-intl';
 import {Card} from 'primereact/card';
 import {Steps} from 'primereact/steps';
 import type {MenuItem} from 'primereact/menuitem';
-import {InputText} from 'primereact/inputtext';
-import {InputTextarea} from 'primereact/inputtextarea';
 import {Button} from 'primereact/button';
+import StepOverview from './components/StepOverview';
+import StepSettings from './components/StepSettings';
+import StepPkce from './components/StepPkce';
+import StepAuthorize from './components/StepAuthorize';
+import StepCallback from './components/StepCallback';
+import StepTokens from './components/StepTokens';
+import StepDecode from './components/StepDecode';
+import StepCallApi from './components/StepCallApi';
+import StepValidate from './components/StepValidate';
+import LabelWithHelp from '@/components/LabelWithHelp';
+import { base64UrlEncode, randomCodeVerifier, computeS256Challenge } from '@/lib/pkce';
+import { base64UrlDecodeToString, decodeJwt } from '@/lib/jwt';
 
 
 export default function AuthorizationCodePublicClientPage() {
@@ -30,7 +40,7 @@ export default function AuthorizationCodePublicClientPage() {
     }
   };
   // Wizard state
-  const [currentStep, setCurrentStep] = useState(0); // 0..6
+  const [currentStep, setCurrentStep] = useState(0); // 0..8 (with Validate)
   const [maxCompletedStep, setMaxCompletedStep] = useState(0);
   // Settings state (UI only)
   const [tenantId, setTenantId] = useState('');
@@ -49,11 +59,15 @@ export default function AuthorizationCodePublicClientPage() {
   const [responseType] = useState('code');
   const [stateParam, setStateParam] = useState('');
   const [nonce, setNonce] = useState('');
+  const [responseMode, setResponseMode] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [loginHint, setLoginHint] = useState('');
 
   // Step 3: Callback handling
   const [callbackUrl, setCallbackUrl] = useState('');
   const [authCode, setAuthCode] = useState('');
   const [extractedState, setExtractedState] = useState('');
+  const [callbackValidated, setCallbackValidated] = useState(false);
 
   // Step 4: Token exchange
   const [exchanging, setExchanging] = useState(false);
@@ -67,7 +81,10 @@ export default function AuthorizationCodePublicClientPage() {
   const [decodedIdHeader, setDecodedIdHeader] = useState('');
   const [decodedIdPayload, setDecodedIdPayload] = useState('');
 
-  // Step 5: Call protected API
+  // Step 6: Validate tokens (claims & signature guidance)
+  // no extra state
+
+  // Step 7: Call protected API
   const [apiEndpointUrl, setApiEndpointUrl] = useState('https://graph.microsoft.com/v1.0/me');
   const [apiResponseText, setApiResponseText] = useState('');
   const [callingApi, setCallingApi] = useState(false);
@@ -110,13 +127,7 @@ Protected API (e.g., Graph) --------------------->
   // Resolved endpoints: substitute tenant when valid, otherwise keep {tenant}
   // (defined after validation helpers to avoid use-before-declare)
 
-  // Small helper to render labels with a help icon + tooltip
-  const LabelWithHelp = ({id, text, help}: {id?: string; text: string; help: string}) => (
-    <label htmlFor={id} className="block mb-2">
-      {text}
-      <span className="pi pi-question-circle ml-2" title={help} aria-label={help} />
-    </label>
-  );
+  // Small helper moved to shared component (imported as LabelWithHelp)
 
   // Initialize redirectUri from current origin so it works in dev and prod
   useEffect(() => {
@@ -160,12 +171,16 @@ Protected API (e.g., Graph) --------------------->
     if (scopes.trim()) url.searchParams.set('scope', scopes.trim());
     if (stateParam) url.searchParams.set('state', stateParam);
     if (nonce) url.searchParams.set('nonce', nonce);
+    if (responseMode) url.searchParams.set('response_mode', responseMode);
+    if (prompt) url.searchParams.set('prompt', prompt);
+    if (loginHint) url.searchParams.set('login_hint', loginHint);
+  // domain_hint and claims intentionally omitted here per request
     if (codeChallenge) {
       url.searchParams.set('code_challenge', codeChallenge);
       url.searchParams.set('code_challenge_method', 'S256');
     }
     return url.toString();
-  }, [authEndpoint, clientId, codeChallenge, nonce, redirectUri, responseType, scopes, stateParam, tenantId, tenantIdValid]);
+  }, [authEndpoint, clientId, codeChallenge, nonce, redirectUri, responseMode, prompt, loginHint, responseType, scopes, stateParam, tenantId, tenantIdValid]);
 
   // Listen for postMessage from callback window
   useEffect(() => {
@@ -181,6 +196,12 @@ Protected API (e.g., Graph) --------------------->
         const st = u.searchParams.get('state') || '';
         setAuthCode(code);
         setExtractedState(st);
+        // Mark callback as validated if state matches (or no state was set)
+        const ok = !!code && (!stateParam || stateParam === st);
+        setCallbackValidated((prev) => prev || ok);
+        // After receiving a code, automatically move to the Callback step
+        setCurrentStep(4);
+        setMaxCompletedStep((m) => Math.max(m, 4));
       } catch {
         // ignore parse errors
       }
@@ -208,32 +229,22 @@ Protected API (e.g., Graph) --------------------->
     popupRef.current?.focus();
   };
 
+  // Generators for state/nonce
+  const generateRandomString = (length = 32) => {
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const rnd = new Uint8Array(length);
+    crypto.getRandomValues(rnd);
+    let out = '';
+    for (let i = 0; i < length; i++) out += charset[rnd[i] % charset.length];
+    return out;
+  };
+  const handleGenerateState = () => setStateParam(generateRandomString(32));
+  const handleGenerateNonce = () => setNonce(generateRandomString(32));
+
   // (Validation helpers already hoisted above)
 
   // Helpers: PKCE generation
-  const base64UrlEncode = (input: ArrayBuffer) => {
-    const bytes = new Uint8Array(input);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-    const b64 = typeof window !== 'undefined' ? window.btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
-    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-  };
-
-  const randomCodeVerifier = (length = 96) => {
-    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-    const random = new Uint8Array(length);
-    crypto.getRandomValues(random);
-    let result = '';
-    for (let i = 0; i < length; i++) result += charset[random[i] % charset.length];
-    return result;
-  };
-
-  const computeS256Challenge = async (verifier: string) => {
-    const enc = new TextEncoder();
-    const data = enc.encode(verifier);
-    const digest = await crypto.subtle.digest('SHA-256', data);
-    return base64UrlEncode(digest);
-  };
+  // PKCE helpers moved to '@/lib/pkce'
 
   const handleGeneratePkce = async () => {
     const v = randomCodeVerifier();
@@ -302,40 +313,7 @@ Protected API (e.g., Graph) --------------------->
   };
 
   // Helpers to decode JWTs
-  const base64UrlDecodeToString = (b64url: string) => {
-    try {
-      let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
-      const pad = b64.length % 4;
-      if (pad === 2) b64 += '==';
-      else if (pad === 3) b64 += '=';
-      // pad === 1 is invalid, but let atob handle error
-      const binary = typeof window !== 'undefined' ? window.atob(b64) : Buffer.from(b64, 'base64').toString('binary');
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      return new TextDecoder().decode(bytes);
-    } catch {
-      return '';
-    }
-  };
-
-  const decodeJwt = (token: string) => {
-    try {
-      const parts = token.split('.');
-      if (parts.length < 2) return {header: '', payload: ''};
-      const headerStr = base64UrlDecodeToString(parts[0]);
-      const payloadStr = base64UrlDecodeToString(parts[1]);
-      const pretty = (s: string) => {
-        try {
-          return JSON.stringify(JSON.parse(s), null, 2);
-        } catch {
-          return s || '';
-        }
-      };
-      return {header: pretty(headerStr), payload: pretty(payloadStr)};
-    } catch {
-      return {header: '', payload: ''};
-    }
-  };
+  // JWT helpers moved to '@/lib/jwt'
 
   const handleDecodeTokens = () => {
     const acc = accessToken ? decodeJwt(accessToken) : {header: '', payload: ''};
@@ -370,15 +348,16 @@ Protected API (e.g., Graph) --------------------->
     () => true, // 0 Overview
     () => clientIdValid && redirectUriValid && tenantIdValid, // 1 Settings
     () => !!codeVerifier && !!codeChallenge, // 2 PKCE
-    () => !!authUrlPreview, // 3 Authorize URL
-    () => !!authCode, // 4 Callback has code
+  () => callbackValidated || (!!authCode && (!stateParam || stateParam === extractedState)), // 3 Authorize: enabled after successful callback
+  () => callbackValidated || maxCompletedStep >= 5 || (!!authCode && (!stateParam || stateParam === extractedState)), // 4 Callback validated or previously completed
     () => !!accessToken, // 5 Token exchange
     () => true, // 6 Decode
-    () => false // 7 Call API (final)
+    () => true, // 7 Validate (informational)
+    () => false // 8 Call API (final)
   ];
 
   const canPrev = currentStep > 0;
-  const canNext = currentStep < 7 && validators[currentStep]();
+  const canNext = currentStep < 8 && validators[currentStep]();
 
   const goPrev = () => {
     if (!canPrev) return;
@@ -387,7 +366,7 @@ Protected API (e.g., Graph) --------------------->
   const goNext = () => {
     if (!canNext) return;
     setCurrentStep((s) => {
-      const next = Math.min(7, s + 1);
+      const next = Math.min(8, s + 1);
       setMaxCompletedStep((m) => Math.max(m, next));
       return next;
     });
@@ -401,6 +380,7 @@ Protected API (e.g., Graph) --------------------->
     t('steps.callback'),
     t('steps.tokens'),
     t('steps.decode'),
+    t('steps.validate'),
     t('steps.callApi')
   ];
   const stepItems: MenuItem[] = stepLabels.map((label, idx) => ({
@@ -420,217 +400,109 @@ Protected API (e.g., Graph) --------------------->
 
         {/* Step content */}
         {currentStep === 0 && (
-          <section>
-            <h3 className="mt-0 mb-3">{t('sections.settings.flowPanelTitle')}</h3>
-            <p className="mb-3">{t('sections.settings.flowIntro')}</p>
-            {(() => {
-              const keyPath = 'sections.settings.flowDiagram';
-              let value: string | undefined;
-              try {
-                const anyT = t as any;
-                value = typeof anyT.raw === 'function' ? anyT.raw(keyPath) : t(keyPath as any);
-              } catch {
-                value = undefined;
-              }
-              const expectedPath = `AuthorizationCode.PublicClient.${keyPath}`;
-              const text = value && value !== expectedPath ? value : fallbackFlowDiagram;
-              return <pre style={{whiteSpace: 'pre-wrap'}}>{text}</pre>;
-            })()}
-          </section>
+          <StepOverview fallbackFlowDiagram={fallbackFlowDiagram} />
         )}
 
         {currentStep === 1 && (
-          <section>
-            <h3 className="mt-0 mb-3">{t('sections.settings.title')}</h3>
-            <p className="mb-3">{t('sections.settings.description')}</p>
-            <div className="grid formgrid p-fluid">
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="tenantId" text={t('labels.tenantId')} help={t('help.tenantId')} />
-                <InputText id="tenantId" value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder={t('placeholders.tenantId')} className={!tenantIdValid ? 'p-invalid' : ''} />
-                {!tenantIdValid && (
-                  <small className="p-error block mt-1">{t('errors.tenantIdInvalid')}</small>
-                )}
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="clientId" text={t('labels.clientId')} help={t('help.clientId')} />
-                <InputText id="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder={t('placeholders.clientId')} className={!clientIdValid ? 'p-invalid' : ''} />
-                {!clientIdValid && (
-                  <small className="p-error block mt-1">{clientId ? t('errors.clientIdInvalid') : t('errors.clientIdRequired')}</small>
-                )}
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="redirectUri" text={t('labels.redirectUri')} help={t('help.redirectUri')} />
-                <InputText id="redirectUri" value={redirectUri} readOnly placeholder={t('placeholders.redirectUri')} className={!redirectUriValid ? 'p-invalid' : ''} />
-                {!redirectUriValid && (
-                  <small className="p-error block mt-1">{t('errors.redirectUriInvalid')}</small>
-                )}
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="scopes" text={t('labels.scopes')} help={t('help.scopes')} />
-                <InputText id="scopes" value={scopes} onChange={(e) => setScopes(e.target.value)} placeholder={t('placeholders.scopes')} />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="authEndpoint" text={t('labels.authEndpoint')} help={safeT('help.authEndpoint')} />
-                <InputText id="authEndpoint" value={resolvedAuthEndpoint} readOnly placeholder={safeT('placeholders.authEndpoint')} />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="tokenEndpoint" text={t('labels.tokenEndpoint')} help={safeT('help.tokenEndpoint')} />
-                <InputText id="tokenEndpoint" value={resolvedTokenEndpoint} readOnly placeholder={safeT('placeholders.tokenEndpoint')} />
-              </div>
-              {/* PKCE method is fixed to S256 (no dropdown) */}
-            </div>
-          </section>
+          <StepSettings
+            tenantId={tenantId}
+            setTenantId={setTenantId}
+            clientId={clientId}
+            setClientId={setClientId}
+            redirectUri={redirectUri}
+            scopes={scopes}
+            setScopes={setScopes}
+            resolvedAuthEndpoint={resolvedAuthEndpoint}
+            resolvedTokenEndpoint={resolvedTokenEndpoint}
+            tenantIdValid={tenantIdValid}
+            clientIdValid={clientIdValid}
+            redirectUriValid={redirectUriValid}
+            safeT={safeT}
+          />
         )}
 
         {currentStep === 2 && (
-          <section>
-            <h3 className="mt-0 mb-3">{t('sections.pkce.title')}</h3>
-            <p className="mb-3">{t('sections.pkce.description')}</p>
-            <div className="grid formgrid p-fluid">
-              <div className="col-12 md:col-8">
-                <LabelWithHelp id="codeVerifier" text={t('labels.codeVerifier')} help={t('help.codeVerifier')} />
-                <InputText id="codeVerifier" value={codeVerifier} onChange={(e) => setCodeVerifier(e.target.value)} placeholder={t('placeholders.codeVerifier')} />
-              </div>
-              <div className="col-12 md:col-4 flex align-items-end">
-                <Button type="button" label={t('buttons.generate')} icon="pi pi-refresh" className="w-full md:w-auto" onClick={handleGeneratePkce} />
-              </div>
-              <div className="col-12 md:col-8">
-                <LabelWithHelp id="codeChallenge" text={t('labels.codeChallenge')} help={t('help.codeChallenge')} />
-                <InputText id="codeChallenge" value={codeChallenge} onChange={(e) => setCodeChallenge(e.target.value)} placeholder={t('placeholders.codeChallenge')} readOnly />
-              </div>
-            </div>
-          </section>
+          <StepPkce
+            codeVerifier={codeVerifier}
+            setCodeVerifier={setCodeVerifier}
+            codeChallenge={codeChallenge}
+            onGeneratePkce={handleGeneratePkce}
+          />
         )}
 
         {currentStep === 3 && (
-          <section>
-            <h3 className="mt-0 mb-3">{t('sections.authorize.title')}</h3>
-            <p className="mb-3">{t('sections.authorize.description')}</p>
-            <div className="grid formgrid p-fluid">
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="responseType" text={t('labels.responseType')} help={t('help.responseType')} />
-                <InputText id="responseType" value={responseType} readOnly />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="state" text={t('labels.state')} help={t('help.state')} />
-                <InputText id="state" value={stateParam} onChange={(e) => setStateParam(e.target.value)} placeholder={t('placeholders.state')} />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="nonce" text={t('labels.nonce')} help={t('help.nonce')} />
-                <InputText id="nonce" value={nonce} onChange={(e) => setNonce(e.target.value)} placeholder={t('placeholders.nonce')} />
-              </div>
-              <div className="col-12">
-                <LabelWithHelp id="authUrlPreview" text={t('labels.authUrlPreview')} help={t('help.authUrlPreview')} />
-                <InputTextarea id="authUrlPreview" rows={3} autoResize value={authUrlPreview} placeholder={t('placeholders.authUrlPreview')} />
-              </div>
-              <div className="col-12 flex gap-2">
-                <Button type="button" label={t('buttons.openPopup')} icon="pi pi-external-link" onClick={openAuthorizePopup} disabled={!authUrlPreview} />
-                <Button type="button" label={t('buttons.copyUrl')} icon="pi pi-copy" disabled />
-              </div>
-            </div>
-          </section>
+          <StepAuthorize
+            responseType={responseType}
+            stateParam={stateParam}
+            setStateParam={setStateParam}
+            onGenerateState={handleGenerateState}
+            nonce={nonce}
+            setNonce={setNonce}
+            onGenerateNonce={handleGenerateNonce}
+            responseMode={responseMode}
+            setResponseMode={setResponseMode}
+            prompt={prompt}
+            setPrompt={setPrompt}
+            loginHint={loginHint}
+            setLoginHint={setLoginHint}
+            authUrlPreview={authUrlPreview}
+            onOpenPopup={openAuthorizePopup}
+          />
         )}
 
         {currentStep === 4 && (
-          <section>
-            <h3 className="mt-0 mb-3">{t('sections.callback.title')}</h3>
-            <p className="mb-3">{t('sections.callback.description')}</p>
-            <div className="grid formgrid p-fluid">
-              <div className="col-12">
-                <LabelWithHelp id="callbackUrl" text={t('labels.callbackUrl')} help={t('help.callbackUrl')} />
-                <InputTextarea id="callbackUrl" rows={3} autoResize value={callbackUrl} placeholder={t('placeholders.callbackUrl')} />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="authCode" text={t('labels.extractedCode')} help={t('help.extractedCode')} />
-                <InputText id="authCode" value={authCode} placeholder={t('placeholders.extractedCode')} readOnly />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="extractedState" text={t('labels.extractedState')} help={t('help.extractedState')} />
-                <InputText id="extractedState" value={extractedState} placeholder={t('placeholders.extractedState')} readOnly />
-              </div>
-            </div>
-          </section>
+          <StepCallback
+            callbackUrl={callbackUrl}
+            authCode={authCode}
+            extractedState={extractedState}
+            expectedState={stateParam}
+          />
         )}
 
         {currentStep === 5 && (
-          <section>
-            <h3 className="mt-0 mb-3">{t('sections.tokens.title')}</h3>
-            <p className="mb-3">{t('sections.tokens.description')}</p>
-            <div className="grid formgrid p-fluid">
-              <div className="col-12">
-                <LabelWithHelp id="tokenRequestBody" text={t('labels.tokenRequest')} help={t('help.tokenRequest')} />
-                <InputTextarea id="tokenRequestBody" rows={4} autoResize value={tokenRequestPreview} placeholder={t('placeholders.tokenRequest')} />
-              </div>
-              <div className="col-12 flex gap-2">
-                <Button type="button" label={exchanging ? t('buttons.sending') : t('buttons.send')} icon="pi pi-send" onClick={handleExchangeTokens} disabled={exchanging || !tokenRequestPreview} />
-                <Button type="button" label={t('buttons.copyRequest')} icon="pi pi-copy" disabled />
-              </div>
-              <div className="col-12">
-                <LabelWithHelp id="tokenResponse" text={t('labels.responsePreview')} help={t('help.responsePreview')} />
-                <InputTextarea id="tokenResponse" rows={8} autoResize value={tokenResponseText} placeholder={t('placeholders.tokenResponse')} />
-              </div>
-            </div>
-          </section>
+          <StepTokens
+            tokenRequestPreview={tokenRequestPreview}
+            tokenResponseText={tokenResponseText}
+            exchanging={exchanging}
+            onExchangeTokens={handleExchangeTokens}
+          />
         )}
 
         {currentStep === 6 && (
-          <section>
-            <h3 className="mt-0 mb-3">{t('sections.decode.title')}</h3>
-            <p className="mb-3">{t('sections.decode.description')}</p>
-            <div className="grid formgrid p-fluid">
-              <div className="col-12">
-                <LabelWithHelp id="accessToken" text={t('labels.accessToken')} help={t('help.accessToken')} />
-                <InputTextarea id="accessToken" rows={3} autoResize value={accessToken} placeholder={t('placeholders.accessToken')} readOnly />
-              </div>
-              <div className="col-12">
-                <LabelWithHelp id="idToken" text={t('labels.idToken')} help={t('help.idToken')} />
-                <InputTextarea id="idToken" rows={3} autoResize value={idToken} placeholder={t('placeholders.idToken')} readOnly />
-              </div>
-              <div className="col-12 flex gap-2">
-                <Button type="button" label={t('buttons.decode')} icon="pi pi-code" onClick={handleDecodeTokens} disabled={!accessToken && !idToken} />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="accessHeader" text={t('labels.accessHeader')} help={t('help.accessHeader')} />
-                <InputTextarea id="accessHeader" rows={6} autoResize value={decodedAccessHeader} placeholder={t('placeholders.accessHeader')} />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="accessPayload" text={t('labels.accessPayload')} help={t('help.accessPayload')} />
-                <InputTextarea id="accessPayload" rows={6} autoResize value={decodedAccessPayload} placeholder={t('placeholders.accessPayload')} />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="idHeader" text={t('labels.idHeader')} help={t('help.idHeader')} />
-                <InputTextarea id="idHeader" rows={6} autoResize value={decodedIdHeader} placeholder={t('placeholders.idHeader')} />
-              </div>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="idPayload" text={t('labels.idPayload')} help={t('help.idPayload')} />
-                <InputTextarea id="idPayload" rows={6} autoResize value={decodedIdPayload} placeholder={t('placeholders.idPayload')} />
-              </div>
-            </div>
-          </section>
+          <StepDecode
+            accessToken={accessToken}
+            idToken={idToken}
+            decodedAccessHeader={decodedAccessHeader}
+            decodedAccessPayload={decodedAccessPayload}
+            decodedIdHeader={decodedIdHeader}
+            decodedIdPayload={decodedIdPayload}
+            onDecodeTokens={handleDecodeTokens}
+          />
         )}
 
         {currentStep === 7 && (
-          <section>
-            <h3 className="mt-0 mb-3">{t('sections.callApi.title')}</h3>
-            <p className="mb-3">{t('sections.callApi.description')}</p>
-            <div className="grid formgrid p-fluid">
-              <div className="col-12 md:col-8">
-                <LabelWithHelp id="apiEndpoint" text={t('labels.apiEndpoint')} help={t('help.apiEndpoint')} />
-                <InputText id="apiEndpoint" value={apiEndpointUrl} onChange={(e) => setApiEndpointUrl(e.target.value)} placeholder={t('placeholders.apiEndpoint')} />
-              </div>
-              <div className="col-12 md:col-4 flex align-items-end">
-                <Button type="button" label={callingApi ? t('buttons.sending') : t('buttons.sendGet')} icon="pi pi-send" className="w-full md:w-auto" onClick={handleCallProtectedApi} disabled={callingApi || !apiEndpointUrl || !accessToken} />
-              </div>
-              <div className="col-12">
-                <LabelWithHelp id="apiHeaders" text={t('labels.apiHeaders')} help={t('help.apiHeaders')} />
-                <InputTextarea id="apiHeaders" rows={3} autoResize value={accessToken ? `Authorization: Bearer ${accessToken}` : ''} placeholder={t('placeholders.apiHeaders')} />
-              </div>
-              <div className="col-12">
-                <LabelWithHelp id="apiResponse" text={t('labels.apiResponse')} help={t('help.apiResponse')} />
-                <InputTextarea id="apiResponse" rows={8} autoResize value={apiResponseText} placeholder={t('placeholders.apiResponse')} />
-              </div>
-            </div>
-          </section>
+          <StepValidate
+            tenantId={tenantId}
+            clientId={clientId}
+            expectedNonce={nonce}
+            decodedAccessHeader={decodedAccessHeader}
+            decodedAccessPayload={decodedAccessPayload}
+            decodedIdHeader={decodedIdHeader}
+            decodedIdPayload={decodedIdPayload}
+            accessToken={accessToken}
+            idToken={idToken}
+          />
+        )}
+
+        {currentStep === 8 && (
+          <StepCallApi
+            apiEndpointUrl={apiEndpointUrl}
+            setApiEndpointUrl={setApiEndpointUrl}
+            accessToken={accessToken}
+            apiResponseText={apiResponseText}
+            callingApi={callingApi}
+            onCallApi={handleCallProtectedApi}
+          />
         )}
 
         {/* Wizard navigation */}
