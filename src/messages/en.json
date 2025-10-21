@@ -44,22 +44,26 @@
       "sections": {
         "settings": {
           "title": "Settings",
-          "description": "Configure your environment for the OAuth flow. Provide your Entra tenant (GUID) and public client ID. The redirect URI is auto-detected from the current origin (read-only) and must be registered in your app. Scopes determine what you’ll be asked to consent to. Tenant is required.",
+          "description": "Configure your environment for the OAuth flow. Provide your Entra tenant (GUID) and public client ID (GUID). The redirect URI is auto-detected from the current origin (read-only) and must be registered in your app. Scopes determine what you’ll be asked to consent to.",
+          "userProvidedTitle": "User-provided settings",
+          "userProvidedDescription": "These fields are configurable by you and are used to build the authorization request.",
+          "resolvedTitle": "Resolved (read-only) values",
+          "resolvedDescription": "These values are derived from the tenant and other inputs. They are shown for reference and cannot be changed here.",
           "flowPanelTitle": "How the Authorization Code + PKCE flow works",
           "flowIntro": "This app demonstrates the OAuth 2.0 Authorization Code flow with PKCE for public clients. In short: you build an authorization URL, sign in (popup), get a code at the redirect, then exchange it for tokens using the code_verifier.",
           "flowDiagram": "Client (Browser)\n   |\n   | 1) Generate code_verifier + code_challenge (S256)\n   v\nAuthorize Endpoint ------------------------------>\n   |   GET .../authorize?client_id=...&redirect_uri=...\n   |        &response_type=code&scope=...&state=...\n   |        &code_challenge=...&code_challenge_method=S256\n   |\n   | 2) User signs in and consents\n   v\nRedirect (Callback) <------------------------------\n   |   http(s)://your-app/callback/auth-code?code=...&state=...\n   |\n   | 3) Exchange code for tokens with code_verifier\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=authorization_code\n   |        &client_id=...\n   |        &code=...\n   |        &redirect_uri=...\n   |        &code_verifier=...\n   |\n   | 4) Receive tokens (access_token, id_token, ... )\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer <access_token>\n   v\n  Response"
         },
         "pkce": {
           "title": "Generate PKCE (code_verifier & code_challenge)",
-          "description": "PKCE secures public clients. Click Generate to create a high-entropy code_verifier and its code_challenge (S256 by default). Next becomes available when both fields are populated."
+          "description": "PKCE secures public clients. Click the Generate button (left of the Code Verifier input) to create a high-entropy code_verifier and its code_challenge (S256 by default)."
         },
         "authorize": {
           "title": "Build authorization request URL",
-          "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state/nonce, and PKCE parameters. Click ‘Open popup’ to sign in and consent. After completing sign-in, the popup will redirect back and step 5 will auto-fill with the code. You can click Next once the URL looks correct (but you’ll need to actually sign in to get a code)."
+          "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state and nonce, and PKCE parameters. You can also set response_mode, prompt, and login_hint to influence how the identity provider returns results or how the sign-in experience behaves. Click ‘Open popup’ to sign in and consent. After completing sign-in, the popup will redirect back and step 5 will auto-fill with the code."
         },
         "callback": {
           "title": "Handle redirect (auto-pasted from popup)",
-          "description": "When the IdP redirects to your callback, this page receives the URL from the popup and extracts code and state. If nothing appears, ensure the redirect URI exactly matches your app registration and that the popup flow wasn’t blocked. Click Next when a code is present."
+          "description": "When Microsoft Entra ID redirects to your callback, this page receives the URL from the popup and extracts code and state. If nothing appears, ensure the redirect URI exactly matches your app registration and that the popup flow wasn’t blocked."
         },
         "tokens": {
           "title": "Exchange code for tokens",
@@ -183,14 +187,19 @@
         "apiEndpoint": "HTTP endpoint to call with the access token (e.g., Microsoft Graph).",
         "apiHeaders": "HTTP headers used for the API call (includes Authorization).",
         "apiResponse": "Raw response from the API call (pretty-printed if JSON).",
+  "checkState": "Please verify the extracted state matches the expected state.",
+  "checkStateAlways": "Check below that the extracted state matches the expected state before proceeding.",
         "stateValid": "state matches",
         "stateInvalid": "state does not match"
       },
       "errors": {
   "tenantIdInvalid": "Tenant is required and must be a GUID",
-        "clientIdRequired": "Client ID is required",
-        "clientIdInvalid": "Client ID must be a GUID",
+  "clientIdRequired": "Client ID is required and must be a GUID",
+  "clientIdInvalid": "Client ID must be a GUID",
         "redirectUriInvalid": "Redirect URI must be a valid http(s) URL"
+        ,
+        "codeVerifierRequired": "Code Verifier is required",
+        "codeChallengeRequired": "Code Challenge is required"
       }
     }
   },

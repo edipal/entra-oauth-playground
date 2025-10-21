@@ -28,10 +28,6 @@ export default function Sidebar({locale}: {locale: string}) {
       ]
     },
     {
-      label: t('settings'),
-      command: () => router.push(`/${locale}/settings`)
-    },
-    {
       label: t('language'),
       items: [
         {

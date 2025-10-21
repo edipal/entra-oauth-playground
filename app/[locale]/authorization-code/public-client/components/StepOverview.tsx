@@ -1,7 +1,7 @@
 "use client";
 import {useTranslations} from 'next-intl';
 
-export default function StepOverview({ fallbackFlowDiagram }: { fallbackFlowDiagram: string }) {
+export default function StepOverview({ fallbackFlowDiagram = '' }: { fallbackFlowDiagram?: string }) {
   const t = useTranslations('AuthorizationCode.PublicClient');
   return (
     <section>

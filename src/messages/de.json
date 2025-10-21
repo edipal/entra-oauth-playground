@@ -44,22 +44,26 @@
       "sections": {
         "settings": {
           "title": "Einstellungen",
-          "description": "Konfigurieren Sie Ihre Umgebung für den OAuth-Flow. Geben Sie Ihren Entra-Tenant (GUID) und die Public-Client-ID an. Die Redirect-URI wird automatisch aus dem aktuellen Origin ermittelt (schreibgeschützt) und muss in Ihrer App registriert sein. Scopes bestimmen, worum Sie um Zustimmung gebeten werden. Tenant ist erforderlich.",
+          "description": "Konfigurieren Sie Ihre Umgebung für den OAuth-Flow. Geben Sie Ihren Entra-Tenant (GUID) und die Public-Client-ID (GUID) an. Die Redirect-URI wird automatisch aus dem aktuellen Origin ermittelt (schreibgeschützt) und muss in Ihrer App registriert sein. Scopes bestimmen, worum Sie um Zustimmung gebeten werden.",
+          "userProvidedTitle": "Vom Benutzer bereitgestellte Einstellungen",
+          "userProvidedDescription": "Diese Felder können von Ihnen angepasst werden und werden zum Erstellen der Autorisierungsanfrage verwendet.",
+          "resolvedTitle": "Ermittelte (schreibgeschützte) Werte",
+          "resolvedDescription": "Diese Werte werden aus dem Tenant und anderen Eingaben abgeleitet. Sie werden nur zur Anzeige dargestellt und können hier nicht geändert werden.",
           "flowPanelTitle": "So funktioniert der Authorization Code + PKCE Flow",
           "flowIntro": "Diese App demonstriert den OAuth 2.0 Authorization Code Flow mit PKCE für Public Clients. Kurz gesagt: URL für die Autorisierung bauen, im Popup anmelden, Code an der Redirect-URI erhalten und dann mithilfe des code_verifier gegen Tokens tauschen.",
           "flowDiagram": "Client (Browser)\n   |\n   | 1) Generate code_verifier + code_challenge (S256)\n   v\nAuthorize Endpoint ------------------------------>\n   |   GET .../authorize?client_id=...&redirect_uri=...\n   |        &response_type=code&scope=...&state=...\n   |        &code_challenge=...&code_challenge_method=S256\n   |\n   | 2) User signs in and consents\n   v\nRedirect (Callback) <------------------------------\n   |   http(s)://your-app/callback/auth-code?code=...&state=...\n   |\n   | 3) Exchange code for tokens with code_verifier\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=authorization_code\n   |        &client_id=...\n   |        &code=...\n   |        &redirect_uri=...\n   |        &code_verifier=...\n   |\n   | 4) Receive tokens (access_token, id_token, ... )\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer <access_token>\n   v\n  Response"
         },
         "pkce": {
           "title": "PKCE generieren (code_verifier & code_challenge)",
-          "description": "PKCE schützt Public Clients. Klicken Sie auf Generieren, um einen hochentropischen code_verifier und die zugehörige code_challenge (standardmäßig S256) zu erstellen. Weiter ist verfügbar, wenn beide Felder ausgefüllt sind."
+          "description": "PKCE schützt Public Clients. Klicken Sie auf den Button 'Generieren' (links vom Code Verifier Eingabefeld), um einen hochentropischen code_verifier und die zugehörige code_challenge (standardmäßig S256) zu erstellen."
         },
         "authorize": {
           "title": "Autorisierungs-URL erstellen",
-          "description": "Wir erstellen die Autorisierungs-URL inkl. client_id, redirect_uri, Scopes, optional state/nonce und PKCE-Parametern. Klicken Sie auf ‚Popup öffnen‘, um sich anzumelden und zuzustimmen. Nach der Anmeldung leitet das Popup zurück, und Schritt 5 füllt den Code automatisch aus. Weiter können Sie klicken, sobald die URL korrekt aussieht (für einen Code müssen Sie sich tatsächlich anmelden)."
+          "description": "Wir erstellen die Autorisierungs-URL inkl. client_id, redirect_uri, Scopes, optionalem state und nonce sowie PKCE-Parametern. Sie können außerdem response_mode, prompt und login_hint setzen, um zu steuern, wie der Identity Provider antwortet oder wie das Anmeldeerlebnis aussieht. Klicken Sie auf ‚Popup öffnen‘, um sich anzumelden und zuzustimmen. Nach der Anmeldung leitet das Popup zurück, und Schritt 5 füllt den Code automatisch aus."
         },
         "callback": {
           "title": "Redirect verarbeiten (automatisch aus dem Popup)",
-          "description": "Wenn der IdP zu Ihrer Callback-URL umleitet, empfängt diese Seite die URL aus dem Popup und extrahiert Code und State. Wenn nichts erscheint, stellen Sie sicher, dass die Redirect-URI genau Ihrer App-Registrierung entspricht und der Popup-Flow nicht blockiert wurde. Klicken Sie auf Weiter, wenn ein Code vorhanden ist."
+          "description": "Wenn Microsoft Entra ID zu Ihrer Callback-URL umleitet, empfängt diese Seite die URL aus dem Popup und extrahiert Code und State. Wenn nichts erscheint, stellen Sie sicher, dass die Redirect-URI genau Ihrer App-Registrierung entspricht und der Popup-Flow nicht blockiert wurde."
         },
         "tokens": {
           "title": "Code gegen Tokens tauschen",
@@ -184,14 +188,19 @@
         "apiHeaders": "HTTP-Header, die für den API-Aufruf verwendet werden (einschließlich Authorization).",
         "apiResponse": "Rohantwort des API-Aufrufs (falls JSON, formatiert)."
       ,
+  "checkState": "Bitte prüfen Sie, ob der extrahierte State mit dem erwarteten State übereinstimmt.",
+  "checkStateAlways": "Prüfen Sie unten, ob der extrahierte State mit dem erwarteten State übereinstimmt, bevor Sie fortfahren.",
         "stateValid": "State stimmt überein",
         "stateInvalid": "State stimmt nicht überein"
       },
       "errors": {
   "tenantIdInvalid": "Tenant ist erforderlich und muss eine GUID sein",
-        "clientIdRequired": "Client ID ist erforderlich",
-        "clientIdInvalid": "Client ID muss eine GUID sein",
+  "clientIdRequired": "Client ID ist erforderlich und muss eine GUID sein",
+  "clientIdInvalid": "Client ID muss eine GUID sein",
         "redirectUriInvalid": "Redirect URI muss eine gültige http(s)-URL sein"
+        ,
+        "codeVerifierRequired": "Code Verifier ist erforderlich",
+        "codeChallengeRequired": "Code Challenge ist erforderlich"
       }
     }
   },

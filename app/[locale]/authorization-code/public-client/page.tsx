@@ -14,127 +14,90 @@ import StepTokens from './components/StepTokens';
 import StepDecode from './components/StepDecode';
 import StepCallApi from './components/StepCallApi';
 import StepValidate from './components/StepValidate';
-import LabelWithHelp from '@/components/LabelWithHelp';
-import { base64UrlEncode, randomCodeVerifier, computeS256Challenge } from '@/lib/pkce';
-import { base64UrlDecodeToString, decodeJwt } from '@/lib/jwt';
+import { randomCodeVerifier, computeS256Challenge } from '@/utils/pkce';
+import { decodeJwt } from '@/utils/jwt';
+import { TranslationUtils } from '@/utils/translation';
+import { useSettings } from '@/components/SettingsContext';
 
+
+enum StepIndex {
+  Overview = 0,
+  Settings = 1,
+  Pkce = 2,
+  Authorize = 3,
+  Callback = 4,
+  Tokens = 5,
+  Decode = 6,
+  Validate = 7,
+  CallApi = 8
+}
 
 export default function AuthorizationCodePublicClientPage() {
   const t = useTranslations('AuthorizationCode.PublicClient');
+
   // Helper to return literal strings even if they contain {tenant}
-  const safeT = (key: string): string => {
-    try {
-      const anyT = t as any;
-      if (typeof anyT.raw === 'function') {
-        const raw = anyT.raw(key);
-        if (typeof raw === 'string') return raw;
-      }
-    } catch {
-      // ignore
-    }
-    try {
-      // Provide a dummy value to satisfy interpolation if required
-      return t(key as any, { tenant: '{tenant}' } as any);
-    } catch {
-      return '';
-    }
-  };
+  const safeT = (key: string): string => TranslationUtils.safeT(t, key);
+  
   // Wizard state
-  const [currentStep, setCurrentStep] = useState(0); // 0..8 (with Validate)
-  const [maxCompletedStep, setMaxCompletedStep] = useState(0);
-  // Settings state (UI only)
-  const [tenantId, setTenantId] = useState('');
-  const [clientId, setClientId] = useState('');
-  const [redirectUri, setRedirectUri] = useState('');
-  const [scopes, setScopes] = useState('openid profile offline_access');
-  const [authEndpoint, setAuthEndpoint] = useState('https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize');
-  const [tokenEndpoint, setTokenEndpoint] = useState('https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token');
-  // PKCE uses S256 only (plain not supported here)
+  const [currentStep, setCurrentStep] = useState<StepIndex>(StepIndex.Overview);
+  const [maxCompletedStep, setMaxCompletedStep] = useState<StepIndex>(StepIndex.Overview);
+  
+  // Settings persisted/global via SettingsContext
+  const { authCodePublicClientConfig, setAuthCodePublicClientConfig, authCodePublicClientRuntime, setAuthCodePublicClientRuntime } = useSettings();
+  const tenantId = authCodePublicClientConfig.tenantId!;
+  const clientId = authCodePublicClientConfig.clientId!;
+  const redirectUri = authCodePublicClientConfig.redirectUri!;
+  const scopes = authCodePublicClientConfig.scopes!;
+  const authEndpoint = authCodePublicClientRuntime.authEndpoint!;
+  const tokenEndpoint = authCodePublicClientRuntime.tokenEndpoint!;
 
-  // Step 1: PKCE fields (UI only, no generation wired yet)
-  const [codeVerifier, setCodeVerifier] = useState('');
-  const [codeChallenge, setCodeChallenge] = useState('');
+  // PKCE fields (global runtime via context)
+  const codeVerifier = authCodePublicClientRuntime.codeVerifier!;
+  const codeChallenge = authCodePublicClientRuntime.codeChallenge!;
 
-  // Step 2: Additional params
+  // Additional params
   const [responseType] = useState('code');
-  const [stateParam, setStateParam] = useState('');
-  const [nonce, setNonce] = useState('');
+  const stateParam = authCodePublicClientRuntime.stateParam!;
+  const nonce = authCodePublicClientRuntime.nonce!;
   const [responseMode, setResponseMode] = useState('');
   const [prompt, setPrompt] = useState('');
   const [loginHint, setLoginHint] = useState('');
 
-  // Step 3: Callback handling
-  const [callbackUrl, setCallbackUrl] = useState('');
-  const [authCode, setAuthCode] = useState('');
-  const [extractedState, setExtractedState] = useState('');
-  const [callbackValidated, setCallbackValidated] = useState(false);
+  // Callback handling
+  const callbackUrl = authCodePublicClientRuntime.callbackUrl!;
+  const authCode = authCodePublicClientRuntime.authCode!;
+  const extractedState = authCodePublicClientRuntime.extractedState!;
+  const callbackValidated = !!authCodePublicClientRuntime.callbackValidated;
 
-  // Step 4: Token exchange
+  // Token exchange
   const [exchanging, setExchanging] = useState(false);
   const [tokenResponseText, setTokenResponseText] = useState('');
-  const [accessToken, setAccessToken] = useState('');
-  const [idToken, setIdToken] = useState('');
+  const accessToken = authCodePublicClientRuntime.accessToken!;
+  const idToken = authCodePublicClientRuntime.idToken!;
 
-  // Step 5: Decode tokens (JWT)
+  // Decode tokens (JWT)
   const [decodedAccessHeader, setDecodedAccessHeader] = useState('');
   const [decodedAccessPayload, setDecodedAccessPayload] = useState('');
   const [decodedIdHeader, setDecodedIdHeader] = useState('');
   const [decodedIdPayload, setDecodedIdPayload] = useState('');
 
-  // Step 6: Validate tokens (claims & signature guidance)
-  // no extra state
-
-  // Step 7: Call protected API
-  const [apiEndpointUrl, setApiEndpointUrl] = useState('https://graph.microsoft.com/v1.0/me');
+  // Call protected API
+  const apiEndpointUrl = authCodePublicClientConfig.apiEndpointUrl!;
   const [apiResponseText, setApiResponseText] = useState('');
   const [callingApi, setCallingApi] = useState(false);
 
   // Popup window ref
   const popupRef = useRef<Window | null>(null);
-  // Overview step replaces the old collapsible panel
-
-  // Fallback diagram in case i18n key is missing
-  const fallbackFlowDiagram = `Client (Browser)
-  |
-  | 1) Generate code_verifier + code_challenge (S256)
-  v
-Authorize Endpoint ------------------------------>
-  |   GET .../authorize?client_id=...&redirect_uri=...
-  |        &response_type=code&scope=...&state=...
-  |        &code_challenge=...&code_challenge_method=S256
-  |
-  | 2) User signs in and consents
-  v
-Redirect (Callback) <------------------------------
-  |   http(s)://your-app/callback/auth-code?code=...&state=...
-  |
-  | 3) Exchange code for tokens with code_verifier
-  v
-Token Endpoint ----------------------------------->
-  |   POST grant_type=authorization_code
-  |        &client_id=...
-  |        &code=...
-  |        &redirect_uri=...
-  |        &code_verifier=...
-  |
-  | 4) Receive tokens (access_token, id_token, ... )
-  v
-Protected API (e.g., Graph) --------------------->
-  |   Authorization: Bearer <access_token>
-  v
-  Response`;
-
-  // Resolved endpoints: substitute tenant when valid, otherwise keep {tenant}
-  // (defined after validation helpers to avoid use-before-declare)
-
-  // Small helper moved to shared component (imported as LabelWithHelp)
 
   // Initialize redirectUri from current origin so it works in dev and prod
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setRedirectUri(`${window.location.origin}/callback/auth-code`);
+      const uri = `${window.location.origin}/callback/auth-code`;
+      if (!redirectUri) {
+        setAuthCodePublicClientConfig(prev => ({ ...prev, redirectUri: uri }));
+      }
     }
-  }, []);
+  }, [redirectUri, setAuthCodePublicClientConfig]);
 
   // Validation helpers (Settings step) — hoisted before use
   const isGuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s);
@@ -191,14 +154,16 @@ Protected API (e.g., Graph) --------------------->
       if (!data || data.type !== 'oauth_callback' || typeof data.href !== 'string') return;
       try {
         const u = new URL(data.href);
-        setCallbackUrl(u.toString());
         const code = u.searchParams.get('code') || '';
         const st = u.searchParams.get('state') || '';
-        setAuthCode(code);
-        setExtractedState(st);
         // Mark callback as validated if state matches (or no state was set)
         const ok = !!code && (!stateParam || stateParam === st);
-        setCallbackValidated((prev) => prev || ok);
+        setAuthCodePublicClientRuntime(prev => ({
+          callbackUrl: u.toString(),
+          authCode: code,
+          extractedState: st,
+          callbackValidated: (prev.callbackValidated || ok)
+        }));
         // After receiving a code, automatically move to the Callback step
         setCurrentStep(4);
         setMaxCompletedStep((m) => Math.max(m, 4));
@@ -213,7 +178,7 @@ Protected API (e.g., Graph) --------------------->
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, []);
+  }, [stateParam, setAuthCodePublicClientRuntime]);
 
   const openAuthorizePopup = () => {
     if (!authUrlPreview) return;
@@ -238,24 +203,21 @@ Protected API (e.g., Graph) --------------------->
     for (let i = 0; i < length; i++) out += charset[rnd[i] % charset.length];
     return out;
   };
-  const handleGenerateState = () => setStateParam(generateRandomString(32));
-  const handleGenerateNonce = () => setNonce(generateRandomString(32));
+  const handleGenerateState = () => setAuthCodePublicClientRuntime({ stateParam: generateRandomString(32) });
+  const handleGenerateNonce = () => setAuthCodePublicClientRuntime({ nonce: generateRandomString(32) });
 
   // (Validation helpers already hoisted above)
 
   // Helpers: PKCE generation
-  // PKCE helpers moved to '@/lib/pkce'
-
   const handleGeneratePkce = async () => {
     const v = randomCodeVerifier();
-    setCodeVerifier(v);
     const ch = await computeS256Challenge(v);
-    setCodeChallenge(ch);
+    setAuthCodePublicClientRuntime({ codeVerifier: v, codeChallenge: ch });
   };
 
   // Compute token request preview (x-www-form-urlencoded)
   const tokenRequestPreview = useMemo(() => {
-    if (!clientId || !authCode || !redirectUri || !codeVerifier) return '';
+  if (!clientId || !authCode || !redirectUri || !codeVerifier) return '';
     const params = new URLSearchParams();
     params.set('grant_type', 'authorization_code');
     params.set('client_id', clientId);
@@ -267,11 +229,10 @@ Protected API (e.g., Graph) --------------------->
   }, [authCode, clientId, codeVerifier, redirectUri, scopes]);
 
   const handleExchangeTokens = async () => {
-    if (!authCode || !clientId || !redirectUri || !codeVerifier || !tokenEndpoint || !tenantIdValid) return;
+  if (!authCode || !clientId || !redirectUri || !codeVerifier || !tokenEndpoint || !tenantIdValid) return;
     setExchanging(true);
     setTokenResponseText('');
-    setAccessToken('');
-    setIdToken('');
+    setAuthCodePublicClientRuntime({ accessToken: '', idToken: '' });
     setDecodedAccessHeader('');
     setDecodedAccessPayload('');
     setDecodedIdHeader('');
@@ -297,10 +258,10 @@ Protected API (e.g., Graph) --------------------->
       try {
         const parsed = JSON.parse(txt);
         if (parsed && typeof parsed === 'object' && parsed.access_token) {
-          setAccessToken(parsed.access_token as string);
+          setAuthCodePublicClientRuntime({ accessToken: parsed.access_token as string });
         }
         if (parsed && typeof parsed === 'object' && parsed.id_token) {
-          setIdToken(parsed.id_token as string);
+          setAuthCodePublicClientRuntime({ idToken: parsed.id_token as string });
         }
       } catch {
         // non-JSON response
@@ -313,8 +274,6 @@ Protected API (e.g., Graph) --------------------->
   };
 
   // Helpers to decode JWTs
-  // JWT helpers moved to '@/lib/jwt'
-
   const handleDecodeTokens = () => {
     const acc = accessToken ? decodeJwt(accessToken) : {header: '', payload: ''};
     const idt = idToken ? decodeJwt(idToken) : {header: '', payload: ''};
@@ -344,30 +303,31 @@ Protected API (e.g., Graph) --------------------->
   };
 
   // Wizard validation per step
-  const validators: Array<() => boolean> = [
-    () => true, // 0 Overview
-    () => clientIdValid && redirectUriValid && tenantIdValid, // 1 Settings
-    () => !!codeVerifier && !!codeChallenge, // 2 PKCE
-  () => callbackValidated || (!!authCode && (!stateParam || stateParam === extractedState)), // 3 Authorize: enabled after successful callback
-  () => callbackValidated || maxCompletedStep >= 5 || (!!authCode && (!stateParam || stateParam === extractedState)), // 4 Callback validated or previously completed
-    () => !!accessToken, // 5 Token exchange
-    () => true, // 6 Decode
-    () => true, // 7 Validate (informational)
-    () => false // 8 Call API (final)
-  ];
+  // validators indexed by StepIndex
+  const validators: Record<StepIndex, () => boolean> = {
+    [StepIndex.Overview]: () => true,
+    [StepIndex.Settings]: () => clientIdValid && redirectUriValid && tenantIdValid,
+    [StepIndex.Pkce]: () => !!codeVerifier && !!codeChallenge,
+    [StepIndex.Authorize]: () => callbackValidated || (!!authCode && (!stateParam || stateParam === extractedState)),
+    [StepIndex.Callback]: () => callbackValidated || maxCompletedStep >= StepIndex.Tokens || (!!authCode && (!stateParam || stateParam === extractedState)),
+    [StepIndex.Tokens]: () => !!accessToken,
+    [StepIndex.Decode]: () => true,
+    [StepIndex.Validate]: () => true,
+    [StepIndex.CallApi]: () => false
+  };
 
-  const canPrev = currentStep > 0;
-  const canNext = currentStep < 8 && validators[currentStep]();
+  const canPrev = currentStep > StepIndex.Overview;
+  const canNext = currentStep < StepIndex.CallApi && validators[currentStep]?.();
 
   const goPrev = () => {
     if (!canPrev) return;
-    setCurrentStep((s) => Math.max(0, s - 1));
+    setCurrentStep((s) => (Math.max(StepIndex.Overview, (s as number) - 1) as StepIndex));
   };
   const goNext = () => {
     if (!canNext) return;
     setCurrentStep((s) => {
-      const next = Math.min(8, s + 1);
-      setMaxCompletedStep((m) => Math.max(m, next));
+      const next = Math.min(StepIndex.CallApi, (s as number) + 1) as StepIndex;
+      setMaxCompletedStep((m) => (Math.max(m as number, next as number) as StepIndex));
       return next;
     });
   };
@@ -385,33 +345,33 @@ Protected API (e.g., Graph) --------------------->
   ];
   const stepItems: MenuItem[] = stepLabels.map((label, idx) => ({
     label,
-    disabled: idx > maxCompletedStep && idx > currentStep,
+    disabled: idx > (maxCompletedStep as number) && idx > (currentStep as number),
     command: () => {
-      if (idx <= maxCompletedStep || idx <= currentStep) setCurrentStep(idx);
+      if (idx <= (maxCompletedStep as number) || idx <= (currentStep as number)) setCurrentStep(idx as StepIndex);
     }
   }));
   return (
     <div className="p-4">
-  <Card title={t('title')}>
+      <Card title={t('title')}>
         {/* Steps header */}
         <div className="mb-4">
           <Steps model={stepItems} activeIndex={currentStep} readOnly={false} />
         </div>
 
         {/* Step content */}
-        {currentStep === 0 && (
-          <StepOverview fallbackFlowDiagram={fallbackFlowDiagram} />
+        {currentStep === StepIndex.Overview && (
+          <StepOverview />
         )}
 
-        {currentStep === 1 && (
+        {currentStep === StepIndex.Settings && (
           <StepSettings
             tenantId={tenantId}
-            setTenantId={setTenantId}
+            setTenantId={(v) => setAuthCodePublicClientConfig({ tenantId: v })}
             clientId={clientId}
-            setClientId={setClientId}
+            setClientId={(v) => setAuthCodePublicClientConfig({ clientId: v })}
             redirectUri={redirectUri}
             scopes={scopes}
-            setScopes={setScopes}
+            setScopes={(v) => setAuthCodePublicClientConfig({ scopes: v })}
             resolvedAuthEndpoint={resolvedAuthEndpoint}
             resolvedTokenEndpoint={resolvedTokenEndpoint}
             tenantIdValid={tenantIdValid}
@@ -421,23 +381,23 @@ Protected API (e.g., Graph) --------------------->
           />
         )}
 
-        {currentStep === 2 && (
+        {currentStep === StepIndex.Pkce && (
           <StepPkce
             codeVerifier={codeVerifier}
-            setCodeVerifier={setCodeVerifier}
+            setCodeVerifier={(v) => setAuthCodePublicClientRuntime({ codeVerifier: v })}
             codeChallenge={codeChallenge}
             onGeneratePkce={handleGeneratePkce}
           />
         )}
 
-        {currentStep === 3 && (
+        {currentStep === StepIndex.Authorize && (
           <StepAuthorize
             responseType={responseType}
             stateParam={stateParam}
-            setStateParam={setStateParam}
+            setStateParam={(v) => setAuthCodePublicClientRuntime({ stateParam: v })}
             onGenerateState={handleGenerateState}
             nonce={nonce}
-            setNonce={setNonce}
+            setNonce={(v) => setAuthCodePublicClientRuntime({ nonce: v })}
             onGenerateNonce={handleGenerateNonce}
             responseMode={responseMode}
             setResponseMode={setResponseMode}
@@ -450,7 +410,7 @@ Protected API (e.g., Graph) --------------------->
           />
         )}
 
-        {currentStep === 4 && (
+        {currentStep === StepIndex.Callback && (
           <StepCallback
             callbackUrl={callbackUrl}
             authCode={authCode}
@@ -459,7 +419,7 @@ Protected API (e.g., Graph) --------------------->
           />
         )}
 
-        {currentStep === 5 && (
+        {currentStep === StepIndex.Tokens && (
           <StepTokens
             tokenRequestPreview={tokenRequestPreview}
             tokenResponseText={tokenResponseText}
@@ -468,7 +428,7 @@ Protected API (e.g., Graph) --------------------->
           />
         )}
 
-        {currentStep === 6 && (
+        {currentStep === StepIndex.Decode && (
           <StepDecode
             accessToken={accessToken}
             idToken={idToken}
@@ -480,7 +440,7 @@ Protected API (e.g., Graph) --------------------->
           />
         )}
 
-        {currentStep === 7 && (
+        {currentStep === StepIndex.Validate && (
           <StepValidate
             tenantId={tenantId}
             clientId={clientId}
@@ -494,10 +454,10 @@ Protected API (e.g., Graph) --------------------->
           />
         )}
 
-        {currentStep === 8 && (
+        {currentStep === StepIndex.CallApi && (
           <StepCallApi
             apiEndpointUrl={apiEndpointUrl}
-            setApiEndpointUrl={setApiEndpointUrl}
+            setApiEndpointUrl={(v) => setAuthCodePublicClientConfig({ apiEndpointUrl: v })}
             accessToken={accessToken}
             apiResponseText={apiResponseText}
             callingApi={callingApi}
