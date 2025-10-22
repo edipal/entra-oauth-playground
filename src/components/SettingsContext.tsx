@@ -23,6 +23,7 @@ export type AuthCodePublicClientRuntime = {
   nonce?: string;
   // Callback
   callbackUrl?: string;
+  callbackBody?: string;
   authCode?: string;
   extractedState?: string;
   callbackValidated?: boolean;
@@ -69,6 +70,7 @@ const defaultAuthCodePublicClientRuntime: AuthCodePublicClientRuntime = {
   stateParam: '',
   nonce: '',
   callbackUrl: '',
+  callbackBody: '',
   authCode: '',
   extractedState: '',
   callbackValidated: false,

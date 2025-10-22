@@ -64,7 +64,9 @@
         },
         "callback": {
           "title": "Handle redirect (auto-pasted from popup)",
-          "description": "When Microsoft Entra ID redirects to your callback, this page receives the URL from the popup and extracts code and state. If nothing appears, ensure the redirect URI exactly matches your app registration and that the popup flow wasn’t blocked."
+          "description": "When Microsoft Entra ID redirects to your callback, this page receives the URL from the popup and extracts code and state. If nothing appears, ensure the redirect URI exactly matches your app registration and that the popup flow wasn’t blocked.",
+          "errorTitle": "Callback error",
+          "okTitle": "Callback OK"
         },
         "tokens": {
           "title": "Exchange code for tokens",
@@ -74,7 +76,7 @@
         },
         "decode": {
           "title": "Decode tokens (JWT)",
-          "description": "Access and ID tokens are JWTs. Click ‘Decode’ to view the header and payload claims in a readable form. Use these to verify audience (aud), scopes/roles, issuer (iss), tenant (tid), subject (sub), and expiry (exp). Click Next to proceed to an API call."
+          "description": "Access and ID tokens are JWTs. Click ‘Decode’ to view the header and payload claims in a readable form."
         },
         "validate": {
           "title": "Validate tokens (signature and claims)",
@@ -103,6 +105,10 @@
   "loginHint": "login_hint",
         "authUrlPreview": "Authorization URL preview",
         "callbackUrl": "Callback URL",
+    "callbackBody": "POST body",
+  "error": "Error",
+  "errorUri": "Error URI",
+  "errorDescription": "Error description",
         "extractedCode": "Extracted code",
         "extractedState": "Extracted state",
         "tokenRequest": "Token request (x-www-form-urlencoded)",
@@ -134,7 +140,11 @@
   "prompt": "login | consent | select_account | create | none",
   "loginHint": "user@domain.com",
         "authUrlPreview": "https://login.microsoftonline.com/.../authorize?...",
-        "callbackUrl": "http://localhost:3000/callback/auth-code?code=...&state=...",
+    "callbackUrl": "http://localhost:3000/callback/auth-code?code=...&state=...",
+    "callbackBody": "code=...&state=...",
+  "error": "server_error | access_denied | ...",
+  "errorUri": "https://example.com/docs/errors#some_error",
+  "errorDescription": "Human-readable description of the error (may be URL-encoded)",
         "extractedCode": "exchange me for tokens",
         "extractedState": "(if provided)",
         "tokenRequest": "grant_type=authorization_code&client_id=...&code=...&redirect_uri=...&code_verifier=...",
@@ -178,7 +188,11 @@
   "prompt": "Controls the behavior: login, consent, select_account, create, or none.",
   "loginHint": "Prefill the username or sign-in hint (e.g., email).",
         "authUrlPreview": "The full authorization URL that will open in the popup.",
-        "callbackUrl": "The full callback URL captured from the popup after sign-in.",
+    "callbackUrl": "The full callback URL captured from the popup after sign-in.",
+    "callbackBody": "If response_mode=form_post, the identity provider sends parameters in the POST body.",
+  "error": "Short error code returned by the authorization server (the 'error' parameter).",
+  "errorUri": "Optional URI with more information about the error (the 'error_uri' parameter).",
+  "errorDescription": "Optional human-readable description of the error (the 'error_description' parameter).",
         "extractedCode": "The authorization code extracted from the callback URL.",
         "extractedState": "The state value extracted from the callback URL (if set).",
         "tokenRequest": "The POST body used to exchange the code for tokens.",

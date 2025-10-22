@@ -6,13 +6,34 @@ import LabelWithHelp from '@/components/LabelWithHelp';
 
 type Props = {
   callbackUrl: string;
+  callbackBody?: string;
   authCode: string;
   extractedState: string;
   expectedState?: string;
 };
 
-export default function StepCallback({ callbackUrl, authCode, extractedState, expectedState }: Props) {
+export default function StepCallback({ callbackUrl, callbackBody = '', authCode, extractedState, expectedState }: Props) {
   const t = useTranslations('AuthorizationCode.PublicClient');
+  // Parse callback params early so we can decide whether to show extracted fields
+  let callbackParams: URLSearchParams | null = null;
+  if (callbackBody && callbackBody.length > 0) {
+    // response_mode=form_post: parse params from body
+    callbackParams = new URLSearchParams(callbackBody);
+  } else {
+    // response_mode=query (GET): parse from URL query
+    try {
+      const url = new URL(callbackUrl);
+      callbackParams = new URLSearchParams(url.search);
+    } catch (e) {
+      const q = (callbackUrl && callbackUrl.includes('?')) ? callbackUrl.split('?')[1] : '';
+      callbackParams = new URLSearchParams(q);
+    }
+  }
+
+  const cbError = callbackParams.get('error') ?? '';
+  const cbErrorDescription = callbackParams.get('error_description') ?? '';
+  const cbErrorUri = callbackParams.get('error_uri') ?? '';
+  const hasCallbackError = !!(cbError || cbErrorDescription || cbErrorUri);
   const hasExpected = !!(expectedState && expectedState.length > 0);
   const stateMatches = hasExpected && expectedState === extractedState;
   return (
@@ -29,24 +50,66 @@ export default function StepCallback({ callbackUrl, authCode, extractedState, ex
             <LabelWithHelp id="callbackUrl" text={t('labels.callbackUrl')} help={t('help.callbackUrl')} />
             <InputTextarea id="callbackUrl" rows={3} autoResize value={callbackUrl} placeholder={t('placeholders.callbackUrl')} />
           </div>
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="authCode" text={t('labels.extractedCode')} help={t('help.extractedCode')} />
-            <InputText id="authCode" value={authCode} placeholder={t('placeholders.extractedCode')} readOnly />
+          <div className="col-12">
+            <LabelWithHelp id="callbackBody" text={t('labels.callbackBody') ?? 'POST body'} help={t('help.callbackBody') ?? 'If response_mode=form_post, the identity provider sends parameters in the POST body.'} />
+            <InputTextarea id="callbackBody" rows={3} autoResize value={callbackBody} placeholder={t('placeholders.callbackBody') ?? ''} readOnly />
           </div>
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="extractedState" text={t('labels.extractedState')} help={t('help.extractedState')} />
-            <InputText id="extractedState" value={extractedState} placeholder={t('placeholders.extractedState')} readOnly />
-            {hasExpected && (
-              <div className="mt-2 flex gap-2 align-items-center" aria-live="polite">
-                {stateMatches ? (
-                  <span className="pi pi-check-circle mr-2" style={{ color: 'var(--green-500)' }} aria-label="state valid" />
-                ) : (
-                  <span className="pi pi-times-circle mr-2" style={{ color: 'var(--red-500)' }} aria-label="state invalid" />
-                )}
-                <span style={{ opacity: 0.9 }}>{stateMatches ? t('help.stateValid') : t('help.stateInvalid')}</span>
+          {!hasCallbackError && (
+            <>
+              {authCode && (
+                <div className="col-12">
+                  <div className="mb-3 mt-0 flex gap-2 align-items-center" aria-live="polite">
+                    <span className="pi pi-check-circle mr-2" style={{ color: 'var(--green-500)' }} aria-label="callback ok" />
+                    <h4 className="m-0">{t('sections.callback.okTitle') ?? 'Callback OK'}</h4>
+                  </div>
+                </div>
+              )}
+
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="authCode" text={t('labels.extractedCode')} help={t('help.extractedCode')} />
+                <InputText id="authCode" value={authCode} placeholder={t('placeholders.extractedCode')} readOnly />
               </div>
-            )}
-          </div>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="extractedState" text={t('labels.extractedState')} help={t('help.extractedState')} />
+                <InputText id="extractedState" value={extractedState} placeholder={t('placeholders.extractedState')} readOnly />
+                {hasExpected && (
+                  <div className="mt-2 flex gap-2 align-items-center" aria-live="polite">
+                    {stateMatches ? (
+                      <span className="pi pi-check-circle mr-2" style={{ color: 'var(--green-500)' }} aria-label="state valid" />
+                    ) : (
+                      <span className="pi pi-times-circle mr-2" style={{ color: 'var(--red-500)' }} aria-label="state invalid" />
+                    )}
+                    <span style={{ opacity: 0.9 }}>{stateMatches ? t('help.stateValid') : t('help.stateInvalid')}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+          {/* Callback error fields: render using parsed callback params (parsed earlier) */}
+          {hasCallbackError && (
+            <div className="col-12">
+              <div className="mt-3 mb-2 flex gap-2 align-items-center" aria-live="polite">
+                <span className="pi pi-times-circle mr-2" style={{ color: 'var(--red-500)' }} aria-label="callback error" />
+                <h4 className="m-0">{t('sections.callback.errorTitle') ?? 'Callback error'}</h4>
+              </div>
+              <div className="surface-0 py-3 px-0 border-round">
+                <div className="grid formgrid p-fluid gap-3">
+                  <div className="col-12 md:col-6">
+                    <LabelWithHelp id="callbackError" text={t('labels.error') ?? 'Error'} help={t('help.error') ?? ''} />
+                    <InputText id="callbackError" value={cbError} placeholder={t('placeholders.error') ?? ''} readOnly />
+                  </div>
+                  <div className="col-12 md:col-6">
+                    <LabelWithHelp id="callbackErrorUri" text={t('labels.errorUri') ?? 'Error URI'} help={t('help.errorUri') ?? ''} />
+                    <InputText id="callbackErrorUri" value={cbErrorUri} placeholder={t('placeholders.errorUri') ?? ''} readOnly />
+                  </div>
+                  <div className="col-12">
+                    <LabelWithHelp id="callbackErrorDescription" text={t('labels.errorDescription') ?? 'Error description'} help={t('help.errorDescription') ?? ''} />
+                    <InputTextarea id="callbackErrorDescription" rows={3} autoResize value={decodeURIComponent(cbErrorDescription)} placeholder={t('placeholders.errorDescription') ?? ''} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>

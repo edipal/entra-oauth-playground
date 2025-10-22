@@ -65,6 +65,7 @@ export default function AuthorizationCodePublicClientPage() {
 
   // Callback handling
   const callbackUrl = authCodePublicClientRuntime.callbackUrl!;
+  const callbackBody = authCodePublicClientRuntime.callbackBody!;
   const authCode = authCodePublicClientRuntime.authCode!;
   const extractedState = authCodePublicClientRuntime.extractedState!;
   const callbackValidated = !!authCodePublicClientRuntime.callbackValidated;
@@ -151,15 +152,27 @@ export default function AuthorizationCodePublicClientPage() {
       const data = ev.data as any;
       // Basic origin check: only accept messages from same origin
       if (typeof window !== 'undefined' && ev.origin !== window.location.origin) return;
-      if (!data || data.type !== 'oauth_callback' || typeof data.href !== 'string') return;
+      if (!data || data.type !== 'oauth_callback') return;
       try {
-        const u = new URL(data.href);
-        const code = u.searchParams.get('code') || '';
-        const st = u.searchParams.get('state') || '';
+        const urlStr: string = typeof data.url === 'string' ? data.url : (typeof data.href === 'string' ? data.href : '');
+        if (!urlStr) return;
+        const bodyStr: string = typeof data.body === 'string' ? data.body : '';
+        let code = '';
+        let st = '';
+        if (bodyStr) {
+          const p = new URLSearchParams(bodyStr);
+          code = p.get('code') || '';
+          st = p.get('state') || '';
+        } else {
+          const u = new URL(urlStr);
+          code = u.searchParams.get('code') || '';
+          st = u.searchParams.get('state') || '';
+        }
         // Mark callback as validated if state matches (or no state was set)
         const ok = !!code && (!stateParam || stateParam === st);
         setAuthCodePublicClientRuntime(prev => ({
-          callbackUrl: u.toString(),
+          callbackUrl: urlStr,
+          callbackBody: bodyStr,
           authCode: code,
           extractedState: st,
           callbackValidated: (prev.callbackValidated || ok)
@@ -413,6 +426,7 @@ export default function AuthorizationCodePublicClientPage() {
         {currentStep === StepIndex.Callback && (
           <StepCallback
             callbackUrl={callbackUrl}
+            callbackBody={callbackBody}
             authCode={authCode}
             extractedState={extractedState}
             expectedState={stateParam}

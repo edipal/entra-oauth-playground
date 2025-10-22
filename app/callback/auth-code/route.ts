@@ -21,7 +21,10 @@ export async function GET(request: Request) {
 		<script>
 			(function(){
 				try {
-					var payload = { type: 'oauth_callback', href: window.location.href };
+					var url = window.location.href;
+					var payload = { type: 'oauth_callback', url: url, body: '' };
+					// Back-compat: also include href
+					payload.href = url;
 					if (window.opener && !window.opener.closed) {
 						// Post back only to same-origin opener
 						window.opener.postMessage(payload, window.location.origin);
@@ -49,13 +52,12 @@ export async function POST(request: Request) {
 	// code/state in the request body (application/x-www-form-urlencoded).
 	try {
 		const form = await request.formData();
-		const code = (form.get('code') as string) || '';
-		const state = (form.get('state') as string) || '';
-
-		// Inject the code/state into the client-side script safely by using
-		// JSON.stringify to produce a valid JS string literal.
-		const jsCode = JSON.stringify(code);
-		const jsState = JSON.stringify(state);
+		// Reconstruct the original x-www-form-urlencoded body exactly (order preserved)
+		const params = new URLSearchParams();
+		for (const [k, v] of form.entries()) {
+			params.append(k, String(v));
+		}
+		const jsBody = JSON.stringify(params.toString());
 
 		const html = `<!DOCTYPE html>
 		<html lang="en">
@@ -72,19 +74,18 @@ export async function POST(request: Request) {
 		<body>
 			<h1>Processing sign-in…</h1>
 			<p class="muted">If this window does not close automatically, you can close it.</p>
-			<p class="muted">code: <code>${code ? code.slice(0,8) + '…' : '(none)'}</code>, state: <code>${state || '(none)'}</code></p>
+			<p class="muted">Body posted: <code>
+				<script>document.write((${jsBody}).slice(0, 64) + ((${jsBody}).length > 64 ? '…' : ''))</script>
+			</code></p>
 			<script>
 				(function(){
 					try {
-						// Build an href-like string on the client using the page origin and
-						// the current pathname, then append the code/state as query params.
-						// We inject the raw code/state values as JS strings (escaped above).
-						var code = ${jsCode};
-						var state = ${jsState};
-						var href = window.location.origin + window.location.pathname;
-						var sep = href.indexOf('?') === -1 ? '?' : '&';
-						href = href + sep + 'code=' + encodeURIComponent(code) + (state ? '&state=' + encodeURIComponent(state) : '');
-						var payload = { type: 'oauth_callback', href: href };
+						// Build payload with the actual callback URL (no query) and raw POST body
+						var url = window.location.origin + window.location.pathname;
+						var body = ${jsBody};
+						var payload = { type: 'oauth_callback', url: url, body: body };
+						// Back-compat: also include href combining url and body
+						payload.href = body ? (url + '?' + body) : url;
 						if (window.opener && !window.opener.closed) {
 							window.opener.postMessage(payload, window.location.origin);
 						}

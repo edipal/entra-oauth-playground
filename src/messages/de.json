@@ -47,6 +47,7 @@
           "description": "Konfigurieren Sie Ihre Umgebung für den OAuth-Flow. Geben Sie Ihren Entra-Tenant (GUID) und die Public-Client-ID (GUID) an. Die Redirect-URI wird automatisch aus dem aktuellen Origin ermittelt (schreibgeschützt) und muss in Ihrer App registriert sein. Scopes bestimmen, worum Sie um Zustimmung gebeten werden.",
           "userProvidedTitle": "Vom Benutzer bereitgestellte Einstellungen",
           "userProvidedDescription": "Diese Felder können von Ihnen angepasst werden und werden zum Erstellen der Autorisierungsanfrage verwendet.",
+          "localStorageNotice": "Diese Werte werden in Ihrem Browser im lokalen Speicher (localStorage) gespeichert, um die Eingabe zu erleichtern.",
           "resolvedTitle": "Ermittelte (schreibgeschützte) Werte",
           "resolvedDescription": "Diese Werte werden aus dem Tenant und anderen Eingaben abgeleitet. Sie werden nur zur Anzeige dargestellt und können hier nicht geändert werden.",
           "flowPanelTitle": "So funktioniert der Authorization Code + PKCE Flow",
@@ -63,7 +64,9 @@
         },
         "callback": {
           "title": "Redirect verarbeiten (automatisch aus dem Popup)",
-          "description": "Wenn Microsoft Entra ID zu Ihrer Callback-URL umleitet, empfängt diese Seite die URL aus dem Popup und extrahiert Code und State. Wenn nichts erscheint, stellen Sie sicher, dass die Redirect-URI genau Ihrer App-Registrierung entspricht und der Popup-Flow nicht blockiert wurde."
+          "description": "Wenn Microsoft Entra ID zu Ihrer Callback-URL umleitet, empfängt diese Seite die URL aus dem Popup und extrahiert Code und State. Wenn nichts erscheint, stellen Sie sicher, dass die Redirect-URI genau Ihrer App-Registrierung entspricht und der Popup-Flow nicht blockiert wurde.",
+          "errorTitle": "Callback-Fehler",
+          "okTitle": "Callback OK"
         },
         "tokens": {
           "title": "Code gegen Tokens tauschen",
@@ -73,7 +76,7 @@
         },
         "decode": {
           "title": "Tokens dekodieren (JWT)",
-          "description": "Access- und ID-Tokens sind JWTs. Klicken Sie auf ‚Dekodieren‘, um Header und Payload lesbar anzuzeigen. Prüfen Sie z. B. audience (aud), scopes/roles, issuer (iss), Tenant (tid), subject (sub) und expiry (exp). Klicken Sie auf Weiter, um einen API-Aufruf zu tätigen."
+          "description": "Access- und ID-Tokens sind JWTs. Klicken Sie auf ‚Dekodieren‘, um Header und Payload lesbar anzuzeigen."
         },
         "validate": {
           "title": "Tokens validieren (Signatur und Claims)",
@@ -102,6 +105,10 @@
   "loginHint": "login_hint",
         "authUrlPreview": "Vorschau der Autorisierungs-URL",
         "callbackUrl": "Callback-URL",
+    "callbackBody": "POST-Body",
+  "error": "Fehler",
+  "errorUri": "Fehler-URI",
+  "errorDescription": "Fehlerbeschreibung",
         "extractedCode": "Extrahierter Code",
         "extractedState": "Extrahierter State",
         "tokenRequest": "Token-Anfrage (x-www-form-urlencoded)",
@@ -133,7 +140,11 @@
   "prompt": "login | consent | select_account | create | none",
   "loginHint": "user@domain.com",
         "authUrlPreview": "https://login.microsoftonline.com/.../authorize?...",
-        "callbackUrl": "http://localhost:3000/callback/auth-code?code=...&state=...",
+    "callbackUrl": "http://localhost:3000/callback/auth-code?code=...&state=...",
+    "callbackBody": "code=...&state=...",
+  "error": "server_error | access_denied | ...",
+  "errorUri": "https://example.com/docs/errors#some_error",
+  "errorDescription": "Menschlich lesbare Beschreibung des Fehlers (kann URL-kodiert sein)",
         "extractedCode": "tausche mich gegen Tokens",
         "extractedState": "(falls gesetzt)",
         "tokenRequest": "grant_type=authorization_code&client_id=...&code=...&redirect_uri=...&code_verifier=...",
@@ -177,7 +188,11 @@
   "prompt": "Steuert das Verhalten: login, consent, select_account, create oder none.",
   "loginHint": "Benutzernamen/Anmeldehinweis vorbefüllen (z. B. E-Mail).",
         "authUrlPreview": "Die vollständige Autorisierungs-URL, die im Popup geöffnet wird.",
-        "callbackUrl": "Die vollständige Callback-URL, die nach der Anmeldung aus dem Popup übernommen wird.",
+    "callbackUrl": "Die vollständige Callback-URL, die nach der Anmeldung aus dem Popup übernommen wird.",
+    "callbackBody": "Wenn response_mode=form_post verwendet wird, sendet der Identity Provider die Parameter im POST-Body.",
+  "error": "Kurzer Fehlercode, der vom Autorisierungsserver zurückgegeben wird (Parameter 'error').",
+  "errorUri": "Optionale URI mit weiteren Informationen zum Fehler (Parameter 'error_uri').",
+  "errorDescription": "Optionale, menschenlesbare Beschreibung des Fehlers (Parameter 'error_description').",
         "extractedCode": "Der Autorisierungscode, der aus der Callback-URL extrahiert wurde.",
         "extractedState": "Der State-Wert aus der Callback-URL (falls gesetzt).",
         "tokenRequest": "Der POST-Body zum Tauschen des Codes gegen Tokens.",
