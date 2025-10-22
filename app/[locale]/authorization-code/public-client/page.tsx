@@ -422,6 +422,7 @@ export default function AuthorizationCodePublicClientPage() {
         {currentStep === StepIndex.Tokens && (
           <StepTokens
             tokenRequestPreview={tokenRequestPreview}
+            resolvedTokenEndpoint={resolvedTokenEndpoint}
             tokenResponseText={tokenResponseText}
             exchanging={exchanging}
             onExchangeTokens={handleExchangeTokens}

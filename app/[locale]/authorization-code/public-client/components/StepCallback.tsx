@@ -20,7 +20,7 @@ export default function StepCallback({ callbackUrl, authCode, extractedState, ex
       <h3 className="mt-0 mb-3">{t('sections.callback.title')}</h3>
       <p className="mb-3">{t('sections.callback.description')}</p>
       <div className="mb-3 flex gap-3 align-items-start">
-        <span className="pi pi-info-circle mr-2" style={{ color: 'var(--blue-500)', fontSize: '1.25rem', marginTop: '0.15rem' }} aria-hidden="true" />
+  <span className="mr-2 flex align-items-center justify-content-center" style={{ backgroundColor: 'var(--blue-500)', color: 'white', width: '1.25rem', height: '1.25rem', borderRadius: '999px', fontSize: '0.75rem', marginTop: '0.1rem' }} aria-hidden="true">i</span>
         <p className="mb-3" style={{ margin: 0 }}>{t('help.checkStateAlways')}</p>
       </div>
       <div className="mb-4 surface-0 py-3 px-0 border-round">

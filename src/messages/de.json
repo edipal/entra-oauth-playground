@@ -67,7 +67,9 @@
         },
         "tokens": {
           "title": "Code gegen Tokens tauschen",
-          "description": "Senden Sie einen POST an den Token-Endpunkt mit grant_type=authorization_code, Ihrer client_id, dem erhaltenen Code, redirect_uri und code_verifier. Klicken Sie auf ‚Senden‘, um zu tauschen. Weiter wird freigeschaltet, sobald ein access_token in der Antwort enthalten ist."
+          "description": "Senden Sie einen POST an den Token-Endpunkt mit grant_type=authorization_code, Ihrer client_id, dem erhaltenen Code, redirect_uri und code_verifier. Klicken Sie auf ‚Senden‘, um zu tauschen.",
+          "requestTitle": "Token-Anfrage",
+          "responseTitle": "Token-Antwort"
         },
         "decode": {
           "title": "Tokens dekodieren (JWT)",
@@ -103,6 +105,7 @@
         "extractedCode": "Extrahierter Code",
         "extractedState": "Extrahierter State",
         "tokenRequest": "Token-Anfrage (x-www-form-urlencoded)",
+  "tokenEndpointPreview": "Token-Endpunkt",
         "responsePreview": "Antwortvorschau",
         "accessToken": "Access Token (JWT)",
         "idToken": "ID Token (JWT)",
@@ -134,6 +137,7 @@
         "extractedCode": "tausche mich gegen Tokens",
         "extractedState": "(falls gesetzt)",
         "tokenRequest": "grant_type=authorization_code&client_id=...&code=...&redirect_uri=...&code_verifier=...",
+  "tokenEndpointPreview": "https://login.microsoftonline.com/.../token",
         "tokenResponse": "{\"access_token\":\"...\",\"refresh_token\":\"...\",\"id_token\":\"...\"}",
         "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9....",
         "idToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9....",
@@ -177,6 +181,7 @@
         "extractedCode": "Der Autorisierungscode, der aus der Callback-URL extrahiert wurde.",
         "extractedState": "Der State-Wert aus der Callback-URL (falls gesetzt).",
         "tokenRequest": "Der POST-Body zum Tauschen des Codes gegen Tokens.",
+  "tokenEndpointPreview": "Die vollständige Token-Endpunkt-URL, die zum Tauschen des Autorisierungscodes verwendet wird.",
         "responsePreview": "Rohantwort des Tokenendpunkts (falls JSON, formatiert).",
         "accessToken": "Access Token zum Aufrufen von APIs. Wird als JWT-String angezeigt.",
         "idToken": "ID Token, das die Benutzeridentität darstellt. Wird als JWT-String angezeigt.",

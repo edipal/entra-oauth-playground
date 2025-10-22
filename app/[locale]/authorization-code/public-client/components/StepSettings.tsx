@@ -49,8 +49,12 @@ export default function StepSettings(props: Props) {
 
       {/* Editable settings provided by the user */}
   <div className="mb-4 surface-0 py-3 px-0 border-round">
-        <h4 className="mt-0 mb-2">{maybeT('sections.settings.userProvidedTitle', 'User-provided settings')}</h4>
-        <p className="mb-3 text-sm opacity-75">{maybeT('sections.settings.userProvidedDescription', 'These fields are configurable by you and are used to build the authorization request.')}</p>
+  <h4 className="mt-0 mb-2">{maybeT('sections.settings.userProvidedTitle', 'User-provided settings')}</h4>
+  <p className="mb-3 text-sm opacity-75">{maybeT('sections.settings.userProvidedDescription', 'These fields are configurable by you and are used to build the authorization request.')}</p>
+  <div className="mb-3 flex gap-3 align-items-start">
+    <span className="mr-2 flex align-items-center justify-content-center" style={{ backgroundColor: 'var(--blue-500)', color: 'white', width: '1.25rem', height: '1.25rem', borderRadius: '999px', fontSize: '0.9rem', marginTop: '0.05rem' }} aria-hidden="true">i</span>
+    <p className="mb-3 text-sm opacity-75" style={{ margin: 0 }}>{maybeT('sections.settings.localStorageNotice', "These values will be saved in your browser's local storage for convenience.")}</p>
+  </div>
 
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12 md:col-6">

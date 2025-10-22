@@ -27,16 +27,13 @@ type Props = {
 export default function StepAuthorize({ responseType, stateParam, setStateParam, onGenerateState, nonce, setNonce, onGenerateNonce, responseMode, setResponseMode, prompt, setPrompt, loginHint, setLoginHint, authUrlPreview, onOpenPopup }: Props) {
   const t = useTranslations('AuthorizationCode.PublicClient');
   const responseModeOptions = [
-    { label: 'Auto (default)', value: '' },
     { label: 'query', value: 'query' },
     { label: 'form_post', value: 'form_post' }
   ];
   const promptOptions = [
-    { label: 'Auto (default)', value: '' },
     { label: 'login', value: 'login' },
     { label: 'consent', value: 'consent' },
     { label: 'select_account', value: 'select_account' },
-    { label: 'create', value: 'create' },
     { label: 'none', value: 'none' }
   ];
   return (
