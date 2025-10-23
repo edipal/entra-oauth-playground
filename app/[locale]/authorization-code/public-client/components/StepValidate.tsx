@@ -297,6 +297,9 @@ export default function StepValidate(props: Props) {
       };
       try {
         if (!accessToken || !accIss) { setAccSig(s); return; }
+        // Skip signature verification for Microsoft Graph access tokens
+        const skipGraph = String(accessPayload.aud || '') === '00000003-0000-0000-c000-000000000000';
+        if (skipGraph) { setAccSig({}); return; }
         let jwksUrl = '';
         const host = (() => { try { return new URL(accIss!).host.toLowerCase(); } catch { return ''; } })();
         if (host.includes('login.microsoftonline.com') || host.includes('sts.windows.net')) {
@@ -369,13 +372,11 @@ export default function StepValidate(props: Props) {
       ? (idPayload.tid === tenantId || (idIss?.includes(tenantId) ?? false))
       : !!idIss;
     const nonceOk = expectedNonce ? idPayload.nonce === expectedNonce : true; // not required if not sent
-    const tidOk = tenantId ? idPayload.tid === tenantId : !!idPayload.tid;
-    const subOk = !!idPayload.sub;
     const expOk = typeof idPayload.exp === 'number' ? idPayload.exp > (nowSec - skewSec) : false;
     const nbfOk = typeof idPayload.nbf === 'number' ? idPayload.nbf <= (nowSec + skewSec) : true; // ok if missing
     const iatOk = typeof idPayload.iat === 'number' ? idPayload.iat <= (nowSec + skewSec) : true; // ok if missing
-    return { audOk, issOk, nonceOk, tidOk, subOk, expOk, nbfOk, iatOk };
-  }, [clientId, expectedNonce, idIss, idPayload.aud, idPayload.exp, idPayload.iat, idPayload.nbf, idPayload.nonce, idPayload.sub, idPayload.tid, nowSec, skewSec, tenantId]);
+    return { audOk, issOk, nonceOk, expOk, nbfOk, iatOk };
+  }, [clientId, expectedNonce, idIss, idPayload.aud, idPayload.exp, idPayload.iat, idPayload.nbf, idPayload.nonce, nowSec, skewSec, tenantId]);
 
   const accClaimOk = useMemo(() => {
     const aud = String(accessPayload.aud ?? '');
@@ -383,19 +384,36 @@ export default function StepValidate(props: Props) {
     const issOk = tenantId
       ? (accessPayload.tid === tenantId || (accIss?.includes(tenantId) ?? false))
       : !!accIss;
-    const tidOk = tenantId ? accessPayload.tid === tenantId : !!accessPayload.tid;
-    const scopesPresent = (accessPayload.scp && accessPayload.scp.trim().length > 0) || (Array.isArray(accessPayload.roles) && accessPayload.roles.length > 0);
-    const scopesOk = !!scopesPresent; // require some permissions present
+    const scopesPresent = (accessPayload.scp && accessPayload.scp.trim().length > 0);
+    const scopesOk = !!scopesPresent; // require scp present
     const expOk = typeof accessPayload.exp === 'number' ? accessPayload.exp > (nowSec - skewSec) : false;
     const nbfOk = typeof accessPayload.nbf === 'number' ? accessPayload.nbf <= (nowSec + skewSec) : true;
     const iatOk = typeof accessPayload.iat === 'number' ? accessPayload.iat <= (nowSec + skewSec) : true;
-    return { audOk, issOk, tidOk, scopesOk, expOk, nbfOk, iatOk };
-  }, [accessPayload.aud, accessPayload.exp, accessPayload.iat, accessPayload.nbf, accessPayload.roles, accessPayload.scp, accessPayload.tid, accIss, nowSec, skewSec, tenantId]);
+    return { audOk, issOk, scopesOk, expOk, nbfOk, iatOk };
+  }, [accessPayload.aud, accessPayload.exp, accessPayload.iat, accessPayload.nbf, accessPayload.scp, accessPayload.tid, accIss, nowSec, skewSec, tenantId]);
+
+  // Show a warning when validating Microsoft Graph access tokens: only Graph can verify its signatures
+  const graphAud = '00000003-0000-0000-c000-000000000000';
+  const isGraphAccessToken = String(accessPayload.aud || '') === graphAud;
 
   return (
     <section>
       <h3 className="mt-0 mb-3">{t('sections.validate.title')}</h3>
       <p className="mb-3">{t('sections.validate.description')}</p>
+      {isGraphAccessToken && (
+        <div className="mb-3 flex gap-3 align-items-start">
+          <span
+            className="mr-2 flex align-items-center justify-content-center"
+            style={{ backgroundColor: 'var(--yellow-500)', color: 'black', width: '1.25rem', height: '1.25rem', borderRadius: '999px', fontSize: '0.75rem', marginTop: '0.1rem' }}
+            aria-hidden="true"
+          >
+            !
+          </span>
+          <p className="mb-3" style={{ margin: 0 }}>
+            Access tokens for Microsoft Graph (aud {graphAud}) typically cannot be signature-validated by this client. Only Microsoft Graph can validate their signatures.
+          </p>
+        </div>
+      )}
 
       {/* ID Token section */}
       <div className="mb-5">
@@ -427,32 +445,24 @@ export default function StepValidate(props: Props) {
         <h5 className="mt-3">Claim validations</h5>
         <ul>
           <li>
-            aud should equal your client_id: <code>{String(idPayload.aud)}</code> {clientId ? `(expected ${clientId})` : ''}
+            aud (audience) should equal your client_id: <code>{String(idPayload.aud)}</code> {clientId ? `(expected ${clientId})` : ''}
             <span className="ml-2"><StatusIcon ok={idClaimOk.audOk} /></span>
           </li>
           <li>
-            iss should match your authority/tenant: <code>{idPayload.iss || '—'}</code> {tenantId ? `(tenant ${tenantId})` : ''}
+            iss (issuer) should match your authority/tenant: <code>{idPayload.iss || '—'}</code> {tenantId ? `(tenant ${tenantId})` : ''}
             <span className="ml-2"><StatusIcon ok={idClaimOk.issOk} /></span>
           </li>
           <li>
-            nonce should match request: <code>{idPayload.nonce || '—'}</code> {expectedNonce ? `(expected ${expectedNonce})` : ''}
-            <span className="ml-2"><StatusIcon ok={idClaimOk.nonceOk} /></span>
-          </li>
-          <li>
-            tid (tenant) present/matches: <code>{idPayload.tid || '—'}</code> {tenantId ? `(expected ${tenantId})` : ''}
-            <span className="ml-2"><StatusIcon ok={idClaimOk.tidOk} /></span>
-          </li>
-          <li>
-            sub present: <code>{idPayload.sub || '—'}</code>
-            <span className="ml-2"><StatusIcon ok={idClaimOk.subOk} /></span>
-          </li>
-          <li>
-            exp in future: <code>{fmtEpoch(idPayload.exp)}</code>
+            exp (expiration) in future: <code>{fmtEpoch(idPayload.exp)}</code>
             <span className="ml-2"><StatusIcon ok={idClaimOk.expOk} /></span>
           </li>
           <li>
-            nbf/iat reasonable: nbf <code>{fmtEpoch(idPayload.nbf)}</code>, iat <code>{fmtEpoch(idPayload.iat)}</code>
+            nbf/iat (not before / issued at) reasonable: nbf <code>{fmtEpoch(idPayload.nbf)}</code>, iat <code>{fmtEpoch(idPayload.iat)}</code>
             <span className="ml-2"><StatusIcon ok={idClaimOk.nbfOk && idClaimOk.iatOk} /></span>
+          </li>
+          <li>
+            nonce (anti-replay) should match request: <code>{idPayload.nonce || '—'}</code> {expectedNonce ? `(expected ${expectedNonce})` : ''}
+            <span className="ml-2"><StatusIcon ok={idClaimOk.nonceOk} /></span>
           </li>
         </ul>
         {/* Diagnostics UI removed */}
@@ -461,55 +471,68 @@ export default function StepValidate(props: Props) {
       {/* Access Token section */}
       <div>
         <h4 className="mt-3">Access Token</h4>
-        <h5 className="mt-2">Signature validation {typeof accSig.verified === 'boolean' && (
-          <span className="ml-2"><StatusIcon ok={!!accSig.verified} label={accSig.verified ? 'Verified' : 'Not verified'} /></span>
+        <h5 className="mt-2">Signature validation {isGraphAccessToken ? (
+          <span className="ml-2" style={{ color: 'var(--yellow-500)' }}>
+            <span className="pi pi-forward mr-2" aria-label="skipped" />
+            Skipped
+          </span>
+        ) : (
+          typeof accSig.verified === 'boolean' && (
+            <span className="ml-2"><StatusIcon ok={!!accSig.verified} label={accSig.verified ? 'Verified' : 'Not verified'} /></span>
+          )
         )}</h5>
-        <ol>
-          <li>Extract kid from token header: <code>{accessHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accessHeader.kid} /></span></li>
-          <li>Extract alg from token header: <code>{accessHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accessHeader.alg && accessHeader.alg.startsWith('RS')} /></span></li>
-          <li>Extract version from token payload: <code>{accessPayload.ver || (accIss?.includes('/v2.0') ? '2.0 (from iss)' : '1.0?')}</code> <span className="ml-2"><StatusIcon ok={true} /></span></li>
-          <li>Extract issuer (iss) from token payload: <code>{accIss || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accIss} /></span></li>
-          <li>Build metadata endpoint: <code>{accMeta || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accMeta} /></span></li>
-          <li>Resolve JWKS URL: <code>{accSig.jwksUrl || accJwks || '—'}</code> <span className="ml-2"><StatusIcon ok={!!(accSig.jwksUrl || accJwks)} /></span></li>
-          <li>Fetch JWKS and find key <code>{accessHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={accSig.keyFound} /></span></li>
-          <li>Verify signature with alg <code>{accessHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={accSig.verified} /></span></li>
-        </ol>
-  {accSig.reason && <p className="mt-2" style={{ color: accSig.verified ? '#16a34a' : '#dc2626' }}>Reason: {accSig.reason}</p>}
-  {accSig.error && <p style={{ color: '#dc2626' }}>Error: {accSig.error}</p>}
-        {accSig.publicKeyPem && (
-          <details className="mt-2">
-            <summary>Public key (PEM)</summary>
-            <div className="flex align-items-center gap-2 mb-2">
-              <button className="p-button p-button-text p-button-sm" onClick={async (e) => { e.preventDefault(); try { await navigator.clipboard.writeText(accSig.publicKeyPem!); } catch {} }}>Copy</button>
-            </div>
-            <pre style={{ whiteSpace: 'pre-wrap' }}>{accSig.publicKeyPem}</pre>
-          </details>
+        {!isGraphAccessToken && (
+          <>
+            <ol>
+              <li>Extract kid from token header: <code>{accessHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accessHeader.kid} /></span></li>
+              <li>Extract alg from token header: <code>{accessHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accessHeader.alg && accessHeader.alg.startsWith('RS')} /></span></li>
+              <li>Extract version from token payload: <code>{accessPayload.ver || (accIss?.includes('/v2.0') ? '2.0 (from iss)' : '1.0?')}</code> <span className="ml-2"><StatusIcon ok={true} /></span></li>
+              <li>Extract issuer (iss) from token payload: <code>{accIss || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accIss} /></span></li>
+              <li>Build metadata endpoint: <code>{accMeta || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accMeta} /></span></li>
+              <li>Resolve JWKS URL: <code>{accSig.jwksUrl || accJwks || '—'}</code> <span className="ml-2"><StatusIcon ok={!!(accSig.jwksUrl || accJwks)} /></span></li>
+              <li>Fetch JWKS and find key <code>{accessHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={accSig.keyFound} /></span></li>
+              <li>
+                Verify signature with alg <code>{accessHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={accSig.verified} /></span>
+              </li>
+            </ol>
+            {accSig.reason && (
+              <p className="mt-2" style={{ color: accSig.verified ? '#16a34a' : '#dc2626' }}>
+                Reason: {accSig.reason}
+              </p>
+            )}
+            {accSig.error && <p style={{ color: '#dc2626' }}>Error: {accSig.error}</p>}
+            {accSig.publicKeyPem && (
+              <details className="mt-2">
+                <summary>Public key (PEM)</summary>
+                <div className="flex align-items-center gap-2 mb-2">
+                  <button className="p-button p-button-text p-button-sm" onClick={async (e) => { e.preventDefault(); try { await navigator.clipboard.writeText(accSig.publicKeyPem!); } catch {} }}>Copy</button>
+                </div>
+                <pre style={{ whiteSpace: 'pre-wrap' }}>{accSig.publicKeyPem}</pre>
+              </details>
+            )}
+          </>
         )}
         <h5 className="mt-3">Claim validations</h5>
         <ul>
           <li>
-            aud should equal API/resource: <code>{String(accessPayload.aud)}</code>
+            aud (audience) should equal API/resource: <code>{String(accessPayload.aud)}</code> {isGraphAccessToken ? '(MS Graph API)' : ''}
             <span className="ml-2"><StatusIcon ok={accClaimOk.audOk} /></span>
           </li>
           <li>
-            iss should match your tenant issuer: <code>{accessPayload.iss || '—'}</code> {tenantId ? `(tenant ${tenantId})` : ''}
+            iss (issuer) should match your tenant issuer: <code>{accessPayload.iss || '—'}</code> {tenantId ? `(tenant ${tenantId})` : ''}
             <span className="ml-2"><StatusIcon ok={accClaimOk.issOk} /></span>
           </li>
           <li>
-            tid (tenant) present/matches: <code>{accessPayload.tid || '—'}</code> {tenantId ? `(expected ${tenantId})` : ''}
-            <span className="ml-2"><StatusIcon ok={accClaimOk.tidOk} /></span>
-          </li>
-          <li>
-            Scopes/roles include what you need: scp <code>{accessPayload.scp || '—'}</code> roles <code>{ensureArray(accessPayload.roles).join(', ') || '—'}</code>
-            <span className="ml-2"><StatusIcon ok={accClaimOk.scopesOk} /></span>
-          </li>
-          <li>
-            exp in future: <code>{fmtEpoch(accessPayload.exp)}</code>
+            exp (expiration) in future: <code>{fmtEpoch(accessPayload.exp)}</code>
             <span className="ml-2"><StatusIcon ok={accClaimOk.expOk} /></span>
           </li>
           <li>
-            nbf/iat reasonable: nbf <code>{fmtEpoch(accessPayload.nbf)}</code>, iat <code>{fmtEpoch(accessPayload.iat)}</code>
+            nbf/iat (not before / issued at) reasonable: nbf <code>{fmtEpoch(accessPayload.nbf)}</code>, iat <code>{fmtEpoch(accessPayload.iat)}</code>
             <span className="ml-2"><StatusIcon ok={accClaimOk.nbfOk && accClaimOk.iatOk} /></span>
+          </li>
+          <li>
+            scp (scopes) present: <code>{accessPayload.scp || '—'}</code>
+            <span className="ml-2"><StatusIcon ok={accClaimOk.scopesOk} /></span>
           </li>
         </ul>
         {/* Diagnostics UI removed */}

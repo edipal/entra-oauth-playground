@@ -48,11 +48,11 @@ export default function StepCallback({ callbackUrl, callbackBody = '', authCode,
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
             <LabelWithHelp id="callbackUrl" text={t('labels.callbackUrl')} help={t('help.callbackUrl')} />
-            <InputTextarea id="callbackUrl" rows={3} autoResize value={callbackUrl} placeholder={t('placeholders.callbackUrl')} />
+            <InputTextarea id="callbackUrl" rows={3} autoResize value={callbackUrl} />
           </div>
           <div className="col-12">
             <LabelWithHelp id="callbackBody" text={t('labels.callbackBody') ?? 'POST body'} help={t('help.callbackBody') ?? 'If response_mode=form_post, the identity provider sends parameters in the POST body.'} />
-            <InputTextarea id="callbackBody" rows={3} autoResize value={callbackBody} placeholder={t('placeholders.callbackBody') ?? ''} readOnly />
+            <InputTextarea id="callbackBody" rows={3} autoResize value={callbackBody} readOnly />
           </div>
           {!hasCallbackError && (
             <>
@@ -67,11 +67,11 @@ export default function StepCallback({ callbackUrl, callbackBody = '', authCode,
 
               <div className="col-12 md:col-6">
                 <LabelWithHelp id="authCode" text={t('labels.extractedCode')} help={t('help.extractedCode')} />
-                <InputText id="authCode" value={authCode} placeholder={t('placeholders.extractedCode')} readOnly />
+                <InputText id="authCode" value={authCode} readOnly />
               </div>
               <div className="col-12 md:col-6">
                 <LabelWithHelp id="extractedState" text={t('labels.extractedState')} help={t('help.extractedState')} />
-                <InputText id="extractedState" value={extractedState} placeholder={t('placeholders.extractedState')} readOnly />
+                <InputText id="extractedState" value={extractedState} readOnly />
                 {hasExpected && (
                   <div className="mt-2 flex gap-2 align-items-center" aria-live="polite">
                     {stateMatches ? (
@@ -96,15 +96,15 @@ export default function StepCallback({ callbackUrl, callbackBody = '', authCode,
                 <div className="grid formgrid p-fluid gap-3">
                   <div className="col-12 md:col-6">
                     <LabelWithHelp id="callbackError" text={t('labels.error') ?? 'Error'} help={t('help.error') ?? ''} />
-                    <InputText id="callbackError" value={cbError} placeholder={t('placeholders.error') ?? ''} readOnly />
+                    <InputText id="callbackError" value={cbError} readOnly />
                   </div>
                   <div className="col-12 md:col-6">
                     <LabelWithHelp id="callbackErrorUri" text={t('labels.errorUri') ?? 'Error URI'} help={t('help.errorUri') ?? ''} />
-                    <InputText id="callbackErrorUri" value={cbErrorUri} placeholder={t('placeholders.errorUri') ?? ''} readOnly />
+                    <InputText id="callbackErrorUri" value={cbErrorUri} readOnly />
                   </div>
                   <div className="col-12">
                     <LabelWithHelp id="callbackErrorDescription" text={t('labels.errorDescription') ?? 'Error description'} help={t('help.errorDescription') ?? ''} />
-                    <InputTextarea id="callbackErrorDescription" rows={3} autoResize value={decodeURIComponent(cbErrorDescription)} placeholder={t('placeholders.errorDescription') ?? ''} />
+                    <InputTextarea id="callbackErrorDescription" rows={3} autoResize value={decodeURIComponent(cbErrorDescription)} />
                   </div>
                 </div>
               </div>

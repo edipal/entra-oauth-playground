@@ -43,7 +43,7 @@ export default function AuthorizationCodePublicClientPage() {
   const [maxCompletedStep, setMaxCompletedStep] = useState<StepIndex>(StepIndex.Overview);
   
   // Settings persisted/global via SettingsContext
-  const { authCodePublicClientConfig, setAuthCodePublicClientConfig, authCodePublicClientRuntime, setAuthCodePublicClientRuntime } = useSettings();
+  const { authCodePublicClientConfig, setAuthCodePublicClientConfig, authCodePublicClientRuntime, setAuthCodePublicClientRuntime, resetAuthCodePublicClientRuntime } = useSettings();
   const tenantId = authCodePublicClientConfig.tenantId!;
   const clientId = authCodePublicClientConfig.clientId!;
   const redirectUri = authCodePublicClientConfig.redirectUri!;
@@ -315,6 +315,34 @@ export default function AuthorizationCodePublicClientPage() {
     }
   };
 
+  // Reset all fields across steps and restart the flow
+  const handleResetAll = () => {
+    // Reset persisted config to defaults
+    setAuthCodePublicClientConfig({
+      tenantId: '',
+      clientId: '',
+      redirectUri: '',
+      scopes: 'openid profile offline_access',
+      apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me'
+    });
+    // Reset runtime (non-persisted)
+    resetAuthCodePublicClientRuntime();
+    // Reset local component state
+    setCurrentStep(StepIndex.Overview);
+    setMaxCompletedStep(StepIndex.Overview);
+    setResponseMode('');
+    setPrompt('');
+    setLoginHint('');
+    setTokenResponseText('');
+    setDecodedAccessHeader('');
+    setDecodedAccessPayload('');
+    setDecodedIdHeader('');
+    setDecodedIdPayload('');
+    setApiResponseText('');
+    try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close(); } catch {}
+    popupRef.current = null;
+  };
+
   // Wizard validation per step
   // validators indexed by StepIndex
   const validators: Record<StepIndex, () => boolean> = {
@@ -365,7 +393,21 @@ export default function AuthorizationCodePublicClientPage() {
   }));
   return (
     <div className="p-4">
-      <Card title={t('title')}>
+      <Card header={
+        <div className="flex align-items-center gap-2">
+          <span className="p-card-title">{t('title')}</span>
+          <Button
+            type="button"
+            className="shadow-2"
+            icon="pi pi-undo"
+            rounded
+            severity="info"
+            onClick={handleResetAll}
+            aria-label="Reset all"
+            title="Reset all"
+          />
+        </div>
+      }>
         {/* Steps header */}
         <div className="mb-4">
           <Steps model={stepItems} activeIndex={currentStep} readOnly={false} />

@@ -34,11 +34,11 @@ export default function StepDecode({ accessToken, idToken, decodedAccessHeader, 
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
             <LabelWithHelp id="accessToken" text={t('labels.accessToken')} help={t('help.accessToken')} />
-            <InputTextarea id="accessToken" rows={3} autoResize value={accessToken} placeholder={t('placeholders.accessToken')} readOnly />
+            <InputTextarea id="accessToken" rows={3} autoResize value={accessToken} readOnly />
           </div>
           <div className="col-12">
             <LabelWithHelp id="idToken" text={t('labels.idToken')} help={t('help.idToken')} />
-            <InputTextarea id="idToken" rows={3} autoResize value={idToken} placeholder={t('placeholders.idToken')} readOnly />
+            <InputTextarea id="idToken" rows={3} autoResize value={idToken} readOnly />
           </div>
           <div className="col-12 flex gap-2 mt-3 mb-3">
             <Button type="button" label={t('buttons.decode')} icon="pi pi-code" onClick={onDecodeTokens} disabled={!accessToken && !idToken} />
@@ -49,20 +49,20 @@ export default function StepDecode({ accessToken, idToken, decodedAccessHeader, 
               {/* Row 1: headers */}
               <div>
                 <LabelWithHelp id="idHeader" text={t('labels.idHeader')} help={t('help.idHeader')} />
-                <InputTextarea id="idHeader" rows={6} autoResize value={decodedIdHeader} placeholder={tRaw('placeholders.idHeader')} />
+                <InputTextarea id="idHeader" rows={6} autoResize value={decodedIdHeader} />
               </div>
               <div>
                 <LabelWithHelp id="accessHeader" text={t('labels.accessHeader')} help={t('help.accessHeader')} />
-                <InputTextarea id="accessHeader" rows={6} autoResize value={decodedAccessHeader} placeholder={tRaw('placeholders.accessHeader')} />
+                <InputTextarea id="accessHeader" rows={6} autoResize value={decodedAccessHeader} />
               </div>
               {/* Row 2: payloads (now start under the tallest header) */}
               <div>
                 <LabelWithHelp id="idPayload" text={t('labels.idPayload')} help={t('help.idPayload')} />
-                <InputTextarea id="idPayload" rows={10} autoResize value={decodedIdPayload} placeholder={tRaw('placeholders.idPayload')} />
+                <InputTextarea id="idPayload" rows={10} autoResize value={decodedIdPayload} />
               </div>
               <div>
                 <LabelWithHelp id="accessPayload" text={t('labels.accessPayload')} help={t('help.accessPayload')} />
-                <InputTextarea id="accessPayload" rows={10} autoResize value={decodedAccessPayload} placeholder={tRaw('placeholders.accessPayload')} />
+                <InputTextarea id="accessPayload" rows={10} autoResize value={decodedAccessPayload} />
               </div>
             </div>
           </div>

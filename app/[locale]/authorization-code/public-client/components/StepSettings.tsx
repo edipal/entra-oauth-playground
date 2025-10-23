@@ -88,17 +88,17 @@ export default function StepSettings(props: Props) {
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12 md:col-6">
             <LabelWithHelp id="authEndpoint" text={t('labels.authEndpoint')} help={safeT('help.authEndpoint')} />
-            <InputText id="authEndpoint" value={resolvedAuthEndpoint} readOnly placeholder={safeT('placeholders.authEndpoint')} />
+            <InputText id="authEndpoint" value={resolvedAuthEndpoint} readOnly />
           </div>
 
           <div className="col-12 md:col-6">
             <LabelWithHelp id="tokenEndpoint" text={t('labels.tokenEndpoint')} help={safeT('help.tokenEndpoint')} />
-            <InputText id="tokenEndpoint" value={resolvedTokenEndpoint} readOnly placeholder={safeT('placeholders.tokenEndpoint')} />
+            <InputText id="tokenEndpoint" value={resolvedTokenEndpoint} readOnly />
           </div>
 
           <div className="col-12 md:col-6">
             <LabelWithHelp id="redirectUri" text={t('labels.redirectUri')} help={t('help.redirectUri')} />
-            <InputText id="redirectUri" value={redirectUri} readOnly placeholder={t('placeholders.redirectUri')} className={!redirectUriValid ? 'p-invalid' : ''} />
+            <InputText id="redirectUri" value={redirectUri} readOnly className={!redirectUriValid ? 'p-invalid' : ''} />
             {!redirectUriValid && (
               <small className="p-error block mt-1">{t('errors.redirectUriInvalid')}</small>
             )}

@@ -110,7 +110,7 @@ export default function StepAuthorize({ responseType, stateParam, setStateParam,
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
             <LabelWithHelp id="authUrlPreview" text={t('labels.authUrlPreview')} help={t('help.authUrlPreview')} />
-            <InputTextarea id="authUrlPreview" rows={3} autoResize value={authUrlPreview} readOnly placeholder={t('placeholders.authUrlPreview')} />
+            <InputTextarea id="authUrlPreview" rows={3} autoResize value={authUrlPreview} readOnly />
           </div>
 
           <div className="col-12">

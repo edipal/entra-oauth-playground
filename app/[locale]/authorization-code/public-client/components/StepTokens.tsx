@@ -46,11 +46,11 @@ export default function StepTokens({ tokenRequestPreview, tokenResponseText, exc
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
             <LabelWithHelp id="tokenEndpointPreview" text={t('labels.tokenEndpointPreview', { default: t('labels.tokenEndpoint') })} help={t('help.tokenEndpointPreview')} />
-            <InputTextarea id="tokenEndpointPreview" rows={1} autoResize value={resolvedTokenEndpoint ?? ''} readOnly placeholder={t('placeholders.tokenEndpointPreview')} />
+            <InputTextarea id="tokenEndpointPreview" rows={1} autoResize value={resolvedTokenEndpoint ?? ''} readOnly />
           </div>
           <div className="col-12">
             <LabelWithHelp id="tokenRequestBody" text={t('labels.tokenRequest')} help={t('help.tokenRequest')} />
-            <InputTextarea id="tokenRequestBody" rows={4} autoResize value={`${reqStr ?? ''}`} placeholder={t('placeholders.tokenRequest')} />
+            <InputTextarea id="tokenRequestBody" rows={4} autoResize value={`${reqStr ?? ''}`} />
           </div>
           <div className="col-12">
             <div className="flex gap-2">
@@ -65,7 +65,7 @@ export default function StepTokens({ tokenRequestPreview, tokenResponseText, exc
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
             <LabelWithHelp id="tokenResponse" text={t('labels.responsePreview')} help={t('help.responsePreview')} />
-            <InputTextarea id="tokenResponse" rows={8} autoResize value={`${resStr ?? ''}`} placeholder={tRaw('placeholders.tokenResponse')} />
+            <InputTextarea id="tokenResponse" rows={8} autoResize value={`${resStr ?? ''}`} />
           </div>
         </div>
       </div>
