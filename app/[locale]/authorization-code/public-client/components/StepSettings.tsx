@@ -1,5 +1,6 @@
 "use client";
 import {InputText} from 'primereact/inputtext';
+import {InputSwitch} from 'primereact/inputswitch';
 import {useTranslations} from 'next-intl';
 import LabelWithHelp from '@/components/LabelWithHelp';
 
@@ -11,6 +12,8 @@ type Props = {
   redirectUri: string;
   scopes: string;
   setScopes: (v: string) => void;
+  streamlined: boolean;
+  setStreamlined: (v: boolean) => void;
   resolvedAuthEndpoint: string;
   resolvedTokenEndpoint: string;
   tenantIdValid: boolean;
@@ -26,6 +29,7 @@ export default function StepSettings(props: Props) {
     clientId, setClientId,
     redirectUri,
     scopes, setScopes,
+    streamlined, setStreamlined,
     resolvedAuthEndpoint, resolvedTokenEndpoint,
     tenantIdValid, clientIdValid, redirectUriValid,
     safeT
@@ -76,6 +80,14 @@ export default function StepSettings(props: Props) {
           <div className="col-12 md:col-6">
             <LabelWithHelp id="scopes" text={t('labels.scopes')} help={t('help.scopes')} />
             <InputText id="scopes" value={scopes} onChange={(e) => setScopes(e.target.value)} placeholder={t('placeholders.scopes')} />
+          </div>
+
+          <div className="col-12 md:col-6">
+            <LabelWithHelp id="streamlined" text="Streamlined mode" help="Automatically runs steps and hides advanced fields to speed up the demo." />
+            <div className="flex align-items-center gap-2">
+              <InputSwitch inputId="streamlined" checked={!!streamlined} onChange={(e) => setStreamlined(!!e.value)} />
+              <label htmlFor="streamlined" className="m-0">{streamlined ? 'Enabled' : 'Disabled'}</label>
+            </div>
           </div>
         </div>
       </div>

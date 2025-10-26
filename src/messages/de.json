@@ -147,6 +147,63 @@
         "previous": "Zurück",
         "next": "Weiter"
       },
+      "options": {
+        "responseMode": {
+          "query": "query",
+          "form_post": "form_post"
+        },
+        "prompt": {
+          "login": "login",
+          "consent": "consent",
+          "select_account": "select_account",
+          "none": "none"
+        }
+      },
+      "notes": {
+        "accessHeaderNonce": "Dieser Access-Token-Header enthält ein <code>nonce</code>-Feld. Dabei handelt es sich um einen anbieter­spezifischen JOSE-Header und er steht nicht im Zusammenhang mit dem OIDC-Claim <code>nonce</code>, der in der ID-Token-Payload validiert wird."
+      },
+      "validateUi": {
+        "graphWarning": "Access Tokens für Microsoft Graph (aud <code>{aud}</code>) können in der Regel nicht von diesem Client signaturgeprüft werden. Nur Microsoft Graph kann deren Signaturen validieren.",
+        "idTokenTitle": "ID-Token",
+        "accessTokenTitle": "Access Token",
+        "signatureValidation": "Signaturprüfung",
+        "verified": "Verifiziert",
+        "notVerified": "Nicht verifiziert",
+        "skipped": "Übersprungen",
+        "skippedAria": "übersprungen",
+        "steps": {
+          "extractKid": "kid aus Token-Header extrahieren:",
+          "extractAlg": "alg aus Token-Header extrahieren:",
+          "extractVersion": "Version aus Token-Payload extrahieren:",
+          "extractIssuer": "Issuer (iss) aus Token-Payload extrahieren:",
+          "buildMetadata": "Metadata-Endpunkt bilden:",
+          "resolveJwks": "JWKS-URL ermitteln:",
+          "fetchJwksFindKey": "JWKS abrufen und Schlüssel finden",
+          "verifySignature": "Signatur mit alg prüfen"
+        },
+        "reason": "Grund:",
+        "error": "Fehler:",
+        "publicKeyPem": "Öffentlicher Schlüssel (PEM)",
+        "copy": "Kopieren",
+        "claimValidations": "Claim-Validierungen",
+        "claims": {
+          "id": {
+            "aud": "aud (Audience) sollte Ihrer client_id entsprechen:",
+            "iss": "iss (Issuer) sollte Ihrer Authority/Ihrem Tenant entsprechen:",
+            "exp": "exp (Ablauf) liegt in der Zukunft:",
+            "nbfIat": "nbf/iat (not before / issued at) plausibel:",
+            "nonce": "nonce (Anti-Replay) sollte der Anfrage entsprechen:"
+          },
+          "access": {
+            "aud": "aud (Audience) sollte API/Ressource entsprechen:",
+            "iss": "iss (Issuer) sollte Ihrem Tenant-Issuer entsprechen:",
+            "exp": "exp (Ablauf) liegt in der Zukunft:",
+            "nbfIat": "nbf/iat (not before / issued at) plausibel:",
+            "scp": "scp (Scopes) vorhanden:",
+            "msGraph": "(MS Graph API)"
+          }
+        }
+      },
       "help": {
         "tenantId": "Directory-(Tenant-)GUID Ihrer Entra ID Instanz.",
         "clientId": "Anwendungs-(Client-)ID Ihrer Public-Client-App-Registrierung.",

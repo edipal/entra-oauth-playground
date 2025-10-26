@@ -1,7 +1,5 @@
 "use client";
 import {InputText} from 'primereact/inputtext';
-import {InputTextarea} from 'primereact/inputtextarea';
-import {Dropdown} from 'primereact/dropdown';
 import {InputSwitch} from 'primereact/inputswitch';
 import {useTranslations} from 'next-intl';
 import LabelWithHelp from '@/components/LabelWithHelp';
@@ -18,16 +16,6 @@ type Props = {
   setScopes: (v: string) => void;
   pkceEnabled: boolean;
   setPkceEnabled: (v: boolean) => void;
-  clientAuthMethod: ClientAuthMethod;
-  setClientAuthMethod: (v: ClientAuthMethod) => void;
-  clientSecret: string;
-  setClientSecret: (v: string) => void;
-  privateKeyPem: string;
-  setPrivateKeyPem: (v: string) => void;
-  certificatePem: string;
-  setCertificatePem: (v: string) => void;
-  clientAssertionKid: string;
-  setClientAssertionKid: (v: string) => void;
   resolvedAuthEndpoint: string;
   resolvedTokenEndpoint: string;
   tenantIdValid: boolean;
@@ -44,20 +32,10 @@ export default function StepSettings(props: Props) {
     redirectUri,
     scopes, setScopes,
     pkceEnabled, setPkceEnabled,
-    clientAuthMethod, setClientAuthMethod,
-    clientSecret, setClientSecret,
-    privateKeyPem, setPrivateKeyPem,
-    certificatePem, setCertificatePem,
-    clientAssertionKid, setClientAssertionKid,
     resolvedAuthEndpoint, resolvedTokenEndpoint,
     tenantIdValid, clientIdValid, redirectUriValid,
     safeT
   } = props;
-
-  const methodOptions = [
-    { label: 'Client secret', value: 'secret' },
-    { label: 'Certificate (private_key_jwt)', value: 'certificate' }
-  ];
 
   const maybeT = (key: string, fallback?: string) => {
     try { const v = t(key as any); if (!v || typeof v !== 'string' || v.indexOf(key) !== -1) return fallback ?? ''; return v; } catch { return fallback ?? ''; }
@@ -98,38 +76,7 @@ export default function StepSettings(props: Props) {
               <label htmlFor="pkceEnabled" className="m-0">{pkceEnabled ? 'Enabled' : 'Disabled'}</label>
             </div>
           </div>
-
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="clientAuthMethod" text="Client authentication" help="Choose how the client authenticates to the token endpoint when exchanging the code." />
-            <Dropdown id="clientAuthMethod" value={clientAuthMethod} onChange={(e) => setClientAuthMethod(e.value as ClientAuthMethod)} options={methodOptions} placeholder={t('placeholders.selectMethod')} />
-          </div>
         </div>
-
-        {clientAuthMethod === 'secret' && (
-          <div className="grid formgrid p-fluid gap-3 mt-2">
-            <div className="col-12 md:col-8">
-              <LabelWithHelp id="clientSecret" text="Client secret" help="Your confidential client secret. For demo purposes this value stays in memory only (not persisted)." />
-              <InputText id="clientSecret" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="Enter client secret" />
-            </div>
-          </div>
-        )}
-
-        {clientAuthMethod === 'certificate' && (
-          <div className="grid formgrid p-fluid gap-3 mt-2">
-            <div className="col-12">
-              <LabelWithHelp id="privateKeyPem" text="Private key (PKCS#8 PEM)" help="PEM-encoded RSA private key used to sign the client_assertion (RS256). Not persisted." />
-              <InputTextarea id="privateKeyPem" rows={6} autoResize value={privateKeyPem} onChange={(e) => setPrivateKeyPem(e.target.value)} placeholder={'-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'} />
-            </div>
-            <div className="col-12 md:col-6">
-              <LabelWithHelp id="clientAssertionKid" text="kid (optional)" help="Optional key ID to include in the client_assertion header; should match the certificate uploaded in Entra ID." />
-              <InputText id="clientAssertionKid" value={clientAssertionKid} onChange={(e) => setClientAssertionKid(e.target.value)} placeholder="kid or thumbprint" />
-            </div>
-            <div className="col-12">
-              <LabelWithHelp id="certificatePem" text="Certificate (PEM, optional)" help="Optional PEM certificate. Not required to sign; provided for reference." />
-              <InputTextarea id="certificatePem" rows={4} autoResize value={certificatePem} onChange={(e) => setCertificatePem(e.target.value)} placeholder={'-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----'} />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Resolved (read-only) values */}

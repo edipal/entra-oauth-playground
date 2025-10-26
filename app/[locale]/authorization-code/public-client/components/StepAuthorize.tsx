@@ -22,19 +22,20 @@ type Props = {
   setLoginHint: (v: string) => void;
   authUrlPreview: string;
   onOpenPopup: () => void;
+  hideAdvanced?: boolean;
 };
 
-export default function StepAuthorize({ responseType, stateParam, setStateParam, onGenerateState, nonce, setNonce, onGenerateNonce, responseMode, setResponseMode, prompt, setPrompt, loginHint, setLoginHint, authUrlPreview, onOpenPopup }: Props) {
+export default function StepAuthorize({ responseType, stateParam, setStateParam, onGenerateState, nonce, setNonce, onGenerateNonce, responseMode, setResponseMode, prompt, setPrompt, loginHint, setLoginHint, authUrlPreview, onOpenPopup, hideAdvanced }: Props) {
   const t = useTranslations('AuthorizationCode.PublicClient');
   const responseModeOptions = [
-    { label: 'query', value: 'query' },
-    { label: 'form_post', value: 'form_post' }
+    { label: t('options.responseMode.query'), value: 'query' },
+    { label: t('options.responseMode.form_post'), value: 'form_post' }
   ];
   const promptOptions = [
-    { label: 'login', value: 'login' },
-    { label: 'consent', value: 'consent' },
-    { label: 'select_account', value: 'select_account' },
-    { label: 'none', value: 'none' }
+    { label: t('options.prompt.login'), value: 'login' },
+    { label: t('options.prompt.consent'), value: 'consent' },
+    { label: t('options.prompt.select_account'), value: 'select_account' },
+    { label: t('options.prompt.none'), value: 'none' }
   ];
   return (
     <section>
@@ -85,20 +86,24 @@ export default function StepAuthorize({ responseType, stateParam, setStateParam,
             </div>
           </div>
 
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="responseMode" text={t('labels.responseMode')} help={t('help.responseMode')} />
-            <Dropdown id="responseMode" value={responseMode} onChange={(e) => setResponseMode(e.value)} options={responseModeOptions} placeholder={t('placeholders.selectMethod')} />
-          </div>
+          {!hideAdvanced && (
+            <>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="responseMode" text={t('labels.responseMode')} help={t('help.responseMode')} />
+                <Dropdown id="responseMode" value={responseMode} onChange={(e) => setResponseMode(e.value)} options={responseModeOptions} placeholder={t('placeholders.selectMethod')} />
+              </div>
 
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="prompt" text={t('labels.prompt')} help={t('help.prompt')} />
-            <Dropdown id="prompt" value={prompt} onChange={(e) => setPrompt(e.value)} options={promptOptions} placeholder={t('placeholders.selectMethod')} />
-          </div>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="prompt" text={t('labels.prompt')} help={t('help.prompt')} />
+                <Dropdown id="prompt" value={prompt} onChange={(e) => setPrompt(e.value)} options={promptOptions} placeholder={t('placeholders.selectMethod')} />
+              </div>
 
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="loginHint" text={t('labels.loginHint')} help={t('help.loginHint')} />
-            <InputText id="loginHint" value={loginHint} onChange={(e) => setLoginHint(e.target.value)} placeholder={t('placeholders.loginHint')} />
-          </div>
+              <div className="col-12 md:col-6">
+                <LabelWithHelp id="loginHint" text={t('labels.loginHint')} help={t('help.loginHint')} />
+                <InputText id="loginHint" value={loginHint} onChange={(e) => setLoginHint(e.target.value)} placeholder={t('placeholders.loginHint')} />
+              </div>
+            </>
+          )}
         </div>
       </div>
 

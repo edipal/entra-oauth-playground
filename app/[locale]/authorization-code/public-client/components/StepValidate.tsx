@@ -401,67 +401,68 @@ export default function StepValidate(props: Props) {
       <h3 className="mt-0 mb-3">{t('sections.validate.title')}</h3>
       <p className="mb-3">{t('sections.validate.description')}</p>
       {isGraphAccessToken && (
-        <div className="mb-3 flex gap-3 align-items-start">
-          <span
-            className="mr-2 flex align-items-center justify-content-center"
-            style={{ backgroundColor: 'var(--yellow-500)', color: 'black', width: '1.25rem', height: '1.25rem', borderRadius: '999px', fontSize: '0.75rem', marginTop: '0.1rem' }}
+        <div className="mt-2 flex gap-3 align-items-start pl-2">
+          <i
+            className="pi pi-exclamation-circle mr-2"
+            style={{ color: 'var(--yellow-500)', fontSize: '1.1rem', marginTop: '0.2rem' }}
             aria-hidden="true"
-          >
-            !
-          </span>
-          <p className="mb-3" style={{ margin: 0 }}>
-            Access tokens for Microsoft Graph (aud {graphAud}) typically cannot be signature-validated by this client. Only Microsoft Graph can validate their signatures.
+          />
+          <p className="m-0 text-sm">
+            {(t as any).rich('validateUi.graphWarning', {
+              code: (chunks: any) => <code>{chunks}</code>,
+              aud: graphAud
+            })}
           </p>
         </div>
       )}
 
       {/* ID Token section */}
       <div className="mb-5">
-        <h4 className="mt-3">ID Token</h4>
-        <h5 className="mt-2">Signature validation {typeof idSig.verified === 'boolean' && (
-          <span className="ml-2"><StatusIcon ok={!!idSig.verified} label={idSig.verified ? 'Verified' : 'Not verified'} /></span>
+        <h4 className="mt-3">{t('validateUi.idTokenTitle')}</h4>
+        <h5 className="mt-2">{t('validateUi.signatureValidation')} {typeof idSig.verified === 'boolean' && (
+          <span className="ml-2"><StatusIcon ok={!!idSig.verified} label={idSig.verified ? t('validateUi.verified') : t('validateUi.notVerified')} /></span>
         )}</h5>
         <ol>
-          <li>Extract kid from token header: <code>{idHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={!!idHeader.kid} /></span></li>
-          <li>Extract alg from token header: <code>{idHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={!!idHeader.alg && idHeader.alg.startsWith('RS')} /></span></li>
-          <li>Extract version from token payload: <code>{idPayload.ver || (idIss?.includes('/v2.0') ? '2.0 (from iss)' : '1.0?')}</code> <span className="ml-2"><StatusIcon ok={true} /></span></li>
-          <li>Extract issuer (iss) from token payload: <code>{idIss || '—'}</code> <span className="ml-2"><StatusIcon ok={!!idIss} /></span></li>
-          <li>Build metadata endpoint: <code>{idMeta || '—'}</code> <span className="ml-2"><StatusIcon ok={!!idMeta} /></span></li>
-          <li>Resolve JWKS URL: <code>{idSig.jwksUrl || idJwks || '—'}</code> <span className="ml-2"><StatusIcon ok={!!(idSig.jwksUrl || idJwks)} /></span></li>
-          <li>Fetch JWKS and find key <code>{idHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={idSig.keyFound} /></span></li>
-          <li>Verify signature with alg <code>{idHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={idSig.verified} /></span></li>
+          <li>{t('validateUi.steps.extractKid')} <code>{idHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={!!idHeader.kid} /></span></li>
+          <li>{t('validateUi.steps.extractAlg')} <code>{idHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={!!idHeader.alg && idHeader.alg.startsWith('RS')} /></span></li>
+          <li>{t('validateUi.steps.extractVersion')} <code>{idPayload.ver || (idIss?.includes('/v2.0') ? '2.0 (from iss)' : '1.0?')}</code> <span className="ml-2"><StatusIcon ok={true} /></span></li>
+          <li>{t('validateUi.steps.extractIssuer')} <code>{idIss || '—'}</code> <span className="ml-2"><StatusIcon ok={!!idIss} /></span></li>
+          <li>{t('validateUi.steps.buildMetadata')} <code>{idMeta || '—'}</code> <span className="ml-2"><StatusIcon ok={!!idMeta} /></span></li>
+          <li>{t('validateUi.steps.resolveJwks')} <code>{idSig.jwksUrl || idJwks || '—'}</code> <span className="ml-2"><StatusIcon ok={!!(idSig.jwksUrl || idJwks)} /></span></li>
+          <li>{t('validateUi.steps.fetchJwksFindKey')} <code>{idHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={idSig.keyFound} /></span></li>
+          <li>{t('validateUi.steps.verifySignature')} <code>{idHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={idSig.verified} /></span></li>
         </ol>
-  {idSig.reason && <p className="mt-2" style={{ color: idSig.verified ? '#16a34a' : '#dc2626' }}>Reason: {idSig.reason}</p>}
-  {idSig.error && <p style={{ color: '#dc2626' }}>Error: {idSig.error}</p>}
+  {idSig.reason && <p className="mt-2" style={{ color: idSig.verified ? '#16a34a' : '#dc2626' }}>{t('validateUi.reason')} {idSig.reason}</p>}
+  {idSig.error && <p style={{ color: '#dc2626' }}>{t('validateUi.error')} {idSig.error}</p>}
         {idSig.publicKeyPem && (
           <details className="mt-2">
-            <summary>Public key (PEM)</summary>
+            <summary>{t('validateUi.publicKeyPem')}</summary>
             <div className="flex align-items-center gap-2 mb-2">
-              <button className="p-button p-button-text p-button-sm" onClick={async (e) => { e.preventDefault(); try { await navigator.clipboard.writeText(idSig.publicKeyPem!); } catch {} }}>Copy</button>
+              <button className="p-button p-button-text p-button-sm" onClick={async (e) => { e.preventDefault(); try { await navigator.clipboard.writeText(idSig.publicKeyPem!); } catch {} }}>{t('validateUi.copy')}</button>
             </div>
             <pre style={{ whiteSpace: 'pre-wrap' }}>{idSig.publicKeyPem}</pre>
           </details>
         )}
-        <h5 className="mt-3">Claim validations</h5>
+        <h5 className="mt-3">{t('validateUi.claimValidations')}</h5>
         <ul>
           <li>
-            aud (audience) should equal your client_id: <code>{String(idPayload.aud)}</code> {clientId ? `(expected ${clientId})` : ''}
+            {t('validateUi.claims.id.aud')} <code>{String(idPayload.aud)}</code> {clientId ? `(expected ${clientId})` : ''}
             <span className="ml-2"><StatusIcon ok={idClaimOk.audOk} /></span>
           </li>
           <li>
-            iss (issuer) should match your authority/tenant: <code>{idPayload.iss || '—'}</code> {tenantId ? `(tenant ${tenantId})` : ''}
+            {t('validateUi.claims.id.iss')} <code>{idPayload.iss || '—'}</code> {tenantId ? `(tenant ${tenantId})` : ''}
             <span className="ml-2"><StatusIcon ok={idClaimOk.issOk} /></span>
           </li>
           <li>
-            exp (expiration) in future: <code>{fmtEpoch(idPayload.exp)}</code>
+            {t('validateUi.claims.id.exp')} <code>{fmtEpoch(idPayload.exp)}</code>
             <span className="ml-2"><StatusIcon ok={idClaimOk.expOk} /></span>
           </li>
           <li>
-            nbf/iat (not before / issued at) reasonable: nbf <code>{fmtEpoch(idPayload.nbf)}</code>, iat <code>{fmtEpoch(idPayload.iat)}</code>
+            {t('validateUi.claims.id.nbfIat')}: nbf <code>{fmtEpoch(idPayload.nbf)}</code>, iat <code>{fmtEpoch(idPayload.iat)}</code>
             <span className="ml-2"><StatusIcon ok={idClaimOk.nbfOk && idClaimOk.iatOk} /></span>
           </li>
           <li>
-            nonce (anti-replay) should match request: <code>{idPayload.nonce || '—'}</code> {expectedNonce ? `(expected ${expectedNonce})` : ''}
+            {t('validateUi.claims.id.nonce')} <code>{idPayload.nonce || '—'}</code> {expectedNonce ? `(expected ${expectedNonce})` : ''}
             <span className="ml-2"><StatusIcon ok={idClaimOk.nonceOk} /></span>
           </li>
         </ul>
@@ -470,68 +471,68 @@ export default function StepValidate(props: Props) {
 
       {/* Access Token section */}
       <div>
-        <h4 className="mt-3">Access Token</h4>
-        <h5 className="mt-2">Signature validation {isGraphAccessToken ? (
+        <h4 className="mt-3">{t('validateUi.accessTokenTitle')}</h4>
+        <h5 className="mt-2">{t('validateUi.signatureValidation')} {isGraphAccessToken ? (
           <span className="ml-2" style={{ color: 'var(--yellow-500)' }}>
-            <span className="pi pi-forward mr-2" aria-label="skipped" />
-            Skipped
+            <span className="pi pi-forward mr-2" aria-label={t('validateUi.skippedAria')} />
+            {t('validateUi.skipped')}
           </span>
         ) : (
           typeof accSig.verified === 'boolean' && (
-            <span className="ml-2"><StatusIcon ok={!!accSig.verified} label={accSig.verified ? 'Verified' : 'Not verified'} /></span>
+            <span className="ml-2"><StatusIcon ok={!!accSig.verified} label={accSig.verified ? t('validateUi.verified') : t('validateUi.notVerified')} /></span>
           )
         )}</h5>
         {!isGraphAccessToken && (
           <>
             <ol>
-              <li>Extract kid from token header: <code>{accessHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accessHeader.kid} /></span></li>
-              <li>Extract alg from token header: <code>{accessHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accessHeader.alg && accessHeader.alg.startsWith('RS')} /></span></li>
-              <li>Extract version from token payload: <code>{accessPayload.ver || (accIss?.includes('/v2.0') ? '2.0 (from iss)' : '1.0?')}</code> <span className="ml-2"><StatusIcon ok={true} /></span></li>
-              <li>Extract issuer (iss) from token payload: <code>{accIss || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accIss} /></span></li>
-              <li>Build metadata endpoint: <code>{accMeta || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accMeta} /></span></li>
-              <li>Resolve JWKS URL: <code>{accSig.jwksUrl || accJwks || '—'}</code> <span className="ml-2"><StatusIcon ok={!!(accSig.jwksUrl || accJwks)} /></span></li>
-              <li>Fetch JWKS and find key <code>{accessHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={accSig.keyFound} /></span></li>
+              <li>{t('validateUi.steps.extractKid')} <code>{accessHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accessHeader.kid} /></span></li>
+              <li>{t('validateUi.steps.extractAlg')} <code>{accessHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accessHeader.alg && accessHeader.alg.startsWith('RS')} /></span></li>
+              <li>{t('validateUi.steps.extractVersion')} <code>{accessPayload.ver || (accIss?.includes('/v2.0') ? '2.0 (from iss)' : '1.0?')}</code> <span className="ml-2"><StatusIcon ok={true} /></span></li>
+              <li>{t('validateUi.steps.extractIssuer')} <code>{accIss || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accIss} /></span></li>
+              <li>{t('validateUi.steps.buildMetadata')} <code>{accMeta || '—'}</code> <span className="ml-2"><StatusIcon ok={!!accMeta} /></span></li>
+              <li>{t('validateUi.steps.resolveJwks')} <code>{accSig.jwksUrl || accJwks || '—'}</code> <span className="ml-2"><StatusIcon ok={!!(accSig.jwksUrl || accJwks)} /></span></li>
+              <li>{t('validateUi.steps.fetchJwksFindKey')} <code>{accessHeader.kid || '—'}</code> <span className="ml-2"><StatusIcon ok={accSig.keyFound} /></span></li>
               <li>
-                Verify signature with alg <code>{accessHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={accSig.verified} /></span>
+                {t('validateUi.steps.verifySignature')} <code>{accessHeader.alg || '—'}</code> <span className="ml-2"><StatusIcon ok={accSig.verified} /></span>
               </li>
             </ol>
             {accSig.reason && (
               <p className="mt-2" style={{ color: accSig.verified ? '#16a34a' : '#dc2626' }}>
-                Reason: {accSig.reason}
+                {t('validateUi.reason')} {accSig.reason}
               </p>
             )}
-            {accSig.error && <p style={{ color: '#dc2626' }}>Error: {accSig.error}</p>}
+            {accSig.error && <p style={{ color: '#dc2626' }}>{t('validateUi.error')} {accSig.error}</p>}
             {accSig.publicKeyPem && (
               <details className="mt-2">
-                <summary>Public key (PEM)</summary>
+                <summary>{t('validateUi.publicKeyPem')}</summary>
                 <div className="flex align-items-center gap-2 mb-2">
-                  <button className="p-button p-button-text p-button-sm" onClick={async (e) => { e.preventDefault(); try { await navigator.clipboard.writeText(accSig.publicKeyPem!); } catch {} }}>Copy</button>
+                  <button className="p-button p-button-text p-button-sm" onClick={async (e) => { e.preventDefault(); try { await navigator.clipboard.writeText(accSig.publicKeyPem!); } catch {} }}>{t('validateUi.copy')}</button>
                 </div>
                 <pre style={{ whiteSpace: 'pre-wrap' }}>{accSig.publicKeyPem}</pre>
               </details>
             )}
           </>
         )}
-        <h5 className="mt-3">Claim validations</h5>
+        <h5 className="mt-3">{t('validateUi.claimValidations')}</h5>
         <ul>
           <li>
-            aud (audience) should equal API/resource: <code>{String(accessPayload.aud)}</code> {isGraphAccessToken ? '(MS Graph API)' : ''}
+            {t('validateUi.claims.access.aud')} <code>{String(accessPayload.aud)}</code> {isGraphAccessToken ? t('validateUi.claims.access.msGraph') : ''}
             <span className="ml-2"><StatusIcon ok={accClaimOk.audOk} /></span>
           </li>
           <li>
-            iss (issuer) should match your tenant issuer: <code>{accessPayload.iss || '—'}</code> {tenantId ? `(tenant ${tenantId})` : ''}
+            {t('validateUi.claims.access.iss')} <code>{accessPayload.iss || '—'}</code> {tenantId ? `(tenant ${tenantId})` : ''}
             <span className="ml-2"><StatusIcon ok={accClaimOk.issOk} /></span>
           </li>
           <li>
-            exp (expiration) in future: <code>{fmtEpoch(accessPayload.exp)}</code>
+            {t('validateUi.claims.access.exp')} <code>{fmtEpoch(accessPayload.exp)}</code>
             <span className="ml-2"><StatusIcon ok={accClaimOk.expOk} /></span>
           </li>
           <li>
-            nbf/iat (not before / issued at) reasonable: nbf <code>{fmtEpoch(accessPayload.nbf)}</code>, iat <code>{fmtEpoch(accessPayload.iat)}</code>
+            {t('validateUi.claims.access.nbfIat')}: nbf <code>{fmtEpoch(accessPayload.nbf)}</code>, iat <code>{fmtEpoch(accessPayload.iat)}</code>
             <span className="ml-2"><StatusIcon ok={accClaimOk.nbfOk && accClaimOk.iatOk} /></span>
           </li>
           <li>
-            scp (scopes) present: <code>{accessPayload.scp || '—'}</code>
+            {t('validateUi.claims.access.scp')} <code>{accessPayload.scp || '—'}</code>
             <span className="ml-2"><StatusIcon ok={accClaimOk.scopesOk} /></span>
           </li>
         </ul>

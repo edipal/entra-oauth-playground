@@ -1,5 +1,5 @@
 "use client";
-import React, {createContext, useContext, useState, ReactNode} from 'react';
+import React, {createContext, useContext, useEffect, useState, ReactNode} from 'react';
 
 // Persisted configuration that users can edit and we keep across sessions
 export type AuthCodePublicClientConfig = {
@@ -8,6 +8,8 @@ export type AuthCodePublicClientConfig = {
   redirectUri?: string;
   scopes?: string;
   apiEndpointUrl?: string;
+  // Streamlined mode: auto-run steps and hide advanced fields in public client flow
+  streamlined?: boolean;
 };
 
 // Runtime (global for the flow) that should NOT be persisted to localStorage
@@ -83,6 +85,8 @@ type SettingsContextValue = {
   // Persisted app settings
   settings: Settings;
   setSettings: (s: Partial<Settings>) => void;
+  // True after localStorage has been read and merged into settings
+  hydrated: boolean;
   // Convenience accessors for the auth code public client config
   authCodePublicClientConfig: AuthCodePublicClientConfig;
   setAuthCodePublicClientConfig: (s: Partial<AuthCodePublicClientConfig> | ((prev: AuthCodePublicClientConfig) => Partial<AuthCodePublicClientConfig>)) => void;
@@ -104,7 +108,8 @@ const defaultAuthCodePublicClientConfig: AuthCodePublicClientConfig = {
   clientId: '',
   redirectUri: '',
   scopes: 'openid profile offline_access',
-  apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me'
+  apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me',
+  streamlined: false
 };
 
 const defaultSettings: Settings = {
@@ -161,24 +166,29 @@ const SettingsContext = createContext<SettingsContextValue | undefined>(undefine
 
 export function SettingsProvider({children}: {children: ReactNode}) {
   // Persisted settings
-  const [settings, setSettingsState] = useState<Settings>(() => {
-    // try to read from localStorage if available
+  // Initialize with defaults for SSR consistency. We'll hydrate from localStorage after mount.
+  const [settings, setSettingsState] = useState<Settings>(defaultSettings);
+  const [hydrated, setHydrated] = useState(false);
+
+  // After mount, read persisted settings (if any) and merge with defaults.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
       const raw = localStorage.getItem('app:settings');
-      if (raw) {
-        // Parse persisted settings and deep-merge nested authCodePublicClient with defaults
-        const parsed = JSON.parse(raw) as Partial<Settings>;
-        const persistedPublic = parsed.authCodePublicClient || {};
-        const mergedPublic = { ...defaultAuthCodePublicClientConfig, ...persistedPublic };
-        const persistedConf = parsed.authCodeConfidentialClient || {};
-        const mergedConf = { ...defaultSettings.authCodeConfidentialClient!, ...persistedConf };
-        return { ...defaultSettings, ...parsed, authCodePublicClient: mergedPublic, authCodeConfidentialClient: mergedConf };
-      }
-    } catch (e) {
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<Settings>;
+      const persistedPublic = parsed.authCodePublicClient || {};
+      const mergedPublic = { ...defaultAuthCodePublicClientConfig, ...persistedPublic };
+      const persistedConf = parsed.authCodeConfidentialClient || {};
+      const mergedConf = { ...defaultSettings.authCodeConfidentialClient!, ...persistedConf };
+      const next = { ...defaultSettings, ...parsed, authCodePublicClient: mergedPublic, authCodeConfidentialClient: mergedConf } as Settings;
+      setSettingsState(next);
+    } catch {
       // ignore
+    } finally {
+      setHydrated(true);
     }
-    return defaultSettings;
-  });
+  }, []);
 
   // In-memory runtime for the current flow (not persisted)
   const [authCodePublicClientRuntime, setRuntimeState] = useState<AuthCodePublicClientRuntime>(defaultAuthCodePublicClientRuntime);
@@ -248,6 +258,7 @@ export function SettingsProvider({children}: {children: ReactNode}) {
   const value: SettingsContextValue = {
     settings,
     setSettings,
+    hydrated,
     authCodePublicClientConfig,
     setAuthCodePublicClientConfig,
     authCodePublicClientRuntime,

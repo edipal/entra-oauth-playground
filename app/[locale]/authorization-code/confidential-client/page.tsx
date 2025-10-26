@@ -14,6 +14,7 @@ import StepValidate from '../public-client/components/StepValidate';
 import StepCallApi from '../public-client/components/StepCallApi';
 import StepSettings from './components/StepSettings';
 import StepTokens from './components/StepTokens';
+import StepAuthentication from './components/StepAuthentication';
 import { randomCodeVerifier, computeS256Challenge } from '@/utils/pkce';
 import { decodeJwt } from '@/utils/jwt';
 import { TranslationUtils } from '@/utils/translation';
@@ -24,12 +25,13 @@ enum StepIndex {
   Overview = 0,
   Settings = 1,
   Pkce = 2,
-  Authorize = 3,
-  Callback = 4,
-  Tokens = 5,
-  Decode = 6,
-  Validate = 7,
-  CallApi = 8
+  Authentication = 3,
+  Authorize = 4,
+  Callback = 5,
+  Tokens = 6,
+  Decode = 7,
+  Validate = 8,
+  CallApi = 9
 }
 
 export default function AuthorizationCodeConfidentialClientPage() {
@@ -46,7 +48,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
     setAuthCodeConfidentialClientConfig,
     authCodeConfidentialClientRuntime,
     setAuthCodeConfidentialClientRuntime,
-    resetAuthCodeConfidentialClientRuntime
+    resetAuthCodeConfidentialClientRuntime,
+    hydrated
   } = useSettings();
 
   const tenantId = authCodeConfidentialClientConfig.tenantId || '';
@@ -106,13 +109,13 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
   // Initialize redirectUri from current origin
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && hydrated) {
       const uri = `${window.location.origin}/callback/auth-code`;
       if (!redirectUri) {
         setAuthCodeConfidentialClientConfig(prev => ({ ...prev, redirectUri: uri }));
       }
     }
-  }, [redirectUri, setAuthCodeConfidentialClientConfig]);
+  }, [redirectUri, setAuthCodeConfidentialClientConfig, hydrated]);
 
   // Validation helpers
   const isGuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s);
@@ -183,8 +186,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
           extractedState: st,
           callbackValidated: (prev.callbackValidated || ok)
         }));
-        setCurrentStep(4);
-        setMaxCompletedStep((m) => Math.max(m, 4));
+        setCurrentStep(5);
+        setMaxCompletedStep((m) => Math.max(m, 5));
       } catch {}
       try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close(); } catch {}
     };
@@ -341,8 +344,9 @@ export default function AuthorizationCodeConfidentialClientPage() {
   // Wizard validation per step
   const validators: Record<StepIndex, () => boolean> = {
     [StepIndex.Overview]: () => true,
-    [StepIndex.Settings]: () => clientIdValid && redirectUriValid && tenantIdValid && (clientAuthMethod === 'secret' ? !!clientSecret : !!privateKeyPem),
+    [StepIndex.Settings]: () => clientIdValid && redirectUriValid && tenantIdValid,
     [StepIndex.Pkce]: () => pkceEnabled ? (!!codeVerifier && !!codeChallenge) : true,
+    [StepIndex.Authentication]: () => (clientAuthMethod === 'secret' ? !!clientSecret : !!privateKeyPem),
     [StepIndex.Authorize]: () => callbackValidated || (!!authCode && (!stateParam || stateParam === extractedState)),
     [StepIndex.Callback]: () => callbackValidated || maxCompletedStep >= StepIndex.Tokens || (!!authCode && (!stateParam || stateParam === extractedState)),
     [StepIndex.Tokens]: () => !!accessToken,
@@ -368,6 +372,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     t('steps.overview'),
     t('steps.settings'),
     t('steps.pkce'),
+    'Authentication',
     t('steps.authorize'),
     t('steps.callback'),
     t('steps.tokens'),
@@ -408,16 +413,6 @@ export default function AuthorizationCodeConfidentialClientPage() {
             setScopes={(v: string) => setAuthCodeConfidentialClientConfig({ scopes: v })}
             pkceEnabled={pkceEnabled}
             setPkceEnabled={(v: boolean) => setAuthCodeConfidentialClientConfig({ pkceEnabled: v })}
-            clientAuthMethod={clientAuthMethod}
-            setClientAuthMethod={(v: 'secret' | 'certificate') => setAuthCodeConfidentialClientConfig({ clientAuthMethod: v })}
-            clientSecret={clientSecret}
-            setClientSecret={(v: string) => setAuthCodeConfidentialClientRuntime({ clientSecret: v })}
-            privateKeyPem={privateKeyPem}
-            setPrivateKeyPem={(v: string) => setAuthCodeConfidentialClientRuntime({ privateKeyPem: v })}
-            certificatePem={certificatePem}
-            setCertificatePem={(v: string) => setAuthCodeConfidentialClientRuntime({ certificatePem: v })}
-            clientAssertionKid={clientAssertionKid}
-            setClientAssertionKid={(v: string) => setAuthCodeConfidentialClientConfig({ clientAssertionKid: v })}
             resolvedAuthEndpoint={resolvedAuthEndpoint}
             resolvedTokenEndpoint={resolvedTokenEndpoint}
             tenantIdValid={tenantIdValid}
@@ -441,6 +436,21 @@ export default function AuthorizationCodeConfidentialClientPage() {
               <p className="mb-3">PKCE is disabled for this flow. You can enable it in Settings.</p>
             </section>
           )
+        )}
+
+        {currentStep === StepIndex.Authentication && (
+          <StepAuthentication
+            clientAuthMethod={clientAuthMethod}
+            setClientAuthMethod={(v: 'secret' | 'certificate') => setAuthCodeConfidentialClientConfig({ clientAuthMethod: v })}
+            clientSecret={clientSecret}
+            setClientSecret={(v: string) => setAuthCodeConfidentialClientRuntime({ clientSecret: v })}
+            privateKeyPem={privateKeyPem}
+            setPrivateKeyPem={(v: string) => setAuthCodeConfidentialClientRuntime({ privateKeyPem: v })}
+            certificatePem={certificatePem}
+            setCertificatePem={(v: string) => setAuthCodeConfidentialClientRuntime({ certificatePem: v })}
+            clientAssertionKid={clientAssertionKid}
+            setClientAssertionKid={(v: string) => setAuthCodeConfidentialClientConfig({ clientAssertionKid: v })}
+          />
         )}
 
         {currentStep === StepIndex.Authorize && (

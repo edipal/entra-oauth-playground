@@ -147,6 +147,63 @@
         "previous": "Previous",
         "next": "Next"
       },
+      "options": {
+        "responseMode": {
+          "query": "query",
+          "form_post": "form_post"
+        },
+        "prompt": {
+          "login": "login",
+          "consent": "consent",
+          "select_account": "select_account",
+          "none": "none"
+        }
+      },
+      "notes": {
+        "accessHeaderNonce": "This access token header contains a <code>nonce</code> field. This is a provider-specific JOSE header and is unrelated to the OIDC <code>nonce</code> claim, which is validated in the ID token payload."
+      },
+      "validateUi": {
+        "graphWarning": "Access tokens for Microsoft Graph (aud <code>{aud}</code>) typically cannot be signature-validated by this client. Only Microsoft Graph can validate their signatures.",
+        "idTokenTitle": "ID Token",
+        "accessTokenTitle": "Access Token",
+        "signatureValidation": "Signature validation",
+        "verified": "Verified",
+        "notVerified": "Not verified",
+        "skipped": "Skipped",
+        "skippedAria": "skipped",
+        "steps": {
+          "extractKid": "Extract kid from token header:",
+          "extractAlg": "Extract alg from token header:",
+          "extractVersion": "Extract version from token payload:",
+          "extractIssuer": "Extract issuer (iss) from token payload:",
+          "buildMetadata": "Build metadata endpoint:",
+          "resolveJwks": "Resolve JWKS URL:",
+          "fetchJwksFindKey": "Fetch JWKS and find key",
+          "verifySignature": "Verify signature with alg"
+        },
+        "reason": "Reason:",
+        "error": "Error:",
+        "publicKeyPem": "Public key (PEM)",
+        "copy": "Copy",
+        "claimValidations": "Claim validations",
+        "claims": {
+          "id": {
+            "aud": "aud (audience) should equal your client_id:",
+            "iss": "iss (issuer) should match your authority/tenant:",
+            "exp": "exp (expiration) in future:",
+            "nbfIat": "nbf/iat (not before / issued at) reasonable:",
+            "nonce": "nonce (anti-replay) should match request:"
+          },
+          "access": {
+            "aud": "aud (audience) should equal API/resource:",
+            "iss": "iss (issuer) should match your tenant issuer:",
+            "exp": "exp (expiration) in future:",
+            "nbfIat": "nbf/iat (not before / issued at) reasonable:",
+            "scp": "scp (scopes) present:",
+            "msGraph": "(MS Graph API)"
+          }
+        }
+      },
       "help": {
         "tenantId": "Directory (tenant) GUID of your Entra ID instance.",
         "clientId": "Application (client) ID of your public client app registration.",

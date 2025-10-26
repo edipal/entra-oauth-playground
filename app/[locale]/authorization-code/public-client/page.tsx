@@ -38,12 +38,13 @@ export default function AuthorizationCodePublicClientPage() {
   // Helper to return literal strings even if they contain {tenant}
   const safeT = (key: string): string => TranslationUtils.safeT(t, key);
   
-  // Wizard state
-  const [currentStep, setCurrentStep] = useState<StepIndex>(StepIndex.Overview);
-  const [maxCompletedStep, setMaxCompletedStep] = useState<StepIndex>(StepIndex.Overview);
-  
   // Settings persisted/global via SettingsContext
-  const { authCodePublicClientConfig, setAuthCodePublicClientConfig, authCodePublicClientRuntime, setAuthCodePublicClientRuntime, resetAuthCodePublicClientRuntime } = useSettings();
+  const { authCodePublicClientConfig, setAuthCodePublicClientConfig, authCodePublicClientRuntime, setAuthCodePublicClientRuntime, resetAuthCodePublicClientRuntime, hydrated } = useSettings();
+  const streamlined = !!authCodePublicClientConfig.streamlined;
+
+  // Wizard state (start at Settings by default; Overview still accessible via steps navigation)
+  const [currentStep, setCurrentStep] = useState<StepIndex>(() => StepIndex.Settings);
+  const [maxCompletedStep, setMaxCompletedStep] = useState<StepIndex>(StepIndex.Overview);
   const tenantId = authCodePublicClientConfig.tenantId!;
   const clientId = authCodePublicClientConfig.clientId!;
   const redirectUri = authCodePublicClientConfig.redirectUri!;
@@ -89,16 +90,18 @@ export default function AuthorizationCodePublicClientPage() {
 
   // Popup window ref
   const popupRef = useRef<Window | null>(null);
+  // Scroll-to-top anchor
+  const topRef = useRef<HTMLDivElement | null>(null);
 
   // Initialize redirectUri from current origin so it works in dev and prod
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && hydrated) {
       const uri = `${window.location.origin}/callback/auth-code`;
       if (!redirectUri) {
         setAuthCodePublicClientConfig(prev => ({ ...prev, redirectUri: uri }));
       }
     }
-  }, [redirectUri, setAuthCodePublicClientConfig]);
+  }, [redirectUri, setAuthCodePublicClientConfig, hydrated]);
 
   // Validation helpers (Settings step) — hoisted before use
   const isGuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s);
@@ -177,9 +180,16 @@ export default function AuthorizationCodePublicClientPage() {
           extractedState: st,
           callbackValidated: (prev.callbackValidated || ok)
         }));
-        // After receiving a code, automatically move to the Callback step
-        setCurrentStep(4);
-        setMaxCompletedStep((m) => Math.max(m, 4));
+        // After receiving a code
+        if (streamlined && ok) {
+          // In streamlined mode with valid callback, jump straight to Tokens
+          setCurrentStep(5);
+          setMaxCompletedStep((m) => Math.max(m, 5));
+        } else {
+          // Otherwise go to Callback step
+          setCurrentStep(4);
+          setMaxCompletedStep((m) => Math.max(m, 4));
+        }
       } catch {
         // ignore parse errors
       }
@@ -191,7 +201,50 @@ export default function AuthorizationCodePublicClientPage() {
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [stateParam, setAuthCodePublicClientRuntime]);
+  }, [stateParam, setAuthCodePublicClientRuntime, streamlined]);
+
+  // Streamlined: when on Tokens step, auto exchange tokens once inputs are ready
+  const autoExchangedRef = useRef(false);
+  const autoAdvancedFromTokensRef = useRef(false);
+  useEffect(() => {
+    if (!streamlined) return;
+    if (currentStep !== StepIndex.Tokens) return;
+    // If already have tokens, advance to Decode
+    if (accessToken && !autoAdvancedFromTokensRef.current) {
+      autoAdvancedFromTokensRef.current = true;
+      setCurrentStep(StepIndex.Decode);
+      setMaxCompletedStep((m) => (Math.max(m as number, StepIndex.Decode as number) as StepIndex));
+      return;
+    }
+    if (autoExchangedRef.current) return;
+    // Trigger exchange if we have enough data
+    if (!exchanging && authCode && clientId && redirectUri && codeVerifier && tokenEndpoint && tenantIdValid) {
+      autoExchangedRef.current = true;
+      void handleExchangeTokens();
+    }
+  }, [streamlined, currentStep, exchanging, authCode, clientId, redirectUri, codeVerifier, tokenEndpoint, tenantIdValid, accessToken]);
+
+  // Streamlined: when on Decode step, auto decode then advance to Validate
+  const autoDecodedRef = useRef(false);
+  const autoAdvancedFromDecodeRef = useRef(false);
+  useEffect(() => {
+    if (!streamlined) return;
+    if (currentStep !== StepIndex.Decode) return;
+    if (!autoDecodedRef.current) {
+      autoDecodedRef.current = true;
+      handleDecodeTokens();
+    }
+    // After a brief tick, move to Validate if we have some decoded content or tokens
+    const hasSomething = !!accessToken || !!idToken;
+    if (hasSomething && !autoAdvancedFromDecodeRef.current) {
+      autoAdvancedFromDecodeRef.current = true;
+      const t = setTimeout(() => {
+        setCurrentStep(StepIndex.Validate);
+        setMaxCompletedStep((m) => (Math.max(m as number, StepIndex.Validate as number) as StepIndex));
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [streamlined, currentStep, accessToken, idToken]);
 
   const openAuthorizePopup = () => {
     if (!authUrlPreview) return;
@@ -315,20 +368,12 @@ export default function AuthorizationCodePublicClientPage() {
     }
   };
 
-  // Reset all fields across steps and restart the flow
-  const handleResetAll = () => {
-    // Reset persisted config to defaults
-    setAuthCodePublicClientConfig({
-      tenantId: '',
-      clientId: '',
-      redirectUri: '',
-      scopes: 'openid profile offline_access',
-      apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me'
-    });
+  // Start a new flow WITHOUT altering persisted settings in localStorage
+  const handleResetFlow = () => {
     // Reset runtime (non-persisted)
     resetAuthCodePublicClientRuntime();
-    // Reset local component state
-    setCurrentStep(StepIndex.Overview);
+    // Reset local component state and wizard progression
+    setCurrentStep(StepIndex.Settings);
     setMaxCompletedStep(StepIndex.Overview);
     setResponseMode('');
     setPrompt('');
@@ -341,6 +386,28 @@ export default function AuthorizationCodePublicClientPage() {
     setApiResponseText('');
     try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close(); } catch {}
     popupRef.current = null;
+    // Reset streamlined automation flags
+    try {
+      autoExchangedRef.current = false;
+      autoDecodedRef.current = false;
+      (autoAdvancedFromTokensRef as any)?.current !== undefined && ((autoAdvancedFromTokensRef as any).current = false);
+      (autoAdvancedFromDecodeRef as any)?.current !== undefined && ((autoAdvancedFromDecodeRef as any).current = false);
+    } catch {}
+  };
+
+  // Start a new flow AND erase persisted settings for this flow (localStorage)
+  const handleEraseAll = () => {
+    // Reset persisted config to defaults (this writes to localStorage)
+    setAuthCodePublicClientConfig({
+      tenantId: '',
+      clientId: '',
+      redirectUri: '',
+      scopes: 'openid profile offline_access',
+      apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me',
+      streamlined: false
+    });
+    // Then do a normal flow reset
+    handleResetFlow();
   };
 
   // Wizard validation per step
@@ -366,6 +433,14 @@ export default function AuthorizationCodePublicClientPage() {
   };
   const goNext = () => {
     if (!canNext) return;
+    // Special streamlined behavior: from Settings, auto-generate PKCE and skip the PKCE UI
+    if (streamlined && currentStep === StepIndex.Settings) {
+      // Generate PKCE (async) and jump to Authorize
+      void handleGeneratePkce();
+      setCurrentStep(StepIndex.Authorize);
+      setMaxCompletedStep((m) => (Math.max(m as number, StepIndex.Authorize as number) as StepIndex));
+      return;
+    }
     setCurrentStep((s) => {
       const next = Math.min(StepIndex.CallApi, (s as number) + 1) as StepIndex;
       setMaxCompletedStep((m) => (Math.max(m as number, next as number) as StepIndex));
@@ -391,8 +466,17 @@ export default function AuthorizationCodePublicClientPage() {
       if (idx <= (maxCompletedStep as number) || idx <= (currentStep as number)) setCurrentStep(idx as StepIndex);
     }
   }));
+  // When step changes, scroll to top of the scrollable container
+  useEffect(() => {
+    try {
+      topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Fallback for environments where scrollIntoView doesn't affect the intended container
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {}
+  }, [currentStep]);
   return (
     <div className="p-4">
+      <div ref={topRef} />
       <Card header={
         <div className="flex align-items-center gap-2">
           <span className="p-card-title">{t('title')}</span>
@@ -402,9 +486,21 @@ export default function AuthorizationCodePublicClientPage() {
             icon="pi pi-undo"
             rounded
             severity="info"
-            onClick={handleResetAll}
-            aria-label="Reset all"
-            title="Reset all"
+            onClick={handleResetFlow}
+            aria-label="Reset"
+            title="Reset (keep settings)"
+            style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
+          />
+          <Button
+            type="button"
+            className="shadow-2"
+            icon="pi pi-eraser"
+            rounded
+            severity="danger"
+            onClick={handleEraseAll}
+            aria-label="Erase"
+            title="Erase settings and reset"
+            style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
           />
         </div>
       }>
@@ -427,6 +523,8 @@ export default function AuthorizationCodePublicClientPage() {
             redirectUri={redirectUri}
             scopes={scopes}
             setScopes={(v) => setAuthCodePublicClientConfig({ scopes: v })}
+            streamlined={streamlined}
+            setStreamlined={(v) => setAuthCodePublicClientConfig({ streamlined: v })}
             resolvedAuthEndpoint={resolvedAuthEndpoint}
             resolvedTokenEndpoint={resolvedTokenEndpoint}
             tenantIdValid={tenantIdValid}
@@ -462,6 +560,7 @@ export default function AuthorizationCodePublicClientPage() {
             setLoginHint={setLoginHint}
             authUrlPreview={authUrlPreview}
             onOpenPopup={openAuthorizePopup}
+            hideAdvanced={streamlined}
           />
         )}
 
