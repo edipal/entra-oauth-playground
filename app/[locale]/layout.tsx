@@ -56,8 +56,23 @@ export default async function LocaleLayout({
     return (
         <>
           <Providers locale={locale} messages={messages} timeZone={timeZone}>
+            {/* App-wide top header spanning sidebar and main content */}
+            <header className="app-header">
+              <div className="app-header-inner">OAuth Playground</div>
+            </header>
+
+            {/* Left navigation sidebar */}
             <Sidebar locale={locale} />
-            <ScrollPanel style={{height: '100vh', marginLeft: 416}} className="p-0">
+
+            {/* Main scrollable content area */}
+            <ScrollPanel
+              style={{
+                height: 'calc(100vh - var(--header-height))',
+                marginLeft: 416,
+                marginTop: 'var(--header-height)'
+              }}
+              className="p-0"
+            >
               {children}
             </ScrollPanel>
           </Providers>

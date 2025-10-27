@@ -18,11 +18,11 @@ export default function Sidebar({locale}: {locale: string}) {
       label: t('authorizationCode'),
       items: [
         {
-          label: t('authorizationCodePublicClient'),
+          label: t('publicClient'),
           command: () => router.push(`/${locale}/authorization-code/public-client`)
         },
         {
-          label: t('authorizationCodeConfidentialClient'),
+          label: t('confidentialClient'),
           command: () => router.push(`/${locale}/authorization-code/confidential-client`)
         }
       ]
@@ -40,7 +40,6 @@ export default function Sidebar({locale}: {locale: string}) {
 
   return (
     <aside className="sidebar p-3">
-      <div className="sidebar-header mb-3">OAuth Playground</div>
       <PanelMenu model={items} />
     </aside>
   );

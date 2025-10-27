@@ -10,8 +10,8 @@
   "Sidebar": {
     "home": "Startseite",
     "authorizationCode": "Authorization Code",
-    "authorizationCodePublicClient": "Authorization Code - Public Client",
-    "authorizationCodeConfidentialClient": "Authorization Code - Confidential Client",
+    "publicClient": "Public Client",
+    "confidentialClient": "Confidential Client",
     "settings": "Einstellungen",
     "language": "Sprache",
     "switchTo": "Wechseln zu {lang}"

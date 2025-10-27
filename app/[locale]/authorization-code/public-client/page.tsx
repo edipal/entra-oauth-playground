@@ -505,7 +505,7 @@ export default function AuthorizationCodePublicClientPage() {
         </div>
       }>
         {/* Steps header */}
-        <div className="mb-4">
+        <div className="step-header">
           <Steps model={stepItems} activeIndex={currentStep} readOnly={false} />
         </div>
 

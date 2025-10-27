@@ -2,6 +2,7 @@
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
+  --header-height: 56px;
 }
 
 html, body {
@@ -23,8 +24,8 @@ a {
 .sidebar {
   position: fixed;
   left: 0;
-  top: 0;
-  height: 100vh;
+  top: var(--header-height);
+  height: calc(100vh - var(--header-height));
   width: 416px;
   box-sizing: border-box;
 }
@@ -38,8 +39,33 @@ a {
   min-width: 0;
 }
 
+/* App header that spans the entire width */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  background: var(--background);
+  border-bottom: 1px solid #e5e7eb; /* light gray */
+  z-index: 1000;
+}
+.app-header-inner {
+  font-weight: 700;
+  margin-left: 1rem;
+}
+
 /* Ensure PanelMenu items can wrap long labels */
 .p-panelmenu .p-menuitem-link,
 .p-panelmenu .p-menuitem-text {
   white-space: normal;
 }
+
+/* Align PrimeReact Card header content with body padding */
+.p-card .p-card-header { padding: 1.25rem 1.25rem 0 1.25rem; }
+.p-card .p-card-body { padding-top: 1rem; }
+
+/* Add more space above and below the steps bar */
+.step-header { margin: 1rem 0 2rem 0; }
