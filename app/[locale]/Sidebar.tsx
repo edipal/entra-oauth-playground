@@ -40,7 +40,12 @@ export default function Sidebar({locale}: {locale: string}) {
 
   return (
     <aside className="sidebar p-3">
-      <PanelMenu model={items} />
+      {/* allow multiple panels to remain open so clicking an entry doesn't collapse the menu */}
+      {/* PanelMenu fills the (now narrower) sidebar */}
+      <PanelMenu
+        model={items}
+        multiple
+      />
     </aside>
   );
 }

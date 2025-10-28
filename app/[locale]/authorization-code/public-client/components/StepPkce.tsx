@@ -22,35 +22,45 @@ export default function StepPkce({ codeVerifier, setCodeVerifier, codeChallenge,
   const showCodeChallengeInvalid = !hasCodeChallenge || codeChallengeValid === false;
   return (
     <section>
-      <h3 className="mt-0 mb-3">{t('sections.pkce.title')}</h3>
-  <p className="mb-3">{t('sections.pkce.description')}</p>
+      <p className="mb-3">{t('sections.pkce.description')}</p>
       <div className="mb-4 surface-0 py-3 px-0 border-round">
         <div className="grid formgrid p-fluid gap-3">
-          <div className="col-12 md:col-8">
-          <LabelWithHelp id="codeVerifier" text={t('labels.codeVerifier')} help={t('help.codeVerifier')} />
-          <div className="flex gap-2 align-items-center">
-            <InputText id="codeVerifier" className={`flex-1${showCodeVerifierInvalid ? ' p-invalid' : ''}`} value={codeVerifier} onChange={(e) => setCodeVerifier(e.target.value)} placeholder={t('placeholders.codeVerifier')} />
-            <Button
-              type="button"
-              icon="pi pi-refresh"
-              onClick={onGeneratePkce}
-              rounded
-              severity="info"
-              className="shadow-2"
-              aria-label={t('buttons.generate')}
-              title={t('buttons.generate')}
-            />
+          <div className="col-12 md:col-12">
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.75rem' }}>
+              <div style={{ textAlign: 'left' }}>
+                <LabelWithHelp id="codeVerifier" text={t('labels.codeVerifier')} help={t('help.codeVerifier')} />
+              </div>
+              <div>
+                <div className="flex gap-2 align-items-center">
+                  <InputText id="codeVerifier" className={`flex-1${showCodeVerifierInvalid ? ' p-invalid' : ''}`} value={codeVerifier} onChange={(e) => setCodeVerifier(e.target.value)} placeholder={t('placeholders.codeVerifier')} style={{ fontSize: '1.15rem', width: '100%' }} />
+                  <Button
+                    type="button"
+                    icon="pi pi-refresh"
+                    onClick={onGeneratePkce}
+                    className="shadow-2"
+                    aria-label={t('buttons.generate')}
+                    title={t('buttons.generate')}
+                    style={{ width: '2rem', height: '2rem', minWidth: '2rem', padding: '0.45rem' }}
+                  />
+                </div>
+                {showCodeVerifierInvalid && (
+                  <small className="p-error block mt-1">{t('errors.codeVerifierRequired')}</small>
+                )}
+              </div>
+            </div>
           </div>
-            {showCodeVerifierInvalid && (
-              <small className="p-error block mt-1">{t('errors.codeVerifierRequired')}</small>
-            )}
-          </div>
-          <div className="col-12 md:col-8">
-          <LabelWithHelp id="codeChallenge" text={t('labels.codeChallenge')} help={t('help.codeChallenge')} />
-          <InputText id="codeChallenge" value={codeChallenge} onChange={() => {}} placeholder={t('placeholders.codeChallenge')} readOnly className={showCodeChallengeInvalid ? 'p-invalid' : ''} />
-          {showCodeChallengeInvalid && (
-            <small className="p-error block mt-1">{t('errors.codeChallengeRequired')}</small>
-          )}
+          <div className="col-12 md:col-12">
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.75rem' }}>
+              <div style={{ textAlign: 'left' }}>
+                <LabelWithHelp id="codeChallenge" text={t('labels.codeChallenge')} help={t('help.codeChallenge')} />
+              </div>
+              <div>
+                <InputText id="codeChallenge" value={codeChallenge} onChange={() => {}} placeholder={t('placeholders.codeChallenge')} readOnly className={showCodeChallengeInvalid ? 'p-invalid' : ''} style={{ fontSize: '1.15rem', width: '100%' }} />
+                {showCodeChallengeInvalid && (
+                  <small className="p-error block mt-1">{t('errors.codeChallengeRequired')}</small>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

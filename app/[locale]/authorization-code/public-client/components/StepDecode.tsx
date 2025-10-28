@@ -27,19 +27,59 @@ export default function StepDecode({ accessToken, idToken, decodedAccessHeader, 
     } catch {}
     return t(key as any);
   };
+  // Compute rows from content lines so areas grow to show all content
+  const calcRows = (value: string, minRows: number) => {
+    try {
+      const lines = (value ?? '').split('\n').length;
+      return Math.max(minRows, (lines + 1) || 1);
+    } catch {
+      return minRows;
+    }
+  };
+  const rowsAccessHeader = useMemo(() => calcRows(decodedAccessHeader, 6), [decodedAccessHeader]);
+  const rowsIdHeader = useMemo(() => calcRows(decodedIdHeader, 6), [decodedIdHeader]);
+  const rowsAccessPayload = useMemo(() => calcRows(decodedAccessPayload, 10), [decodedAccessPayload]);
+  const rowsIdPayload = useMemo(() => calcRows(decodedIdPayload, 10), [decodedIdPayload]);
   return (
     <section>
-      <h3 className="mt-0 mb-3">{t('sections.decode.title')}</h3>
       <p className="mb-3">{t('sections.decode.description')}</p>
       <div className="mb-4 surface-0 py-3 px-0 border-round">
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
-            <LabelWithHelp id="accessToken" text={t('labels.accessToken')} help={t('help.accessToken')} />
-            <InputTextarea id="accessToken" rows={3} autoResize value={accessToken} readOnly />
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'start', columnGap: '0.75rem', width: '100%' }}>
+              <div style={{ textAlign: 'left' }}>
+                <LabelWithHelp id="accessToken" text={t('labels.accessToken')} help={t('help.accessToken')} />
+              </div>
+              <div>
+                <InputTextarea
+                  id="accessToken"
+                  rows={5}
+                  autoResize={false}
+                  value={accessToken}
+                  readOnly
+                  wrap="soft"
+                  style={{ width: '100%', whiteSpace: 'pre-wrap', overflowY: 'auto', maxHeight: '12rem', resize: 'vertical' }}
+                />
+              </div>
+            </div>
           </div>
           <div className="col-12">
-            <LabelWithHelp id="idToken" text={t('labels.idToken')} help={t('help.idToken')} />
-            <InputTextarea id="idToken" rows={3} autoResize value={idToken} readOnly />
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'start', columnGap: '0.75rem', width: '100%' }}>
+              <div style={{ textAlign: 'left' }}>
+                <LabelWithHelp id="idToken" text={t('labels.idToken')} help={t('help.idToken')} />
+              </div>
+              <div>
+                <InputTextarea
+                  id="idToken"
+                  rows={5}
+                  autoResize={false}
+                  value={idToken}
+                  readOnly
+                  wrap="soft"
+                  style={{ width: '100%', whiteSpace: 'pre-wrap', overflowY: 'auto', maxHeight: '12rem', resize: 'vertical' }}
+                />
+              </div>
+            </div>
           </div>
           <div className="col-12 flex gap-2 mt-3 mb-3">
             <Button type="button" label={t('buttons.decode')} icon="pi pi-code" onClick={onDecodeTokens} disabled={!accessToken && !idToken} />
@@ -50,7 +90,13 @@ export default function StepDecode({ accessToken, idToken, decodedAccessHeader, 
               {/* Row 1: headers — keep order consistent with tokens (Access, then ID) */}
               <div>
                 <LabelWithHelp id="accessHeader" text={t('labels.accessHeader')} help={t('help.accessHeader')} />
-                <InputTextarea id="accessHeader" rows={6} autoResize value={decodedAccessHeader} />
+                <InputTextarea
+                  id="accessHeader"
+                  rows={rowsAccessHeader}
+                  autoResize={false}
+                  value={decodedAccessHeader}
+                  style={{ width: '100%', whiteSpace: 'pre-wrap', overflowY: 'hidden', resize: 'none' }}
+                />
                 {/* Hint: Some providers include a JOSE 'nonce' header in access tokens; not used for OIDC nonce validation */}
                 {useMemo(() => {
                   try {
@@ -76,16 +122,34 @@ export default function StepDecode({ accessToken, idToken, decodedAccessHeader, 
               </div>
               <div>
                 <LabelWithHelp id="idHeader" text={t('labels.idHeader')} help={t('help.idHeader')} />
-                <InputTextarea id="idHeader" rows={6} autoResize value={decodedIdHeader} />
+                <InputTextarea
+                  id="idHeader"
+                  rows={rowsIdHeader}
+                  autoResize={false}
+                  value={decodedIdHeader}
+                  style={{ width: '100%', whiteSpace: 'pre-wrap', overflowY: 'hidden', resize: 'none' }}
+                />
               </div>
               {/* Row 2: payloads (aligned with headers) */}
               <div>
                 <LabelWithHelp id="accessPayload" text={t('labels.accessPayload')} help={t('help.accessPayload')} />
-                <InputTextarea id="accessPayload" rows={10} autoResize value={decodedAccessPayload} />
+                <InputTextarea
+                  id="accessPayload"
+                  rows={rowsAccessPayload}
+                  autoResize={false}
+                  value={decodedAccessPayload}
+                  style={{ width: '100%', whiteSpace: 'pre-wrap', overflowY: 'hidden', resize: 'none' }}
+                />
               </div>
               <div>
                 <LabelWithHelp id="idPayload" text={t('labels.idPayload')} help={t('help.idPayload')} />
-                <InputTextarea id="idPayload" rows={10} autoResize value={decodedIdPayload} />
+                <InputTextarea
+                  id="idPayload"
+                  rows={rowsIdPayload}
+                  autoResize={false}
+                  value={decodedIdPayload}
+                  style={{ width: '100%', whiteSpace: 'pre-wrap', overflowY: 'hidden', resize: 'none' }}
+                />
               </div>
             </div>
           </div>

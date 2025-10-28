@@ -8,13 +8,19 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
 import Sidebar from './Sidebar';
+import Image from 'next/image';
 import {Providers} from '../../src/components/Providers';
-import {ScrollPanel} from 'primereact/scrollpanel';
+// Use native scrolling for the main content area to avoid duplicate scrollbars
 
 export const metadata: Metadata = {
-  title: 'Next.js + PrimeReact + i18n',
-  description: 'Skeleton app with next-intl and PrimeReact, deploy-ready for Vercel.'
+  title: 'ENTRA OAuth Playground',
+  description: 'Playground to experiment with OAuth flows and Microsoft Entra ID',
+  icons: {
+    icon: '/logo.png'
+  }
 };
+
+
 
 export default async function LocaleLayout({
   children,
@@ -58,23 +64,29 @@ export default async function LocaleLayout({
           <Providers locale={locale} messages={messages} timeZone={timeZone}>
             {/* App-wide top header spanning sidebar and main content */}
             <header className="app-header">
-              <div className="app-header-inner">OAuth Playground</div>
+              <div className="app-header-inner">
+                <div className="app-logo">
+                  <Image src="/logo.png" alt="OAuth Playground logo" width={40} height={40} priority />
+                </div>
+                <div className="app-title">ENTRA OAuth Playground</div>
+              </div>
             </header>
 
             {/* Left navigation sidebar */}
             <Sidebar locale={locale} />
 
-            {/* Main scrollable content area */}
-            <ScrollPanel
+            {/* Main scrollable content area (use native scrolling to avoid duplicate scrollbars) */}
+            <main
               style={{
                 height: 'calc(100vh - var(--header-height))',
-                marginLeft: 416,
-                marginTop: 'var(--header-height)'
+                marginLeft: 'var(--sidebar-width)',
+                marginTop: 'var(--header-height)',
+                overflow: 'auto'
               }}
               className="p-0"
             >
               {children}
-            </ScrollPanel>
+            </main>
           </Providers>
         </>
     );

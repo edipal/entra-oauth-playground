@@ -478,30 +478,29 @@ export default function AuthorizationCodePublicClientPage() {
     <div className="p-4">
       <div ref={topRef} />
       <Card header={
-        <div className="flex align-items-center gap-2">
-          <span className="p-card-title">{t('title')}</span>
-          <Button
-            type="button"
-            className="shadow-2"
-            icon="pi pi-undo"
-            rounded
-            severity="info"
-            onClick={handleResetFlow}
-            aria-label="Reset"
-            title="Reset (keep settings)"
-            style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
-          />
-          <Button
-            type="button"
-            className="shadow-2"
-            icon="pi pi-eraser"
-            rounded
-            severity="danger"
-            onClick={handleEraseAll}
-            aria-label="Erase"
-            title="Erase settings and reset"
-            style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
-          />
+        <div className="flex w-full align-items-center justify-content-between">
+          <h2>{t('title')}</h2>
+          <div className="flex align-items-center gap-2">
+            <Button
+              type="button"
+              className="shadow-2"
+              icon="pi pi-undo"
+              onClick={handleResetFlow}
+              aria-label="Reset"
+              title="Reset (keep settings)"
+              style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
+            />
+            <Button
+              type="button"
+              className="shadow-2"
+              icon="pi pi-eraser"
+              severity="danger"
+              onClick={handleEraseAll}
+              aria-label="Erase"
+              title="Erase settings and reset"
+              style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
+            />
+          </div>
         </div>
       }>
         {/* Steps header */}

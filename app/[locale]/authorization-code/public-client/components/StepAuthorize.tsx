@@ -39,7 +39,6 @@ export default function StepAuthorize({ responseType, stateParam, setStateParam,
   ];
   return (
     <section>
-      <h3 className="mt-0 mb-3">{t('sections.authorize.title')}</h3>
       <p className="mb-3">{t('sections.authorize.description')}</p>
       {/* Editable settings provided by the user */}
       <div className="mb-4 surface-0 py-3 px-0 border-round">
@@ -47,60 +46,94 @@ export default function StepAuthorize({ responseType, stateParam, setStateParam,
         <p className="mb-3 text-sm opacity-75">{t('sections.settings.userProvidedDescription')}</p>
 
         <div className="grid formgrid p-fluid gap-3">
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="responseType" text={t('labels.responseType')} help={t('help.responseType')} />
-            <InputText id="responseType" value={responseType} readOnly />
-          </div>
-
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="state" text={t('labels.state')} help={t('help.state')} />
-            <div className="flex gap-2 align-items-center">
-              <InputText id="state" className="flex-1" value={stateParam} onChange={(e) => setStateParam(e.target.value)} placeholder={t('placeholders.state')} />
-              <Button
-                type="button"
-                icon="pi pi-refresh"
-                onClick={onGenerateState}
-                rounded
-                severity="info"
-                className="shadow-2"
-                aria-label={t('buttons.generate')}
-                title={t('buttons.generate')}
-              />
+          <div className="col-12">
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(10rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.5rem' }}>
+              <div style={{ textAlign: 'left' }}>
+                <LabelWithHelp id="responseType" text={t('labels.responseType')} help={t('help.responseType')} />
+              </div>
+              <div>
+                <InputText id="responseType" value={responseType} readOnly style={{ fontSize: '1.15rem', width: '100%' }} />
+              </div>
             </div>
           </div>
 
-          <div className="col-12 md:col-6">
-            <LabelWithHelp id="nonce" text={t('labels.nonce')} help={t('help.nonce')} />
-            <div className="flex gap-2 align-items-center">
-              <InputText id="nonce" className="flex-1" value={nonce} onChange={(e) => setNonce(e.target.value)} placeholder={t('placeholders.nonce')} />
-              <Button
-                type="button"
-                icon="pi pi-refresh"
-                onClick={onGenerateNonce}
-                rounded
-                severity="info"
-                className="shadow-2"
-                aria-label={t('buttons.generate')}
-                title={t('buttons.generate')}
-              />
+          <div className="col-12">
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(10rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.5rem' }}>
+              <div style={{ textAlign: 'left' }}>
+                <LabelWithHelp id="state" text={t('labels.state')} help={t('help.state')} />
+              </div>
+              <div>
+                <div className="flex gap-2 align-items-center">
+                  <InputText id="state" value={stateParam} onChange={(e) => setStateParam(e.target.value)} placeholder={t('placeholders.state')} style={{ fontSize: '1.15rem', width: '100%' }} />
+                  <Button
+                    type="button"
+                    icon="pi pi-refresh"
+                    onClick={onGenerateState}
+                    className="shadow-2"
+                    aria-label={t('buttons.generate')}
+                    title={t('buttons.generate')}
+                    style={{ width: '2rem', height: '2rem', minWidth: '2rem', padding: '0.45rem' }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-12">
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(10rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.5rem' }}>
+              <div style={{ textAlign: 'left' }}>
+                <LabelWithHelp id="nonce" text={t('labels.nonce')} help={t('help.nonce')} />
+              </div>
+              <div>
+                <div className="flex gap-2 align-items-center">
+                  <InputText id="nonce" value={nonce} onChange={(e) => setNonce(e.target.value)} placeholder={t('placeholders.nonce')} style={{ fontSize: '1.15rem', width: '100%' }} />
+                  <Button
+                    type="button"
+                    icon="pi pi-refresh"
+                    onClick={onGenerateNonce}
+                    className="shadow-2"
+                    aria-label={t('buttons.generate')}
+                    title={t('buttons.generate')}
+                    style={{ width: '2rem', height: '2rem', minWidth: '2rem', padding: '0.45rem' }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
           {!hideAdvanced && (
             <>
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="responseMode" text={t('labels.responseMode')} help={t('help.responseMode')} />
-                <Dropdown id="responseMode" value={responseMode} onChange={(e) => setResponseMode(e.value)} options={responseModeOptions} placeholder={t('placeholders.selectMethod')} />
+              <div className="col-12">
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(10rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.5rem' }}>
+                  <div style={{ textAlign: 'left' }}>
+                    <LabelWithHelp id="responseMode" text={t('labels.responseMode')} help={t('help.responseMode')} />
+                  </div>
+                  <div>
+                    <Dropdown id="responseMode" value={responseMode} onChange={(e) => setResponseMode(e.value)} options={responseModeOptions} placeholder={t('placeholders.selectMethod')} style={{ width: '100%', fontSize: '0.85rem' }} panelStyle={{ fontSize: '0.85rem' }} />
+                  </div>
+                </div>
               </div>
 
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="prompt" text={t('labels.prompt')} help={t('help.prompt')} />
-                <Dropdown id="prompt" value={prompt} onChange={(e) => setPrompt(e.value)} options={promptOptions} placeholder={t('placeholders.selectMethod')} />
+              <div className="col-12">
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(10rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.5rem' }}>
+                  <div style={{ textAlign: 'left' }}>
+                    <LabelWithHelp id="prompt" text={t('labels.prompt')} help={t('help.prompt')} />
+                  </div>
+                  <div>
+                    <Dropdown id="prompt" value={prompt} onChange={(e) => setPrompt(e.value)} options={promptOptions} placeholder={t('placeholders.selectMethod')} style={{ width: '100%', fontSize: '0.85rem' }} panelStyle={{ fontSize: '0.85rem' }} />
+                  </div>
+                </div>
               </div>
 
-              <div className="col-12 md:col-6">
-                <LabelWithHelp id="loginHint" text={t('labels.loginHint')} help={t('help.loginHint')} />
-                <InputText id="loginHint" value={loginHint} onChange={(e) => setLoginHint(e.target.value)} placeholder={t('placeholders.loginHint')} />
+              <div className="col-12">
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(10rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.5rem' }}>
+                  <div style={{ textAlign: 'left' }}>
+                    <LabelWithHelp id="loginHint" text={t('labels.loginHint')} help={t('help.loginHint')} />
+                  </div>
+                  <div>
+                    <InputText id="loginHint" value={loginHint} onChange={(e) => setLoginHint(e.target.value)} placeholder={t('placeholders.loginHint')} style={{ fontSize: '1.15rem', width: '100%' }} />
+                  </div>
+                </div>
               </div>
             </>
           )}
@@ -109,13 +142,11 @@ export default function StepAuthorize({ responseType, stateParam, setStateParam,
 
       {/* Read-only resolved values */}
       <div className="surface-0 py-3 px-0 border-round">
-        <h4 className="mt-0 mb-2">{t('sections.settings.resolvedTitle')}</h4>
-        <p className="mb-3 text-sm opacity-75">{t('sections.settings.resolvedDescription')}</p>
+        <h4 className="mt-0 mb-3">{t('help.authUrlPreview')}</h4>
 
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
-            <LabelWithHelp id="authUrlPreview" text={t('labels.authUrlPreview')} help={t('help.authUrlPreview')} />
-            <InputTextarea id="authUrlPreview" rows={3} autoResize value={authUrlPreview} readOnly />
+            <InputTextarea id="authUrlPreview" rows={6} autoResize value={authUrlPreview} readOnly />
           </div>
 
           <div className="col-12">

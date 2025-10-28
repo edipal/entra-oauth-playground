@@ -7,8 +7,13 @@ import 'primeflex/primeflex.css';
 
 export const metadata: Metadata = {
   title: 'App Root',
-  description: 'Root layout for redirect route'
+  description: 'Root layout for redirect route',
+  icons: {
+    icon: '/logo.png'
+  }
 };
+
+
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (

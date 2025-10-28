@@ -5,7 +5,6 @@ export default function StepOverview({ fallbackFlowDiagram = '' }: { fallbackFlo
   const t = useTranslations('AuthorizationCode.PublicClient');
   return (
     <section>
-      <h3 className="mt-0 mb-3">{t('sections.settings.flowPanelTitle')}</h3>
       <p className="mb-3">{t('sections.settings.flowIntro')}</p>
       {(() => {
         const keyPath = 'sections.settings.flowDiagram';
