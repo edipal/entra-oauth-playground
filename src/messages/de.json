@@ -45,7 +45,7 @@
         "settings": {
           "description": "Konfigurieren Sie Ihre Umgebung für den OAuth-Flow. Geben Sie Ihren Entra-Tenant (GUID) und die Public-Client-ID (GUID) an. Die Redirect-URI wird automatisch aus dem aktuellen Origin ermittelt (schreibgeschützt) und muss in Ihrer App registriert sein. Scopes bestimmen, worum Sie um Zustimmung gebeten werden.",
           "userProvidedTitle": "Vom Benutzer bereitgestellte Einstellungen",
-          "userProvidedDescription": "Diese Felder können von Ihnen angepasst werden und werden zum Erstellen der Autorisierungsanfrage verwendet.",
+          "userProvidedDescription": "Diese Felder können von Ihnen angepasst werden und werden im gesamten Ablauf verwendet — beispielsweise zum Erstellen der Autorisierungsanfrage, beim Token-Tausch und in anderen Schritten, die Client- oder Tenant-Konfiguration benötigen.",
           "localStorageNotice": "Diese Werte werden in Ihrem Browser im lokalen Speicher (localStorage) gespeichert, um die Eingabe zu erleichtern.",
           "resolvedTitle": "Ermittelte (schreibgeschützte) Werte",
           "resolvedDescription": "Diese Werte werden aus dem Tenant und anderen Eingaben abgeleitet. Sie werden nur zur Anzeige dargestellt und können hier nicht geändert werden.",

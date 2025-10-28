@@ -1,6 +1,8 @@
 "use client";
+import React, { useId } from 'react';
 import {InputText} from 'primereact/inputtext';
 import {InputSwitch} from 'primereact/inputswitch';
+import { Tooltip } from 'primereact/tooltip';
 // Accordion removed: render sections directly
 import {useTranslations} from 'next-intl';
 import LabelWithHelp from '@/components/LabelWithHelp';
@@ -47,18 +49,50 @@ export default function StepSettings(props: Props) {
     }
   };
 
+    // id used for the local-storage info tooltip
+    const localStorageIconId = useId();
+
   return (
     <section>
       <p className="mb-3">{t('sections.settings.description')}</p>
 
       <div className="mb-6">
-        <h4 className="mb-2">{maybeT('sections.settings.userProvidedTitle', 'User-provided settings')}</h4>
-        <p className="mb-3 text-sm opacity-75">{maybeT('sections.settings.userProvidedDescription', 'These fields are configurable by you and are used to build the authorization request.')}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h4
+            className="mt-3"
+            style={{
+              margin: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              lineHeight: '1.25',
+              verticalAlign: 'middle',
+              paddingTop: '2px'
+            }}
+          >
+            {maybeT('sections.settings.userProvidedTitle', 'User-provided settings')}
+          </h4>
 
-        <div className="mb-3 flex gap-3 align-items-start">
-          <span className="mr-2 flex align-items-center justify-content-center" style={{ backgroundColor: 'var(--blue-500)', color: 'white', width: '1.25rem', height: '1.25rem', borderRadius: '999px', fontSize: '0.9rem', marginTop: '0.05rem' }} aria-hidden="true">i</span>
-          <p className="mb-3 text-sm opacity-75" style={{ margin: 0 }}>{maybeT('sections.settings.localStorageNotice', "These values will be saved in your browser's local storage for convenience.")}</p>
+          <div style={{ display: 'flex', alignItems: 'center', marginLeft: '0.5rem' }}>
+            <i
+              id={localStorageIconId}
+              className="pi pi-exclamation-circle p-ml-3 mt-3"
+              aria-label={maybeT('sections.settings.localStorageNotice', "These values will be saved in your browser's local storage for convenience.")}
+              role="img"
+              style={{
+                color: 'var(--yellow-500)',
+                fontSize: '1rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                verticalAlign: 'middle',
+                lineHeight: '1',
+                alignSelf: 'center'
+              }}
+            />
+            <Tooltip target={`#${localStorageIconId}`} content={maybeT('sections.settings.localStorageNotice', "These values will be saved in your browser's local storage for convenience.")} style={{ fontSize: '0.85rem' }} />
+          </div>
         </div>
+
+        <p className="mb-3 text-sm opacity-75">{maybeT('sections.settings.userProvidedDescription', 'These fields are configurable by you and are used to build the authorization request.')}</p>
 
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12 md:col-12">
