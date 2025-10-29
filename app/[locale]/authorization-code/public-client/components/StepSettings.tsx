@@ -134,7 +134,7 @@ export default function StepSettings(props: Props) {
             </div>
           </div>
 
-          <div className="col-12 md:col-6">
+          <div className="col-12 md:col-12">
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(15rem, 20rem) 1fr', alignItems: 'center', columnGap: '1rem' }}>
               <div style={{ textAlign: 'left' }}>
                 <LabelWithHelp id="streamlined" text="Streamlined mode" help="Automatically runs steps and hides advanced fields to speed up the demo." />

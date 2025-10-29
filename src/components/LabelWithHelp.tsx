@@ -21,7 +21,7 @@ export default function LabelWithHelp({ id, text, help }: Props) {
 
         <i
           id={iconId}
-          className="pi pi-info-circle p-ml-3"
+          className="pi pi-question-circle p-ml-3"
           aria-label={help}
           role="img"
           style={{
