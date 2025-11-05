@@ -43,6 +43,7 @@
       },
       "sections": {
         "settings": {
+          "title": "Settings",
           "description": "Configure your environment for the OAuth flow. Provide your Entra tenant (GUID) and public client ID (GUID). The redirect URI is auto-detected from the current origin (read-only) and must be registered in your app. Scopes determine what you’ll be asked to consent to.",
           "userProvidedTitle": "User-provided settings",
           "userProvidedDescription": "These fields are configurable by you and are used throughout the flow — for example when building the authorization request, exchanging tokens, and in other steps that require client or tenant configuration.",
