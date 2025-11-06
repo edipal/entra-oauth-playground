@@ -318,8 +318,24 @@ export default function AuthorizationCodeConfidentialClientPage() {
     }
   };
 
-  // Reset all fields across steps and restart the flow
-  const handleResetAll = () => {
+  // Start a new flow WITHOUT altering persisted settings in localStorage
+  const handleResetFlow = () => {
+    // Reset runtime (non-persisted)
+    resetAuthCodeConfidentialClientRuntime();
+    // Reset local component state and wizard progression
+    setCurrentStep(StepIndex.Settings);
+    setMaxCompletedStep(StepIndex.Overview);
+    setResponseMode(''); setPrompt(''); setLoginHint('');
+    setTokenResponseText('');
+    setDecodedAccessHeader(''); setDecodedAccessPayload(''); setDecodedIdHeader(''); setDecodedIdPayload('');
+    setApiResponseText('');
+    try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close(); } catch {}
+    popupRef.current = null;
+  };
+
+  // Start a new flow AND erase persisted settings for this flow (localStorage)
+  const handleEraseAll = () => {
+    // Reset persisted config to defaults (this writes to localStorage)
     setAuthCodeConfidentialClientConfig({
       tenantId: '',
       clientId: '',
@@ -330,15 +346,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
       clientAuthMethod: 'secret',
       clientAssertionKid: ''
     });
-    resetAuthCodeConfidentialClientRuntime();
-    setCurrentStep(StepIndex.Overview);
-    setMaxCompletedStep(StepIndex.Overview);
-    setResponseMode(''); setPrompt(''); setLoginHint('');
-    setTokenResponseText('');
-    setDecodedAccessHeader(''); setDecodedAccessPayload(''); setDecodedIdHeader(''); setDecodedIdPayload('');
-    setApiResponseText('');
-    try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close(); } catch {}
-    popupRef.current = null;
+    // Then do a normal flow reset
+    handleResetFlow();
   };
 
   // Wizard validation per step
@@ -389,9 +398,29 @@ export default function AuthorizationCodeConfidentialClientPage() {
   return (
     <div className="p-4">
       <Card header={
-        <div className="flex align-items-center gap-2">
+        <div className="flex w-full align-items-center justify-content-between">
           <h2>Authorization Code (Confidential Client)</h2>
-          <Button type="button" className="shadow-2" icon="pi pi-undo" rounded severity="info" onClick={handleResetAll} aria-label="Reset all" title="Reset all" />
+          <div className="flex align-items-center gap-2">
+            <Button
+              type="button"
+              className="shadow-2"
+              icon="pi pi-undo"
+              onClick={handleResetFlow}
+              aria-label="Reset"
+              title="Reset (keep settings)"
+              style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
+            />
+            <Button
+              type="button"
+              className="shadow-2"
+              icon="pi pi-eraser"
+              severity="danger"
+              onClick={handleEraseAll}
+              aria-label="Erase"
+              title="Erase settings and reset"
+              style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
+            />
+          </div>
         </div>
       }>
         {/* Steps header */}
