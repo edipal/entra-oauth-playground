@@ -16,7 +16,8 @@ import StepSettings from './components/StepSettings';
 import StepTokens from './components/StepTokens';
 import StepAuthentication from './components/StepAuthentication';
 import { randomCodeVerifier, computeS256Challenge } from '@/utils/pkce';
-import { decodeJwt } from '@/utils/jwt';
+import { randomUrlSafeString } from '@/utils/random';
+import { decodeJwt } from '@/utils/jwtDecode';
 import { TranslationUtils } from '@/utils/translation';
 import { useSettings } from '@/components/SettingsContext';
 import { buildClientAssertion } from '@/utils/jwtSign';
@@ -209,16 +210,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
   };
 
   // Generators for state/nonce and PKCE
-  const generateRandomString = (length = 32) => {
-    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-    const rnd = new Uint8Array(length);
-    crypto.getRandomValues(rnd);
-    let out = '';
-    for (let i = 0; i < length; i++) out += charset[rnd[i] % charset.length];
-    return out;
-  };
-  const handleGenerateState = () => setAuthCodeConfidentialClientRuntime({ stateParam: generateRandomString(32) });
-  const handleGenerateNonce = () => setAuthCodeConfidentialClientRuntime({ nonce: generateRandomString(32) });
+  const handleGenerateState = () => setAuthCodeConfidentialClientRuntime({ stateParam: randomUrlSafeString(32) });
+  const handleGenerateNonce = () => setAuthCodeConfidentialClientRuntime({ nonce: randomUrlSafeString(32) });
   const handleGeneratePkce = async () => {
     const v = randomCodeVerifier();
     const ch = await computeS256Challenge(v);

@@ -15,7 +15,8 @@ import StepDecode from './components/StepDecode';
 import StepCallApi from './components/StepCallApi';
 import StepValidate from './components/StepValidate';
 import { randomCodeVerifier, computeS256Challenge } from '@/utils/pkce';
-import { decodeJwt } from '@/utils/jwt';
+import { randomUrlSafeString } from '@/utils/random';
+import { decodeJwt } from '@/utils/jwtDecode';
 import { TranslationUtils } from '@/utils/translation';
 import { useSettings } from '@/components/SettingsContext';
 
@@ -260,17 +261,9 @@ export default function AuthorizationCodePublicClientPage() {
     popupRef.current?.focus();
   };
 
-  // Generators for state/nonce
-  const generateRandomString = (length = 32) => {
-    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-    const rnd = new Uint8Array(length);
-    crypto.getRandomValues(rnd);
-    let out = '';
-    for (let i = 0; i < length; i++) out += charset[rnd[i] % charset.length];
-    return out;
-  };
-  const handleGenerateState = () => setAuthCodePublicClientRuntime({ stateParam: generateRandomString(32) });
-  const handleGenerateNonce = () => setAuthCodePublicClientRuntime({ nonce: generateRandomString(32) });
+  // Generators for state/nonce centralised in random utilities
+  const handleGenerateState = () => setAuthCodePublicClientRuntime({ stateParam: randomUrlSafeString(32) });
+  const handleGenerateNonce = () => setAuthCodePublicClientRuntime({ nonce: randomUrlSafeString(32) });
 
   // (Validation helpers already hoisted above)
 

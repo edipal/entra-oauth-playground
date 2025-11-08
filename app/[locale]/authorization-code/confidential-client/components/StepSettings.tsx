@@ -72,6 +72,25 @@ export default function StepSettings(props: Props) {
           >
             {maybeT('sections.settings.userProvidedTitle', 'User-provided settings')}
           </h4>
+
+          <div style={{ display: 'flex', alignItems: 'center', marginLeft: '0.5rem' }}>
+            <i
+              id={localStorageIconId}
+              className="pi pi-exclamation-circle p-ml-3 mt-3"
+              aria-label={maybeT('sections.settings.localStorageNotice', "These values will be saved in your browser's local storage for convenience.")}
+              role="img"
+              style={{
+                color: 'var(--yellow-500)',
+                fontSize: '1rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                verticalAlign: 'middle',
+                lineHeight: '1',
+                alignSelf: 'center'
+              }}
+            />
+            <Tooltip target={`#${localStorageIconId}`} content={maybeT('sections.settings.localStorageNotice', "These values will be saved in your browser's local storage for convenience.")} style={{ fontSize: '0.85rem' }} />
+          </div>
         </div>
 
         <p className="mb-3 text-sm opacity-75">{maybeT('sections.settings.userProvidedDescription', 'These fields are configurable by you and are used to build the authorization request.')}</p>

@@ -1,4 +1,5 @@
 // JWT decoding helpers (no signature validation). Intended for UI/debug purposes.
+// Renamed from jwt.ts to clarify that this file only decodes (does not sign/verify).
 
 export const base64UrlDecodeToString = (b64url: string) => {
   try {

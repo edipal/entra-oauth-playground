@@ -3,6 +3,7 @@
 
 export type JwtHeader = Record<string, any>;
 export type JwtPayload = Record<string, any>;
+import { randomGuidLike } from './random';
 
 const textEncoder = new TextEncoder();
 
@@ -69,22 +70,6 @@ export async function signJwtRs256(header: JwtHeader, payload: JwtPayload, priva
   return `${headerB64}.${payloadB64}.${sigB64}`;
 }
 
-function randomGuidLike(): string {
-  // Simple UUIDv4-like generator using crypto.getRandomValues
-  const rnd = new Uint8Array(16);
-  const cryptoObj = (globalThis as any).crypto as Crypto | undefined;
-  if (!cryptoObj || typeof cryptoObj.getRandomValues !== 'function') {
-    // Fallback for environments without WebCrypto RNG
-    for (let i = 0; i < rnd.length; i++) rnd[i] = Math.floor(Math.random() * 256);
-  } else {
-    cryptoObj.getRandomValues(rnd);
-  }
-  rnd[6] = (rnd[6] & 0x0f) | 0x40;
-  rnd[8] = (rnd[8] & 0x3f) | 0x80;
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  const parts = Array.from(rnd, toHex).join('');
-  return `${parts.slice(0,8)}-${parts.slice(8,12)}-${parts.slice(12,16)}-${parts.slice(16,20)}-${parts.slice(20)}`;
-}
 
 export async function buildClientAssertion(params: {
   clientId: string;
