@@ -1,6 +1,3 @@
-// Random and entropy helpers centralizing all crypto.getRandomValues usage.
-// Safe for browser environments. Falls back to Math.random only if WebCrypto unavailable.
-
 export function randomBytes(length: number): Uint8Array {
   const out = new Uint8Array(length);
   const cryptoObj = (globalThis as any).crypto as Crypto | undefined;

@@ -60,6 +60,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
   const pkceEnabled = !!authCodeConfidentialClientConfig.pkceEnabled;
   const clientAuthMethod = authCodeConfidentialClientConfig.clientAuthMethod || 'secret';
   const clientAssertionKid = authCodeConfidentialClientConfig.clientAssertionKid || '';
+  const clientAssertionX5t = authCodeConfidentialClientConfig.clientAssertionX5t || '';
 
   const authEndpoint = authCodeConfidentialClientRuntime.authEndpoint || 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize';
   const tokenEndpoint = authCodeConfidentialClientRuntime.tokenEndpoint || 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token';
@@ -262,6 +263,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
           clientSecret,
           privateKeyPem,
           clientAssertionKid,
+          clientAssertionX5t,
           tokenEndpoint
         })
       });
@@ -337,7 +339,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
       apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me',
       pkceEnabled: true,
       clientAuthMethod: 'secret',
-      clientAssertionKid: ''
+      clientAssertionKid: '',
+      clientAssertionX5t: ''
     });
     // Then do a normal flow reset
     handleResetFlow();
@@ -503,6 +506,10 @@ export default function AuthorizationCodeConfidentialClientPage() {
             setCertificatePem={(v: string) => setAuthCodeConfidentialClientRuntime({ certificatePem: v })}
             clientAssertionKid={clientAssertionKid}
             setClientAssertionKid={(v: string) => setAuthCodeConfidentialClientConfig({ clientAssertionKid: v })}
+            clientAssertionX5t={clientAssertionX5t}
+            setClientAssertionX5t={(v: string) => setAuthCodeConfidentialClientConfig({ clientAssertionX5t: v })}
+            clientId={clientId}
+            tokenEndpoint={resolvedTokenEndpoint}
           />
         )}
 

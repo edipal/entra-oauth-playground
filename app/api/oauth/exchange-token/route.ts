@@ -15,6 +15,7 @@ export async function POST(request: Request) {
       clientSecret,
       privateKeyPem,
       clientAssertionKid,
+      clientAssertionX5t,
       tokenEndpoint
     } = json || {};
 
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
         clientId: String(clientId),
         tokenEndpoint: url,
         privateKeyPem: String(privateKeyPem),
+        x5t: clientAssertionX5t ? String(clientAssertionX5t) : undefined,
         kid: clientAssertionKid ? String(clientAssertionKid) : undefined,
         lifetimeSec: 60
       });

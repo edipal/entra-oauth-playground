@@ -46,6 +46,8 @@ export type AuthCodeConfidentialClientConfig = {
   clientAuthMethod?: ClientAuthMethod;
   // Optional header kid for client assertion (certificate mode)
   clientAssertionKid?: string;
+  // X.509 Certificate SHA-1 Thumbprint (base64url-encoded) for x5t JWT header
+  clientAssertionX5t?: string;
 };
 
 // Confidential Client runtime state (not persisted)
@@ -122,7 +124,8 @@ const defaultSettings: Settings = {
     apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me',
     pkceEnabled: true,
     clientAuthMethod: 'secret',
-    clientAssertionKid: ''
+    clientAssertionKid: '',
+    clientAssertionX5t: ''
   }
 };
 

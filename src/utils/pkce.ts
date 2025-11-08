@@ -1,5 +1,3 @@
-// PKCE utilities for browser environments (S256). Safe to import from client components.
-
 export const base64UrlEncode = (input: ArrayBuffer) => {
   const bytes = new Uint8Array(input);
   let binary = '';
