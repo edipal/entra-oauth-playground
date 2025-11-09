@@ -81,6 +81,13 @@ export default function AuthorizationCodeConfidentialClientPage() {
   const clientSecret = authCodeConfidentialClientRuntime.clientSecret || '';
   const privateKeyPem = authCodeConfidentialClientRuntime.privateKeyPem || '';
   const certificatePem = authCodeConfidentialClientRuntime.certificatePem || '';
+  const publicKeyPem = authCodeConfidentialClientRuntime.publicKeyPem || '';
+  const thumbprintSha1 = authCodeConfidentialClientRuntime.thumbprintSha1 || '';
+  const thumbprintSha256 = authCodeConfidentialClientRuntime.thumbprintSha256 || '';
+  const thumbprintSha1Base64Url = authCodeConfidentialClientRuntime.thumbprintSha1Base64Url || '';
+  const assertionClaims = authCodeConfidentialClientRuntime.assertionClaims || '';
+  const testAssertion = authCodeConfidentialClientRuntime.testAssertion || '';
+  const decodedAssertion = authCodeConfidentialClientRuntime.decodedAssertion || '';
 
   // Callback handling
   const callbackUrl = authCodeConfidentialClientRuntime.callbackUrl || '';
@@ -353,7 +360,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     [StepIndex.Pkce]: () => pkceEnabled ? (!!codeVerifier && !!codeChallenge) : true,
     [StepIndex.Authorize]: () => callbackValidated || (!!authCode && (!stateParam || stateParam === extractedState)),
     [StepIndex.Callback]: () => callbackValidated || maxCompletedStep >= StepIndex.Tokens || (!!authCode && (!stateParam || stateParam === extractedState)),
-    [StepIndex.Authentication]: () => (clientAuthMethod === 'secret' ? !!clientSecret : !!privateKeyPem),
+    [StepIndex.Authentication]: () => (clientAuthMethod === 'secret' ? (clientSecret.trim().length > 0) : (privateKeyPem.trim().length > 0 && certificatePem.trim().length > 0 && thumbprintSha1.trim().length > 0)),
     [StepIndex.Tokens]: () => !!accessToken,
     [StepIndex.Decode]: () => true,
     [StepIndex.Validate]: () => true,
@@ -508,6 +515,20 @@ export default function AuthorizationCodeConfidentialClientPage() {
             setClientAssertionKid={(v: string) => setAuthCodeConfidentialClientConfig({ clientAssertionKid: v })}
             clientAssertionX5t={clientAssertionX5t}
             setClientAssertionX5t={(v: string) => setAuthCodeConfidentialClientConfig({ clientAssertionX5t: v })}
+            publicKeyPem={publicKeyPem}
+            setPublicKeyPem={(v: string) => setAuthCodeConfidentialClientRuntime({ publicKeyPem: v })}
+            thumbprintSha1={thumbprintSha1}
+            setThumbprintSha1={(v: string) => setAuthCodeConfidentialClientRuntime({ thumbprintSha1: v })}
+            thumbprintSha256={thumbprintSha256}
+            setThumbprintSha256={(v: string) => setAuthCodeConfidentialClientRuntime({ thumbprintSha256: v })}
+            thumbprintSha1Base64Url={thumbprintSha1Base64Url}
+            setThumbprintSha1Base64Url={(v: string) => setAuthCodeConfidentialClientRuntime({ thumbprintSha1Base64Url: v })}
+            assertionClaims={assertionClaims}
+            setAssertionClaims={(v: string) => setAuthCodeConfidentialClientRuntime({ assertionClaims: v })}
+            testAssertion={testAssertion}
+            setTestAssertion={(v: string) => setAuthCodeConfidentialClientRuntime({ testAssertion: v })}
+            decodedAssertion={decodedAssertion}
+            setDecodedAssertion={(v: string) => setAuthCodeConfidentialClientRuntime({ decodedAssertion: v })}
             clientId={clientId}
             tokenEndpoint={resolvedTokenEndpoint}
           />

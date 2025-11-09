@@ -73,8 +73,15 @@ export type AuthCodeConfidentialClientRuntime = {
   // Client authentication (runtime only)
   clientSecret?: string; // secret mode
   privateKeyPem?: string; // certificate mode
+  publicKeyPem?: string; // certificate mode - public key
   certificatePem?: string; // optional, certificate mode
+  thumbprintSha1?: string; // certificate thumbprint SHA-1
+  thumbprintSha256?: string; // certificate thumbprint SHA-256
+  thumbprintSha1Base64Url?: string; // certificate thumbprint SHA-1 base64url
   clientAssertion?: string; // last generated assertion (for preview)
+  assertionClaims?: string; // preview of JWT claims
+  testAssertion?: string; // test assertion JWT
+  decodedAssertion?: string; // decoded test assertion
 };
 
 export type Settings = {
@@ -161,8 +168,15 @@ const defaultAuthCodeConfidentialClientRuntime: AuthCodeConfidentialClientRuntim
   idToken: '',
   clientSecret: '',
   privateKeyPem: '',
+  publicKeyPem: '',
   certificatePem: '',
-  clientAssertion: ''
+  thumbprintSha1: '',
+  thumbprintSha256: '',
+  thumbprintSha1Base64Url: '',
+  clientAssertion: '',
+  assertionClaims: '',
+  testAssertion: '',
+  decodedAssertion: ''
 };
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);

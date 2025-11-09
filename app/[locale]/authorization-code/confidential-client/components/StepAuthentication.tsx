@@ -25,6 +25,20 @@ type Props = {
   setClientAssertionKid: (v: string) => void;
   clientAssertionX5t: string;
   setClientAssertionX5t: (v: string) => void;
+  publicKeyPem: string;
+  setPublicKeyPem: (v: string) => void;
+  thumbprintSha1: string;
+  setThumbprintSha1: (v: string) => void;
+  thumbprintSha256: string;
+  setThumbprintSha256: (v: string) => void;
+  thumbprintSha1Base64Url: string;
+  setThumbprintSha1Base64Url: (v: string) => void;
+  assertionClaims: string;
+  setAssertionClaims: (v: string) => void;
+  testAssertion: string;
+  setTestAssertion: (v: string) => void;
+  decodedAssertion: string;
+  setDecodedAssertion: (v: string) => void;
   clientId: string;
   tokenEndpoint: string;
 };
@@ -38,19 +52,19 @@ export default function StepAuthentication(props: Props) {
     certificatePem, setCertificatePem,
     clientAssertionKid, setClientAssertionKid,
     clientAssertionX5t, setClientAssertionX5t,
+    publicKeyPem, setPublicKeyPem,
+    thumbprintSha1, setThumbprintSha1,
+    thumbprintSha256, setThumbprintSha256,
+    thumbprintSha1Base64Url, setThumbprintSha1Base64Url,
+    assertionClaims, setAssertionClaims,
+    testAssertion, setTestAssertion,
+    decodedAssertion, setDecodedAssertion,
     clientId,
     tokenEndpoint
   } = props;
 
-  const [publicKeyPem, setPublicKeyPem] = useState('');
-  const [thumbprintSha1, setThumbprintSha1] = useState('');
-  const [thumbprintSha256, setThumbprintSha256] = useState('');
-  const [thumbprintSha1Base64Url, setThumbprintSha1Base64Url] = useState('');
   const [generatingKeys, setGeneratingKeys] = useState(false);
   const [generatingCert, setGeneratingCert] = useState(false);
-  const [assertionClaims, setAssertionClaims] = useState('');
-  const [testAssertion, setTestAssertion] = useState('');
-  const [decodedAssertion, setDecodedAssertion] = useState('');
   const [generatingAssertion, setGeneratingAssertion] = useState(false);
 
   const methodOptions = [
@@ -178,12 +192,17 @@ export default function StepAuthentication(props: Props) {
         )}
 
         {clientAuthMethod === 'certificate' && (
-          <div className="mt-3">
+          <div className="grid formgrid p-fluid gap-3 mt-7">
             {/* Step 1: Generate Key Pair */}
-            <div className="mb-4 p-3 surface-50 border-round">
-              <h5 className="mt-0 mb-2" style={{ fontSize: '1rem', fontWeight: 600 }}>
-                Step 1: Generate RSA Key Pair
-              </h5>
+            <div className="col-12">
+              <div className="flex gap-2 align-items-center mt-0 mb-2">
+                <h5 className="m-0" style={{ fontSize: '1rem', fontWeight: 600 }}>
+                  Step 1: Generate RSA Key Pair
+                </h5>
+                {privateKeyPem && (
+                  <span className="pi pi-check-circle" style={{ color: 'var(--green-500)' }} aria-label="key pair generated" />
+                )}
+              </div>
               <p className="text-sm mb-3 text-600">
                 Generate a 2048-bit RSA key pair for signing the client assertion JWT.
               </p>
@@ -193,45 +212,55 @@ export default function StepAuthentication(props: Props) {
                 onClick={handleGenerateKeyPair}
                 loading={generatingKeys}
                 className="mb-3"
-                severity="success"
               />
-              {privateKeyPem && (
-                <div className="grid formgrid p-fluid gap-3">
-                  <div className="col-12">
-                    <label htmlFor="privateKeyPem" className="block mb-2 font-semibold text-sm">
-                      Private Key (PKCS#8 PEM) - Keep this secure!
-                    </label>
-                    <InputTextarea
-                      id="privateKeyPem"
-                      rows={6}
-                      autoResize
-                      value={privateKeyPem}
-                      onChange={(e) => setPrivateKeyPem(e.target.value)}
-                      style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%' }}
-                    />
-                  </div>
-                  <div className="col-12">
-                    <label htmlFor="publicKeyPem" className="block mb-2 font-semibold text-sm">
-                      Public Key (SPKI PEM)
-                    </label>
-                    <InputTextarea
-                      id="publicKeyPem"
-                      rows={4}
-                      autoResize
-                      value={publicKeyPem}
-                      readOnly
-                      style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', background: '#f8f9fa' }}
-                    />
-                  </div>
+            </div>
+            <div className="col-12">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'start', columnGap: '0.75rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <LabelWithHelp id="privateKeyPem" text="Private Key (PKCS#8 PEM)" help="Keep this secure! This private key is used to sign the client assertion JWT." />
                 </div>
-              )}
+                <div>
+                  <InputTextarea
+                    id="privateKeyPem"
+                    rows={5}
+                    autoResize={false}
+                    value={privateKeyPem}
+                    onChange={(e) => setPrivateKeyPem(e.target.value)}
+                    placeholder="Click 'Generate Key Pair' to create a private key"
+                    style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="col-12">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'start', columnGap: '0.75rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <LabelWithHelp id="publicKeyPem" text="Public Key (SPKI PEM)" help="The public key corresponding to your private key." />
+                </div>
+                <div>
+                  <InputTextarea
+                    id="publicKeyPem"
+                    rows={5}
+                    autoResize={false}
+                    value={publicKeyPem}
+                    readOnly
+                    placeholder="Generated automatically with the private key"
+                    style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', background: '#f8f9fa', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Step 2: Generate Self-Signed Certificate */}
-            <div className="mb-4 p-3 surface-50 border-round">
-              <h5 className="mt-0 mb-2" style={{ fontSize: '1rem', fontWeight: 600 }}>
-                Step 2: Create Self-Signed Certificate
-              </h5>
+            <div className="col-12">
+              <div className="flex gap-2 align-items-center mt-5 mb-2">
+                <h5 className="m-0" style={{ fontSize: '1rem', fontWeight: 600 }}>
+                  Step 2: Create Self-Signed Certificate
+                </h5>
+                {certificatePem && (
+                  <span className="pi pi-check-circle" style={{ color: 'var(--green-500)' }} aria-label="certificate generated" />
+                )}
+              </div>
               <p className="text-sm mb-3 text-600">
                 Create a self-signed X.509 certificate to upload to Microsoft Entra ID. The certificate thumbprint can be used as the kid.
               </p>
@@ -242,60 +271,63 @@ export default function StepAuthentication(props: Props) {
                 loading={generatingCert}
                 disabled={!privateKeyPem || !publicKeyPem}
                 className="mb-3"
-                severity="info"
               />
-              {certificatePem && (
-                <div className="grid formgrid p-fluid gap-3">
-                  <div className="col-12">
-                    <label htmlFor="certificatePem" className="block mb-2 font-semibold text-sm">
-                      Certificate (PEM) - Upload this to Entra ID
-                    </label>
-                    <InputTextarea
-                      id="certificatePem"
-                      rows={5}
-                      autoResize
-                      value={certificatePem}
-                      onChange={(e) => setCertificatePem(e.target.value)}
-                      style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%' }}
-                    />
-                  </div>
-                  {thumbprintSha1 && (
-                    <div className="col-12">
-                      <label className="block mb-2 font-semibold text-sm">
-                        Thumbprint (SHA-1) - Use as kid
-                      </label>
-                      <div className="p-2 surface-100 border-round" style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                        {thumbprintSha1}
-                      </div>
-                    </div>
-                  )}
-                  {thumbprintSha256 && (
-                    <div className="col-12">
-                      <label className="block mb-2 font-semibold text-sm">
-                        Thumbprint (SHA-256)
-                      </label>
-                      <div className="p-2 surface-100 border-round" style={{ fontFamily: 'monospace', fontSize: '0.9rem', wordBreak: 'break-all' }}>
-                        {thumbprintSha256}
-                      </div>
-                    </div>
-                  )}
+            </div>
+            <div className="col-12">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'start', columnGap: '0.75rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <LabelWithHelp id="certificatePem" text="Certificate (PEM)" help="Upload this certificate to Entra ID under App Registration → Certificates & secrets." />
                 </div>
-              )}
+                <div>
+                  <InputTextarea
+                    id="certificatePem"
+                    rows={5}
+                    autoResize={false}
+                    value={certificatePem}
+                    onChange={(e) => setCertificatePem(e.target.value)}
+                    placeholder="Click 'Generate Certificate' to create a self-signed certificate"
+                    style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="col-12">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.75rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <LabelWithHelp id="thumbprintSha1" text="Thumbprint (SHA-1)" help="Use this as the Key ID (kid). This matches what you see in Entra ID portal." />
+                </div>
+                <div>
+                  <InputText
+                    id="thumbprintSha1"
+                    value={thumbprintSha1}
+                    readOnly
+                    placeholder="Generated automatically with the certificate"
+                    style={{ fontFamily: 'monospace', fontSize: '0.9rem', width: '100%', background: '#f8f9fa' }}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Step 3: Configure kid */}
-            <div className="mb-4 p-3 surface-50 border-round">
-              <h5 className="mt-0 mb-2" style={{ fontSize: '1rem', fontWeight: 600 }}>
-                Step 3: Key ID (kid) - Auto-populated
-              </h5>
+            <div className="col-12">
+              <div className="flex gap-2 align-items-center mt-5 mb-2">
+                <h5 className="m-0" style={{ fontSize: '1rem', fontWeight: 600 }}>
+                  Step 3: Key ID (kid) - Auto-populated
+                </h5>
+                {certificatePem && (
+                  <span className="pi pi-check-circle" style={{ color: 'var(--green-500)' }} aria-label="kid configured" />
+                )}
+              </div>
               <p className="text-sm mb-3 text-600">
                 The certificate thumbprint (SHA-1) is automatically used as the Key ID and matches what you see in Entra ID portal.
               </p>
-              <div className="grid formgrid p-fluid gap-3">
-                <div className="col-12">
-                  <label htmlFor="clientAssertionKid" className="block mb-2 font-semibold text-sm">
-                    Key ID (kid)
-                  </label>
+            </div>
+            <div className="col-12">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.75rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <LabelWithHelp id="clientAssertionKid" text="Key ID (kid)" help="This should match the 'Thumbprint' shown in Entra ID → App Registration → Certificates & secrets" />
+                </div>
+                <div>
                   <InputText
                     id="clientAssertionKid"
                     value={clientAssertionKid}
@@ -303,18 +335,20 @@ export default function StepAuthentication(props: Props) {
                     placeholder="Auto-filled when certificate is generated"
                     style={{ fontFamily: 'monospace', width: '100%' }}
                   />
-                  <small className="text-500 block mt-2">
-                    💡 Tip: This should match the &quot;Thumbprint&quot; shown in Entra ID → App Registration → Certificates &amp; secrets
-                  </small>
                 </div>
               </div>
             </div>
 
             {/* Step 4: Preview Claims */}
-            <div className="mb-4 p-3 surface-50 border-round">
-              <h5 className="mt-0 mb-2" style={{ fontSize: '1rem', fontWeight: 600 }}>
-                Step 4: Preview Client Assertion Claims
-              </h5>
+            <div className="col-12">
+              <div className="flex gap-2 align-items-center mt-5 mb-2">
+                <h5 className="m-0" style={{ fontSize: '1rem', fontWeight: 600 }}>
+                  Step 4: Preview Client Assertion Claims
+                </h5>
+                {assertionClaims && (
+                  <span className="pi pi-check-circle" style={{ color: 'var(--green-500)' }} aria-label="claims previewed" />
+                )}
+              </div>
               <p className="text-sm mb-3 text-600">
                 Preview the JWT claims that will be used in the client_assertion parameter.
               </p>
@@ -324,28 +358,37 @@ export default function StepAuthentication(props: Props) {
                 onClick={handlePreviewClaims}
                 disabled={!clientId || !tokenEndpoint}
                 className="mb-3"
-                severity="secondary"
               />
-              {assertionClaims && (
-                <div className="col-12">
-                  <label className="block mb-2 font-semibold text-sm">
-                    JWT Claims (Preview)
-                  </label>
+            </div>
+            <div className="col-12">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'start', columnGap: '0.75rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <LabelWithHelp id="assertionClaims" text="JWT Claims (Preview)" help="Preview of the JWT claims that will be used in the client_assertion parameter." />
+                </div>
+                <div>
                   <InputTextarea
-                    rows={8}
+                    id="assertionClaims"
+                    rows={5}
+                    autoResize={false}
                     value={assertionClaims}
                     readOnly
-                    style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', background: '#f8f9fa' }}
+                    placeholder="Click 'Preview Claims' to see the JWT claims"
+                    style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', background: '#f8f9fa', resize: 'vertical' }}
                   />
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Step 5: Test Generate Assertion */}
-            <div className="mb-4 p-3 surface-50 border-round">
-              <h5 className="mt-0 mb-2" style={{ fontSize: '1rem', fontWeight: 600 }}>
-                Step 5: Test Generate Signed Assertion
-              </h5>
+            <div className="col-12">
+              <div className="flex gap-2 align-items-center mt-5 mb-2">
+                <h5 className="m-0" style={{ fontSize: '1rem', fontWeight: 600 }}>
+                  Step 5: Test Generate Signed Assertion
+                </h5>
+                {testAssertion && (
+                  <span className="pi pi-check-circle" style={{ color: 'var(--green-500)' }} aria-label="test assertion generated" />
+                )}
+              </div>
               <p className="text-sm mb-3 text-600">
                 Generate a test client_assertion JWT to verify it&apos;s working. The actual assertion will be created when calling the token endpoint.
               </p>
@@ -356,42 +399,51 @@ export default function StepAuthentication(props: Props) {
                 loading={generatingAssertion}
                 disabled={!privateKeyPem || !clientId || !tokenEndpoint}
                 className="mb-3"
-                severity="warning"
               />
-              {testAssertion && (
-                <div className="grid formgrid p-fluid gap-3">
-                  <div className="col-12">
-                    <label className="block mb-2 font-semibold text-sm">
-                      Signed JWT (Test)
-                    </label>
-                    <InputTextarea
-                      rows={3}
-                      value={testAssertion}
-                      readOnly
-                      style={{ fontFamily: 'monospace', fontSize: '0.75rem', width: '100%', background: '#f8f9fa', wordBreak: 'break-all' }}
-                    />
-                  </div>
-                  {decodedAssertion && (
-                    <div className="col-12">
-                      <label className="block mb-2 font-semibold text-sm">
-                        Decoded JWT (Verification)
-                      </label>
-                      <InputTextarea
-                        rows={12}
-                        value={decodedAssertion}
-                        readOnly
-                        style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', background: '#f8f9fa' }}
-                      />
-                    </div>
-                  )}
+            </div>
+            <div className="col-12">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'start', columnGap: '0.75rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <LabelWithHelp id="testAssertion" text="Signed JWT (Test)" help="A test client_assertion JWT generated with your private key." />
                 </div>
-              )}
+                <div>
+                  <InputTextarea
+                    id="testAssertion"
+                    rows={5}
+                    autoResize={false}
+                    value={testAssertion}
+                    readOnly
+                    placeholder="Click 'Generate Test Assertion' to create a test JWT"
+                    style={{ fontFamily: 'monospace', fontSize: '0.75rem', width: '100%', background: '#f8f9fa', wordBreak: 'break-all', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="col-12">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'start', columnGap: '0.75rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <LabelWithHelp id="decodedAssertion" text="Decoded JWT (Verification)" help="The decoded header and payload of the test JWT for verification purposes." />
+                </div>
+                <div>
+                  <InputTextarea
+                    id="decodedAssertion"
+                    rows={5}
+                    autoResize={false}
+                    value={decodedAssertion}
+                    readOnly
+                    placeholder="Generated automatically when test assertion is created"
+                    style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', background: '#f8f9fa', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="p-3 surface-100 border-round">
-              <p className="text-sm mb-0 text-600">
-                <strong>Note:</strong> When you click &quot;Exchange Code for Tokens&quot; in the next step, a fresh client_assertion will be automatically generated and sent to the token endpoint. The private key stays secure and never leaves your browser.
-              </p>
+            <div className="col-12">
+              <div className="p-0 surface-100 border-round">
+                <p className="text-sm mb-0 text-600">
+                  <strong>Note:</strong> When you click &quot;Exchange Code for Tokens&quot; in the next step, a fresh client_assertion will be automatically generated and sent to the token endpoint. The private key stays secure and never leaves your browser.
+                </p>
+              </div>
             </div>
           </div>
         )}
