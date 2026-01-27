@@ -1,0 +1,10 @@
+{
+  "Menu": {
+    "Home": "Home",
+    "GettingStarted": "Getting Started",
+    "PublicClients": "Public Clients",
+    "ConfidentialClients": "Confidential Clients",
+    "AuthorizationCodeFlow": "Authorization Code Flow",
+    "ClientCredentialsFlow": "Client Credentials Flow"
+  }
+}
