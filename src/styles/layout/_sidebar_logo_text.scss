@@ -1,0 +1,23 @@
+// Ensures sidebar logo text matches menu item color in all themes
+.sidebar-header-flex {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.sidebar-logo-text-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+    margin-top: -5px;
+}
+
+.sidebar-header .sidebar-logo-text {
+  color: var(--menuitem-text-color, var(--text-color, #fff)) !important;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  display: block;
+  margin: 0;
+
+}

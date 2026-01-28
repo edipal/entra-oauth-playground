@@ -1,259 +1,499 @@
 {
-  "Nav": {
-    "title": "Next.js + PrimeReact + i18n",
-    "home": "Home"
+  "HomePage": {
+    "title": "Microsoft Entra OAuth Playground",
+    "description": "Explore OAuth 2.0 and OpenID Connect flows end-to-end with a guided, step-by-step experience. Configure your Microsoft Entra app settings, generate authorization URLs, and walk through PKCE creation, callbacks, and token exchanges. See the exact requests and responses at each stage, decode and validate tokens, and understand key claims and security checks."
   },
-  "Home": {
-    "title": "Home",
-    "intro": "This is a simple landing page. Use the left menu to explore."
+  "Menu": {
+    "Home": "Home",
+    "GettingStarted": "Getting Started",
+    "PublicClients": "Public Clients",
+    "ConfidentialClients": "Confidential Clients",
+    "AuthorizationCodeFlow": "Authorization Code Flow",
+    "ClientCredentialsFlow": "Client Credentials Flow"
   },
-  "Sidebar": {
-    "home": "Home",
-    "authorizationCode": "Authorization Code",
-    "publicClient": "Public Client",
-    "confidentialClient": "Confidential Client",
-    "settings": "Settings",
-    "language": "Language",
-    "switchTo": "Switch to {lang}"
+  "StepAuthorize": {
+    "sections": {
+      "authorize": {
+        "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state and nonce, and PKCE parameters. You can also set response_mode, prompt, and login_hint to influence how the identity provider returns results or how the sign-in experience behaves. Click 'Open popup' to sign in and consent. After completing sign-in, the popup will redirect back and step 5 will auto-fill with the code."
+      },
+      "settings": {
+        "userProvidedTitle": "User-provided settings",
+        "userProvidedDescription": "These fields are configured by you and are used to build the authorization request."
+      }
+    },
+    "labels": {
+      "responseType": "response_type",
+      "state": "state",
+      "nonce": "nonce",
+      "responseMode": "response_mode",
+      "prompt": "prompt",
+      "loginHint": "login_hint"
+    },
+    "placeholders": {
+      "state": "Optional state (recommended)",
+      "nonce": "Optional nonce",
+      "selectMethod": "Select method",
+      "loginHint": "user@domain.com"
+    },
+    "buttons": {
+      "generate": "Generate",
+      "openPopup": "Open popup"
+    },
+    "options": {
+      "responseMode": {
+        "query": "query",
+        "form_post": "form_post"
+      },
+      "prompt": {
+        "login": "login",
+        "consent": "consent",
+        "select_account": "select_account",
+        "none": "none"
+      }
+    },
+    "help": {
+      "responseType": "OAuth response_type parameter; for PKCE it is 'code'.",
+      "state": "Opaque value to maintain state between request and callback; helps prevent CSRF.",
+      "nonce": "A string to associate a client session with an ID token; helps mitigate replay attacks.",
+      "responseMode": "Where the response should be returned (query or form_post).",
+      "prompt": "Controls the behavior: login, consent, select_account, or none.",
+      "loginHint": "Prefill the username or sign-in hint (e.g., email).",
+      "authUrlPreview": "The full authorization URL that will open in the popup."
+    }
   },
-  "Settings": {
-    "title": "Settings",
-    "placeholder": "Placeholder page for Settings – implementation coming soon.",
-    "entraTenantIdLabel": "Entra Tenant Id",
-    "entraTenantIdHint": "Your Entra tenant id. This will be available throughout the app.",
-    "save": "Save"
+  "StepCallApi": {
+    "sections": {
+      "callApi": {
+        "description": "Call a protected API with the access token. Adjust the endpoint and send the GET request to see the response."
+      }
+    },
+    "labels": {
+      "apiEndpoint": "API endpoint",
+      "apiHeaders": "Request headers",
+      "apiResponse": "Response preview"
+    },
+    "help": {
+      "apiEndpoint": "HTTP endpoint to call with the access token (e.g., Microsoft Graph).",
+      "apiHeaders": "HTTP headers used for the API call (includes Authorization).",
+      "apiResponse": "Raw response from the API call (pretty-printed if JSON)."
+    },
+    "buttons": {
+      "sendGet": "Send GET",
+      "sending": "Sending..."
+    }
+  },
+  "StepCallback": {
+    "sections": {
+      "callback": {
+        "description": "Inspect the callback URL or POST body for the authorization code, state, or any returned errors after sign-in.",
+        "okTitle": "Callback OK",
+        "errorTitle": "Callback error"
+      }
+    },
+    "labels": {
+      "callbackUrl": "Callback URL",
+      "callbackBody": "POST body",
+      "extractedCode": "Extracted code",
+      "extractedState": "Extracted state",
+      "error": "Error",
+      "errorUri": "Error URI",
+      "errorDescription": "Error description"
+    },
+    "help": {
+      "callbackUrl": "The full callback URL captured from the popup after sign-in.",
+      "callbackBody": "If response_mode=form_post, the identity provider sends parameters in the POST body.",
+      "extractedCode": "The authorization code extracted from the callback parameters.",
+      "extractedState": "The state value extracted from the callback parameters (if set).",
+      "stateValid": "state matches",
+      "stateInvalid": "state does not match",
+      "error": "Short error code returned by the authorization server (the 'error' parameter).",
+      "errorUri": "Optional URI with more information about the error (the 'error_uri' parameter).",
+      "errorDescription": "Optional human-readable description of the error (the 'error_description' parameter)."
+    }
+  },
+  "StepPkce": {
+    "sections": {
+      "pkce": {
+        "description": "PKCE secures public clients. Click the Generate button (left of the Code Verifier input) to create a high-entropy code_verifier and its code_challenge (S256 by default)."
+      }
+    },
+    "labels": {
+      "codeVerifier": "Code Verifier",
+      "codeChallenge": "Code Challenge"
+    },
+    "placeholders": {
+      "codeVerifier": "Random high-entropy string",
+      "codeChallenge": "Derived from code_verifier (S256/plain)"
+    },
+    "buttons": {
+      "generate": "Generate"
+    },
+    "errors": {
+      "codeVerifierRequired": "Code Verifier is required",
+      "codeChallengeRequired": "Code Challenge is required"
+    },
+    "help": {
+      "codeVerifier": "High-entropy random string kept secret by the client (PKCE).",
+      "codeChallenge": "Base64url-encoded SHA-256 hash of the code_verifier (S256)."
+    }
+  },
+  "StepTokens": {
+    "sections": {
+      "tokens": {
+        "description": "Request tokens from the token endpoint and inspect both the request and response.",
+        "requestTitle": "Token request",
+        "responseTitle": "Token response"
+      }
+    },
+    "labels": {
+      "tokenEndpointPreview": "Token endpoint",
+      "tokenRequest": "Token request",
+      "responsePreview": "Response preview"
+    },
+    "buttons": {
+      "send": "Send",
+      "sending": "Sending..."
+    },
+    "help": {
+      "tokenEndpointPreview": "The full token endpoint URL that will be used to exchange the authorization code.",
+      "tokenRequest": "The POST body (x-www-form-urlencoded) used to exchange the code for tokens."
+    }
+  },
+  "StepValidate": {
+    "sections": {
+      "validate": {
+        "title": "Validate tokens",
+        "description": "This guide walks through how to validate the ID and access tokens you received: first, how signature validation works (kid -> metadata -> jwks -> verify), then the common claim checks you should perform (aud, iss, tid, nonce, scopes/roles, exp, nbf, iat)."
+      }
+    },
+    "validateUi": {
+      "graphWarning": "Access tokens for Microsoft Graph (aud <code>{aud}</code>) typically cannot be signature-validated by this client. Only Microsoft Graph can validate their signatures.",
+      "idTokenTitle": "ID Token",
+      "accessTokenTitle": "Access Token",
+      "signatureValidation": "Signature validation",
+      "verified": "Verified",
+      "notVerified": "Not verified",
+      "skipped": "Skipped",
+      "skippedAria": "skipped",
+      "steps": {
+        "extractKid": "Extract kid from token header",
+        "extractAlg": "Extract alg from token header",
+        "extractVersion": "Extract token version",
+        "extractIssuer": "Extract issuer (iss)",
+        "buildMetadata": "Build metadata URL from iss",
+        "resolveJwks": "Resolve JWKS URI",
+        "fetchJwksFindKey": "Fetch JWKS and find key",
+        "verifySignature": "Verify signature with alg"
+      },
+      "reason": "Reason:",
+      "error": "Error:",
+      "publicKeyPem": "Public key (PEM)",
+      "copy": "Copy",
+      "claimValidations": "Claim validations",
+      "claims": {
+        "id": {
+          "aud": "aud must match client_id",
+          "iss": "iss must match tenant",
+          "exp": "exp must be in the future",
+          "nbfIat": "nbf/iat must be <= now (with small skew)",
+          "nonce": "nonce must match"
+        },
+        "access": {
+          "aud": "aud present (API audience)",
+          "iss": "iss must match tenant",
+          "exp": "exp must be in the future",
+          "nbfIat": "nbf/iat must be <= now (with small skew)",
+          "scp": "scp (delegated scopes)",
+          "roles": "roles (app permissions)",
+          "wids": "wids (app roles)",
+          "ver": "ver (token version)",
+          "msGraph": "(Microsoft Graph audience; only Graph can verify signatures)"
+        }
+      }
+    }
+  },
+  "StepSettings": {
+    "sections": {
+      "settings": {
+        "description": "Configure your client settings for the authorization code flow.",
+        "userProvidedTitle": "User-provided settings",
+        "userProvidedDescription": "These fields are configurable by you and are used to build the authorization request.",
+        "localStorageNotice": "These values will be saved in your browser's local storage for convenience.",
+        "resolvedTitle": "Resolved (read-only) values",
+        "resolvedDescription": "These values are derived from the tenant and other inputs. They are shown for reference and cannot be changed here."
+      }
+    },
+    "labels": {
+      "tenantId": "Entra Tenant ID",
+      "clientId": "Client ID",
+      "scopes": "Scopes (space-separated)",
+      "authEndpoint": "Authorization Endpoint",
+      "tokenEndpoint": "Token Endpoint",
+      "redirectUri": "Redirect URI",
+      "streamlined": "Streamlined mode",
+      "pkceEnabled": "Use PKCE"
+    },
+    "placeholders": {
+      "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "scopes": "openid profile offline_access api://.../scope.read"
+    },
+    "toggles": {
+      "streamlinedOn": "Enabled",
+      "streamlinedOff": "Disabled",
+      "pkceEnabledOn": "Enabled",
+      "pkceEnabledOff": "Disabled"
+    },
+    "help": {
+      "tenantId": "Directory (tenant) GUID of your Entra ID instance.",
+      "clientId": "Application (client) ID of your app registration.",
+      "scopes": "Space-separated scopes to request (e.g., openid profile offline_access api://.../scope.read).",
+      "authEndpoint": "OAuth 2.0 v2 authorize endpoint. Tenant is substituted in {tenant}.",
+      "tokenEndpoint": "OAuth 2.0 v2 token endpoint. Tenant is substituted in {tenant}.",
+      "redirectUri": "Callback URL for this app. Must match the redirect URI in the app registration.",
+      "streamlined": "Automatically runs steps and hides advanced fields to speed up the demo.",
+      "pkceEnabled": "PKCE is recommended for public clients and optional for confidential clients."
+    },
+    "errors": {
+      "tenantIdInvalid": "Tenant is required and must be a GUID",
+      "clientIdRequired": "Client ID is required and must be a GUID",
+      "clientIdInvalid": "Client ID must be a GUID",
+      "redirectUriInvalid": "Redirect URI must be a valid http(s) URL"
+    }
+  },
+  "StepDecode": {
+    "sections": {
+      "decode": {
+        "description": "Access and ID tokens are JWTs. Click 'Decode' to view the header and payload claims in a readable form."
+      }
+    },
+    "labels": {
+      "accessToken": "Access token (JWT)",
+      "idToken": "ID token (JWT)",
+      "accessHeader": "Access token header",
+      "accessPayload": "Access token payload",
+      "idHeader": "ID token header",
+      "idPayload": "ID token payload"
+    },
+    "help": {
+      "accessToken": "Access token to call APIs. Shown as a JWT string.",
+      "idToken": "ID token representing the user identity. Shown as a JWT string.",
+      "accessHeader": "Decoded JWT header of the access token.",
+      "accessPayload": "Decoded JWT payload of the access token.",
+      "idHeader": "Decoded JWT header of the ID token.",
+      "idPayload": "Decoded JWT payload of the ID token."
+    },
+    "buttons": {
+      "decode": "Decode"
+    },
+    "notes": {
+      "accessHeaderNonce": "This access token header contains a <code>nonce</code> field. This is a provider-specific JOSE header and is unrelated to the OIDC <code>nonce</code> claim, which is validated in the ID token payload."
+    }
+  },
+  "StepOverview": {
+    "sections": {
+      "settings": {
+        "flowIntro": "High-level overview of the Authorization Code + PKCE flow.",
+        "flowDiagram": "Client (Browser)\n   |\n   | 1) Generate code_verifier + code_challenge (S256)\n   v\nAuthorize Endpoint ------------------------------>\n   |   GET .../authorize?client_id=...&redirect_uri=...\n   |        &response_type=code&scope=...&state=...\n   |        &code_challenge=...&code_challenge_method=S256\n   |\n   | 2) User signs in and consents\n   v\nRedirect (Callback) <------------------------------\n   |   http(s)://your-app/callback/auth-code?code=...&state=...\n   |\n   | 3) Exchange code for tokens with code_verifier\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=authorization_code\n   |        &client_id=...\n   |        &code=...\n   |        &redirect_uri=...\n   |        &code_verifier=...\n   |\n   | 4) Receive tokens (access_token, id_token, ... )\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer <access_token>\n   v\n  Response"
+      }
+    }
+  },
+  "StepAuthentication": {
+    "description": "Choose how the client will authenticate to the token endpoint when exchanging the authorization code.",
+    "methodOptions": {
+      "secret": "Client secret",
+      "certificate": "Certificate (private_key_jwt)"
+    },
+    "labels": {
+      "clientAuthMethod": "Client authentication",
+      "clientSecret": "Client secret",
+      "privateKeyPem": "Private Key (PKCS#8 PEM)",
+      "publicKeyPem": "Public Key (SPKI PEM)",
+      "certificatePem": "Certificate (PEM)",
+      "thumbprintSha1": "Thumbprint (SHA-1)",
+      "clientAssertionKid": "Key ID (kid)",
+      "assertionClaims": "JWT Claims (Preview)",
+      "testAssertion": "Signed JWT",
+      "decodedAssertion": "Decoded JWT"
+    },
+    "help": {
+      "clientAuthMethod": "Choose how the client authenticates to the token endpoint when exchanging the code.",
+      "clientSecret": "Your confidential client secret. For demo purposes this value stays in memory only (not persisted).",
+      "privateKeyPem": "Keep this secure! This private key is used to sign the client assertion JWT.",
+      "publicKeyPem": "The public key corresponding to your private key.",
+      "certificatePem": "Upload this certificate to Entra ID under App Registration → Certificates & secrets.",
+      "thumbprintSha1": "Use this as the Key ID (kid). This matches what you see in Entra ID portal.",
+      "clientAssertionKid": "This should match the \"Thumbprint\" shown in Entra ID → App Registration → Certificates & secrets",
+      "assertionClaims": "Preview of the JWT claims that will be used in the client_assertion parameter.",
+      "testAssertion": "A test client_assertion JWT generated with your private key.",
+      "decodedAssertion": "The decoded header and payload of the test JWT for verification purposes."
+    },
+    "placeholders": {
+      "clientAuthMethod": "Select Method",
+      "clientSecret": "Enter client secret",
+      "privateKeyPem": "Click \"Generate Key Pair\" to create a private key",
+      "publicKeyPem": "Generated automatically with the private key",
+      "certificatePem": "Click \"Generate Certificate\" to create a self-signed certificate",
+      "thumbprintSha1": "Generated automatically with the certificate",
+      "clientAssertionKid": "Auto-filled when certificate is generated",
+      "assertionClaims": "Click \"Preview Claims\" to see the JWT claims",
+      "testAssertion": "Click \"Generate Test Assertion\" to create a test JWT",
+      "decodedAssertion": "Generated automatically when test assertion is created"
+    },
+    "steps": {
+      "generateKeyPair": {
+        "title": "Step 1: Generate RSA Key Pair",
+        "description": "Generate a 2048-bit RSA key pair for signing the client assertion JWT."
+      },
+      "generateCertificate": {
+        "title": "Step 2: Create Self-Signed Certificate",
+        "description": "Create a self-signed X.509 certificate to upload to Microsoft Entra ID. The certificate thumbprint can be used as the kid."
+      },
+      "configureKid": {
+        "title": "Step 3: Key ID (kid) - Auto-populated",
+        "description": "The certificate thumbprint (SHA-1) is automatically used as the Key ID and matches what you see in Entra ID portal."
+      },
+      "previewClaims": {
+        "title": "Step 4: Preview Client Assertion Claims",
+        "description": "Preview the JWT claims that will be used in the client_assertion parameter."
+      },
+      "testAssertion": {
+        "title": "Step 5: Test Generate Signed Assertion",
+        "description": "Generate a test client_assertion JWT to verify it's working. The actual assertion will be created when calling the token endpoint."
+      }
+    },
+    "buttons": {
+      "generateKeyPair": "Generate Key Pair",
+      "generateCertificate": "Generate Certificate",
+      "confirmKid": "Confirm Key ID",
+      "previewClaims": "Preview Claims",
+      "generateTestAssertion": "Generate Test Assertion"
+    },
+    "aria": {
+      "keyPairGenerated": "key pair generated",
+      "certificateGenerated": "certificate generated",
+      "kidConfigured": "kid configured",
+      "claimsPreviewed": "claims previewed",
+      "testAssertionGenerated": "test assertion generated"
+    },
+    "decoded": {
+      "headerLabel": "Header:",
+      "payloadLabel": "Payload:"
+    },
+    "note": {
+      "label": "Note:",
+      "body": "Due to browser limitations, secrets must be sent to the server, where the token endpoint call is actually made."
+    },
+    "errors": {
+      "generateKeyPair": "Error generating key pair: {error}",
+      "keyPairRequired": "Please generate a key pair first.",
+      "generateCertificate": "Error generating certificate: {error}",
+      "missingKid": "Please enter or generate a Key ID first.",
+      "missingClientConfig": "Please configure client ID and token endpoint first.",
+      "missingKeyOrConfig": "Please generate a key pair and configure settings first.",
+      "generateAssertion": "Error generating assertion: {error}"
+    }
   },
   "AuthorizationCode": {
-    "publicClientTitle": "Authorization Code (Public Client)",
-    "publicClientPlaceholder": "Placeholder page for Authorization Code - Public Client – implementation coming soon.",
-    "confidentialClientTitle": "Authorization Code (Confidential Client)",
-    "confidentialClientPlaceholder": "Placeholder page for Authorization Code - Confidential Client – implementation coming soon.",
     "PublicClient": {
-      "title": "Authorization Code (Public Client)",
+      "Main": {
+        "title": "Authorization Code (Public Client)",
+        "header": {
+          "resetAria": "Reset",
+          "resetTitle": "Reset (keep settings)",
+          "eraseAria": "Erase settings",
+          "eraseTitle": "Erase settings and reset"
+        },
+        "steps": {
+          "overview": "Overview",
+          "settings": "Settings",
+          "pkce": "PKCE",
+          "authorize": "Authorize",
+          "callback": "Callback",
+          "tokens": "Tokens",
+          "decode": "Decode",
+          "validate": "Validate",
+          "callApi": "Call API"
+        },
+        "buttons": {
+          "previous": "Previous",
+          "next": "Next"
+        },
+        "overview": {
+          "flowIntro": "High-level overview of the Authorization Code + PKCE flow for public clients (no client secret).",
+          "flowDiagram": "Client (SPA)\n   |\n   | 1) Generate code_verifier + code_challenge (S256)\n   v\nAuthorize Endpoint ------------------------------>\n   |   GET .../authorize?client_id=...&redirect_uri=...\n   |        &response_type=code&scope=...&state=...\n   |        &code_challenge=...&code_challenge_method=S256\n   |\n   | 2) User signs in and consents\n   v\nRedirect (Callback) <------------------------------\n   |   https://app/callback?code=...&state=...\n   |\n   | 3) Exchange code for tokens (no client secret)\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=authorization_code\n   |        &client_id=...\n   |        &code=...\n   |        &redirect_uri=...\n   |        &code_verifier=...\n   |\n   | 4) Receive tokens (access_token, id_token, ... )\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer &lt;access_token&gt;\n   v\n  Response"
+        }
+      }
+    },
+    "ConfidentialClient": {
+      "Main": {
+        "title": "Authorization Code (Confidential Client)",
+        "header": {
+          "resetAria": "Reset",
+          "resetTitle": "Reset (keep settings)",
+          "eraseAria": "Erase settings",
+          "eraseTitle": "Erase settings and reset"
+        },
+        "steps": {
+          "overview": "Overview",
+          "settings": "Settings",
+          "pkce": "PKCE",
+          "authorize": "Authorize",
+          "callback": "Callback",
+          "authentication": "Authentication",
+          "tokens": "Tokens",
+          "decode": "Decode",
+          "validate": "Validate",
+          "callApi": "Call API"
+        },
+        "buttons": {
+          "previous": "Previous",
+          "next": "Next"
+        },
+        "overview": {
+          "flowIntro": "High-level overview of the Authorization Code flow for confidential clients (with client authentication).",
+          "flowDiagram": "Client (Web/App)\n   |\n   | 1) (Optional) Generate code_verifier + code_challenge (PKCE)\n   v\nAuthorize Endpoint ------------------------------>\n   |   GET .../authorize?client_id=...&redirect_uri=...\n   |        &response_type=code&scope=...&state=...\n   |        &code_challenge=...&code_challenge_method=S256\n   |\n   | 2) User signs in and consents\n   v\nRedirect (Callback) <------------------------------\n   |   https://app/callback?code=...&state=...\n   |\n   | 3) Exchange code for tokens with client auth\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=authorization_code\n   |        &client_id=...\n   |        &code=...\n   |        &redirect_uri=...\n   |        &client_secret=... OR client_assertion=...\n   |        &code_verifier=... (if PKCE)\n   |\n   | 4) Receive tokens (access_token, id_token, ... )\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer &lt;access_token&gt;\n   v\n  Response"
+        },
+        "help": {
+          "authEndpoint": "OAuth 2.0 v2 authorize endpoint. Tenant is substituted in {tenant}.",
+          "tokenEndpoint": "OAuth 2.0 v2 token endpoint. Tenant is substituted in {tenant}."
+        },
+        "pkce": {
+          "disabled": {
+            "title": "PKCE",
+            "description": "PKCE is disabled for this flow. You can enable it in Settings."
+          }
+        }
+      }
+    }
+  }
+  ,
+  "ClientCredentials": {
+    "Main": {
+      "title": "Client Credentials",
+      "header": {
+        "resetAria": "Reset",
+        "resetTitle": "Reset (keep settings)",
+        "eraseAria": "Erase settings",
+        "eraseTitle": "Erase settings and reset"
+      },
       "steps": {
         "overview": "Overview",
         "settings": "Settings",
-        "pkce": "PKCE",
-        "authorize": "Authorize",
-        "callback": "Callback",
+        "authentication": "Authentication",
         "tokens": "Tokens",
         "decode": "Decode",
         "validate": "Validate",
         "callApi": "Call API"
       },
-      "sections": {
-        "settings": {
-          "title": "Settings",
-          "description": "Configure your environment for the OAuth flow. Provide your Entra tenant (GUID) and public client ID (GUID). The redirect URI is auto-detected from the current origin (read-only) and must be registered in your app. Scopes determine what you’ll be asked to consent to.",
-          "userProvidedTitle": "User-provided settings",
-          "userProvidedDescription": "These fields are configurable by you and are used throughout the flow — for example when building the authorization request, exchanging tokens, and in other steps that require client or tenant configuration.",
-          "localStorageNotice": "These values will be saved in your browser's local storage for convenience.",
-          "resolvedTitle": "Resolved (read-only) values",
-          "resolvedDescription": "These values are derived from the tenant and other inputs. They are shown for reference and cannot be changed here.",
-          "flowIntro": "This app demonstrates the OAuth 2.0 Authorization Code flow with PKCE for public clients. In short: you build an authorization URL, sign in (popup), get a code at the redirect, then exchange it for tokens using the code_verifier.",
-          "flowDiagram": "Client (Browser)\n   |\n   | 1) Generate code_verifier + code_challenge (S256)\n   v\nAuthorize Endpoint ------------------------------>\n   |   GET .../authorize?client_id=...&redirect_uri=...\n   |        &response_type=code&scope=...&state=...\n   |        &code_challenge=...&code_challenge_method=S256\n   |\n   | 2) User signs in and consents\n   v\nRedirect (Callback) <------------------------------\n   |   http(s)://your-app/callback/auth-code?code=...&state=...\n   |\n   | 3) Exchange code for tokens with code_verifier\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=authorization_code\n   |        &client_id=...\n   |        &code=...\n   |        &redirect_uri=...\n   |        &code_verifier=...\n   |\n   | 4) Receive tokens (access_token, id_token, ... )\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer <access_token>\n   v\n  Response"
-        },
-        "pkce": {
-          "description": "PKCE secures public clients. Click the Generate button (left of the Code Verifier input) to create a high-entropy code_verifier and its code_challenge (S256 by default)."
-        },
-        "authorize": {
-          "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state and nonce, and PKCE parameters. You can also set response_mode, prompt, and login_hint to influence how the identity provider returns results or how the sign-in experience behaves. Click ‘Open popup’ to sign in and consent. After completing sign-in, the popup will redirect back and step 5 will auto-fill with the code."
-        },
-        "callback": {
-          "title": "Handle redirect (auto-pasted from popup)",
-          "description": "When Microsoft Entra ID redirects to your callback, this page receives the URL from the popup and extracts code and state. If nothing appears, ensure the redirect URI exactly matches your app registration and that the popup flow wasn’t blocked.",
-          "errorTitle": "Callback error",
-          "okTitle": "Callback OK"
-        },
-        "tokens": {
-          "title": "Exchange code for tokens",
-          "description": "Send a POST to the token endpoint with grant_type=authorization_code, your client_id, the received code, redirect_uri, and code_verifier. Click ‘Send’ to exchange.",
-          "requestTitle": "Token request",
-          "responseTitle": "Token response"
-        },
-        "decode": {
-          "title": "Decode tokens (JWT)",
-          "description": "Access and ID tokens are JWTs. Click ‘Decode’ to view the header and payload claims in a readable form."
-        },
-        "validate": {
-          "title": "Validate tokens (signature and claims)",
-          "description": "This guide walks through how to validate the ID and Access tokens you received: first, how signature validation works (kid -> metadata -> jwks -> verify), then the common claim checks you should perform (aud, iss, tid, nonce, scopes/roles, exp, nbf, iat)."
-        },
-        "callApi": {
-          "title": "Call protected API",
-          "description": "Call a protected endpoint using the Bearer access token. Some APIs (like Microsoft Graph) support browser CORS; others may require a server proxy in production. Click ‘Send GET’ to execute the request and inspect the response."
-        }
-      },
-      "labels": {
-        "tenantId": "Entra Tenant ID",
-        "clientId": "Client ID",
-        "redirectUri": "Redirect URI",
-        "scopes": "Scopes (space-separated)",
-        "authEndpoint": "Authorization Endpoint",
-        "tokenEndpoint": "Token Endpoint",
-        "pkceMethod": "Code Challenge Method",
-        "codeVerifier": "Code Verifier",
-        "codeChallenge": "Code Challenge",
-        "responseType": "response_type",
-        "state": "state",
-        "nonce": "nonce",
-        "responseMode": "response_mode",
-        "prompt": "prompt",
-        "loginHint": "login_hint",
-        "authUrlPreview": "Authorization URL preview",
-        "callbackUrl": "Callback URL",
-        "callbackBody": "POST body",
-        "error": "Error",
-        "errorUri": "Error URI",
-        "errorDescription": "Error description",
-        "extractedCode": "Extracted code",
-        "extractedState": "Extracted state",
-        "tokenRequest": "Token request",
-        "tokenEndpointPreview": "Token endpoint",
-        "responsePreview": "Response preview",
-        "accessToken": "Access token (JWT)",
-        "idToken": "ID token (JWT)",
-        "accessHeader": "Access token header",
-        "accessPayload": "Access token payload",
-        "idHeader": "ID token header",
-        "idPayload": "ID token payload",
-        "apiEndpoint": "API endpoint",
-        "apiHeaders": "Request headers",
-        "apiResponse": "Response preview"
-      },
-      "placeholders": {
-        "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-        "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-        "scopes": "openid profile offline_access api://.../scope.read",
-        "selectMethod": "Select method",
-        "codeVerifier": "Random high-entropy string",
-        "codeChallenge": "Derived from code_verifier (S256/plain)",
-        "state": "Optional state (recommended)",
-        "nonce": "Optional nonce",
-        "loginHint": "user@domain.com"
-      },
       "buttons": {
-        "generate": "Generate",
-        "openPopup": "Open popup",
-        "copyUrl": "Copy URL",
-        "sending": "Sending…",
-        "send": "Send",
-        "copyRequest": "Copy request",
-        "decode": "Decode",
-        "sendGet": "Send GET",
         "previous": "Previous",
         "next": "Next"
       },
-      "options": {
-        "responseMode": {
-          "query": "query",
-          "form_post": "form_post"
-        },
-        "prompt": {
-          "login": "login",
-          "consent": "consent",
-          "select_account": "select_account",
-          "none": "none"
-        }
-      },
-      "notes": {
-        "accessHeaderNonce": "This access token header contains a <code>nonce</code> field. This is a provider-specific JOSE header and is unrelated to the OIDC <code>nonce</code> claim, which is validated in the ID token payload."
-      },
-      "validateUi": {
-        "graphWarning": "Access tokens for Microsoft Graph (aud <code>{aud}</code>) typically cannot be signature-validated by this client. Only Microsoft Graph can validate their signatures.",
-        "idTokenTitle": "ID Token",
-        "accessTokenTitle": "Access Token",
-        "signatureValidation": "Signature validation",
-        "verified": "Verified",
-        "notVerified": "Not verified",
-        "skipped": "Skipped",
-        "skippedAria": "skipped",
-        "steps": {
-          "extractKid": "Extract kid from token header:",
-          "extractAlg": "Extract alg from token header:",
-          "extractVersion": "Extract version from token payload:",
-          "extractIssuer": "Extract issuer (iss) from token payload:",
-          "buildMetadata": "Build metadata endpoint:",
-          "resolveJwks": "Resolve JWKS URL:",
-          "fetchJwksFindKey": "Fetch JWKS and find key",
-          "verifySignature": "Verify signature with alg"
-        },
-        "reason": "Reason:",
-        "error": "Error:",
-        "publicKeyPem": "Public key (PEM)",
-        "copy": "Copy",
-        "claimValidations": "Claim validations",
-        "claims": {
-          "id": {
-            "aud": "aud (audience) should equal your client_id:",
-            "iss": "iss (issuer) should match your authority/tenant:",
-            "exp": "exp (expiration) in future:",
-            "nbfIat": "nbf/iat (not before / issued at) reasonable:",
-            "nonce": "nonce (anti-replay) should match request:"
-          },
-          "access": {
-            "aud": "aud (audience) should equal API/resource:",
-            "iss": "iss (issuer) should match your tenant issuer:",
-            "exp": "exp (expiration) in future:",
-            "nbfIat": "nbf/iat (not before / issued at) reasonable:",
-            "scp": "scp (scopes) present:",
-            "msGraph": "(MS Graph API)"
-          }
-        }
-      },
-      "help": {
-        "tenantId": "Directory (tenant) GUID of your Entra ID instance.",
-        "clientId": "Application (client) ID of your public client app registration.",
-        "redirectUri": "Callback URL for this app. Must match the redirect URI in the app registration.",
-        "scopes": "Space-separated scopes to request (e.g., openid profile offline_access api://.../scope.read).",
-        "authEndpoint": "OAuth 2.0 v2 authorize endpoint. Tenant is substituted in \u007Btenant\u007D.",
-        "tokenEndpoint": "OAuth 2.0 v2 token endpoint. Tenant is substituted in \u007Btenant\u007D.",
-        "codeVerifier": "High-entropy random string kept secret by the client (PKCE).",
-        "codeChallenge": "Base64url-encoded SHA-256 hash of the code_verifier (S256).",
-        "responseType": "OAuth response_type parameter; for PKCE it is 'code'.",
-        "state": "Opaque value to maintain state between request and callback; helps prevent CSRF.",
-        "nonce": "A string to associate a client session with an ID token; helps mitigate replay attacks.",
-        "responseMode": "Where the response should be returned (query or form_post).",
-        "prompt": "Controls the behavior: login, consent, select_account, create, or none.",
-        "loginHint": "Prefill the username or sign-in hint (e.g., email).",
-        "authUrlPreview": "The full authorization URL that will open in the popup.",
-        "callbackUrl": "The full callback URL captured from the popup after sign-in.",
-        "callbackBody": "If response_mode=form_post, the identity provider sends parameters in the POST body.",
-        "error": "Short error code returned by the authorization server (the 'error' parameter).",
-        "errorUri": "Optional URI with more information about the error (the 'error_uri' parameter).",
-        "errorDescription": "Optional human-readable description of the error (the 'error_description' parameter).",
-        "extractedCode": "The authorization code extracted from the callback URL.",
-        "extractedState": "The state value extracted from the callback URL (if set).",
-        "tokenRequest": "The POST body (x-www-form-urlencoded) used to exchange the code for tokens.",
-        "tokenEndpointPreview": "The full token endpoint URL that will be used to exchange the authorization code.",
-        "responsePreview": "Raw response from the token endpoint (pretty-printed if JSON).",
-        "accessToken": "Access token to call APIs. Shown as a JWT string.",
-        "idToken": "ID token representing the user identity. Shown as a JWT string.",
-        "accessHeader": "Decoded JWT header of the access token.",
-        "accessPayload": "Decoded JWT payload of the access token.",
-        "idHeader": "Decoded JWT header of the ID token.",
-        "idPayload": "Decoded JWT payload of the ID token.",
-        "apiEndpoint": "HTTP endpoint to call with the access token (e.g., Microsoft Graph).",
-        "apiHeaders": "HTTP headers used for the API call (includes Authorization).",
-        "apiResponse": "Raw response from the API call (pretty-printed if JSON).",
-        "checkState": "Please verify the extracted state matches the expected state.",
-        "checkStateAlways": "Check below that the extracted state matches the expected state before proceeding.",
-        "stateValid": "state matches",
-        "stateInvalid": "state does not match"
-      },
-      "errors": {
-        "tenantIdInvalid": "Tenant is required and must be a GUID",
-        "clientIdRequired": "Client ID is required and must be a GUID",
-        "clientIdInvalid": "Client ID must be a GUID",
-        "redirectUriInvalid": "Redirect URI must be a valid http(s) URL",
-        "codeVerifierRequired": "Code Verifier is required",
-        "codeChallengeRequired": "Code Challenge is required"
+      "overview": {
+        "flowIntro": "High-level overview of the Client Credentials flow (app-only, no user).",
+        "flowDiagram": "Client (Daemon/App)\n   |\n   | 1) Configure client authentication (secret or certificate)\n   v\nToken Endpoint ----------------------------------->\n   |   POST grant_type=client_credentials\n   |        &client_id=...\n   |        &scope=...\n   |        &client_secret=... OR client_assertion=...\n   |\n   | 2) Receive access_token (app-only)\n   v\nProtected API (e.g., Graph) --------------------->\n   |   Authorization: Bearer &lt;access_token&gt;\n   v\n  Response"
       }
     }
-  },
-  "Error": {
-    "title": "Something went wrong.",
-    "description": "We hit an unexpected error. You can try to recover.",
-    "tryAgain": "Try again"
   }
 }
