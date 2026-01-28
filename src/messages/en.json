@@ -313,8 +313,8 @@
       "thumbprintSha1": "Thumbprint (SHA-1)",
       "clientAssertionKid": "Key ID (kid)",
       "assertionClaims": "JWT Claims (Preview)",
-      "testAssertion": "Signed JWT (Test)",
-      "decodedAssertion": "Decoded JWT (Verification)"
+      "testAssertion": "Signed JWT",
+      "decodedAssertion": "Decoded JWT"
     },
     "help": {
       "clientAuthMethod": "Choose how the client authenticates to the token endpoint when exchanging the code.",
@@ -365,6 +365,7 @@
     "buttons": {
       "generateKeyPair": "Generate Key Pair",
       "generateCertificate": "Generate Certificate",
+      "confirmKid": "Confirm Key ID",
       "previewClaims": "Preview Claims",
       "generateTestAssertion": "Generate Test Assertion"
     },
@@ -381,12 +382,13 @@
     },
     "note": {
       "label": "Note:",
-      "body": "When you click \"Exchange Code for Tokens\" in the next step, a fresh client_assertion will be automatically generated and sent to the token endpoint. The private key stays secure and never leaves your browser."
+      "body": "Due to browser limitations, secrets must be sent to the server, where the token endpoint call is actually made."
     },
     "errors": {
       "generateKeyPair": "Error generating key pair: {error}",
       "keyPairRequired": "Please generate a key pair first.",
       "generateCertificate": "Error generating certificate: {error}",
+      "missingKid": "Please enter or generate a Key ID first.",
       "missingClientConfig": "Please configure client ID and token endpoint first.",
       "missingKeyOrConfig": "Please generate a key pair and configure settings first.",
       "generateAssertion": "Error generating assertion: {error}"

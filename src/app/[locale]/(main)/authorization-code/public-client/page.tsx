@@ -608,6 +608,7 @@ export default function AuthorizationCodePublicClientPage() {
           tenantId={tenantId}
           clientId={clientId}
           expectedNonce={nonce}
+          isClientCredentials={false}
           decodedAccessHeader={decodedAccessHeader}
           decodedAccessPayload={decodedAccessPayload}
           decodedIdHeader={decodedIdHeader}

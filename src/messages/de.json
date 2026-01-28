@@ -313,8 +313,8 @@
       "thumbprintSha1": "Thumbprint (SHA-1)",
       "clientAssertionKid": "Key ID (kid)",
       "assertionClaims": "JWT-Ansprüche (Vorschau)",
-      "testAssertion": "Signiertes JWT (Test)",
-      "decodedAssertion": "Dekodiertes JWT (Prüfung)"
+      "testAssertion": "Signiertes JWT",
+      "decodedAssertion": "Dekodiertes JWT"
     },
     "help": {
       "clientAuthMethod": "Wählen Sie, wie sich der Client beim Token-Endpunkt beim Code-Tausch authentifiziert.",
@@ -365,6 +365,7 @@
     "buttons": {
       "generateKeyPair": "Schlüsselpaar generieren",
       "generateCertificate": "Zertifikat generieren",
+      "confirmKid": "Key-ID bestätigen",
       "previewClaims": "Ansprüche anzeigen",
       "generateTestAssertion": "Test-Assertion erzeugen"
     },
@@ -381,12 +382,13 @@
     },
     "note": {
       "label": "Hinweis:",
-      "body": "Wenn Sie im nächsten Schritt auf \"Code gegen Token eintauschen\" klicken, wird automatisch eine neue client_assertion generiert und an den Token-Endpunkt gesendet. Der private Schlüssel bleibt sicher und verlässt Ihren Browser nie."
+      "body": "Aufgrund von Browser-Einschränkungen müssen Secrets an den Server gesendet werden, wo der Aufruf des Token-Endpunkts tatsächlich erfolgt."
     },
     "errors": {
       "generateKeyPair": "Fehler beim Erzeugen des Schlüsselpaares: {error}",
       "keyPairRequired": "Bitte erzeugen Sie zuerst ein Schlüsselpaar.",
       "generateCertificate": "Fehler beim Erzeugen des Zertifikats: {error}",
+      "missingKid": "Bitte geben Sie zuerst eine Key-ID ein oder erzeugen Sie sie.",
       "missingClientConfig": "Bitte konfigurieren Sie zuerst Client-ID und Token-Endpunkt.",
       "missingKeyOrConfig": "Bitte erzeugen Sie zuerst ein Schlüsselpaar und konfigurieren Sie die Einstellungen.",
       "generateAssertion": "Fehler beim Erzeugen der Assertion: {error}"

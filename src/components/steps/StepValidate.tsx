@@ -8,6 +8,7 @@ type Props = {
   tenantId: string;
   clientId: string;
   expectedNonce: string;
+  isClientCredentials: boolean;
   // Decoded JWT parts (pretty JSON strings)
   decodedAccessHeader: string;
   decodedAccessPayload: string;
@@ -80,7 +81,7 @@ type SigStatus = {
 
 export default function StepValidate(props: Props) {
   const t = useTranslations('StepValidate');
-  const { tenantId, clientId, expectedNonce, decodedAccessHeader, decodedAccessPayload, decodedIdHeader, decodedIdPayload, accessToken, idToken } = props;
+  const { tenantId, clientId, expectedNonce, isClientCredentials, decodedAccessHeader, decodedAccessPayload, decodedIdHeader, decodedIdPayload, accessToken, idToken } = props;
 
   const accessHeader = useMemo(() => parseJson<JwtHeader>(decodedAccessHeader) || {}, [decodedAccessHeader]);
   const accessPayload = useMemo(() => parseJson<JwtPayload>(decodedAccessPayload) || {}, [decodedAccessPayload]);
@@ -295,7 +296,7 @@ export default function StepValidate(props: Props) {
     const normalized = String(aud || '').trim().replace(/\/$/, '');
     return normalized === graphAud || normalized === graphAudUrl;
   });
-  const isClientCredentials = String(accessPayload.idtyp || '').toLowerCase() === 'app' || !idToken;
+  const isClientCredentialsFlow = isClientCredentials;
 
   return (
     <section>
@@ -441,7 +442,7 @@ export default function StepValidate(props: Props) {
             {t('validateUi.claims.access.nbfIat')}: nbf <code>{fmtEpoch(accessPayload.nbf)}</code>, iat <code>{fmtEpoch(accessPayload.iat)}</code>
             <span className="ml-2"><StatusIcon ok={accClaimOk.nbfOk && accClaimOk.iatOk} /></span>
           </li>
-          {!isClientCredentials && (
+          {!isClientCredentialsFlow && (
             <li>
               {t('validateUi.claims.access.scp')} <code>{accessPayload.scp || '—'}</code>
               <span className="ml-2" style={{ color: 'var(--yellow-500)' }}>
@@ -450,7 +451,7 @@ export default function StepValidate(props: Props) {
               </span>
             </li>
           )}
-          {isClientCredentials && (
+          {isClientCredentialsFlow && (
             <>
               <li>
                 {t('validateUi.claims.access.roles')} <code>{Array.isArray(accessPayload.roles) ? accessPayload.roles.join(' ') : (accessPayload.roles || '—')}</code>

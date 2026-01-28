@@ -432,6 +432,7 @@ export default function ClientCredentialsPage() {
           tenantId={tenantId}
           clientId={clientId}
           expectedNonce=""
+          isClientCredentials={true}
           decodedAccessHeader={decodedAccessHeader}
           decodedAccessPayload={decodedAccessPayload}
           decodedIdHeader={decodedIdHeader}
