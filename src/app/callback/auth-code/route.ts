@@ -1,7 +1,18 @@
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
 export async function GET(request: Request) {
 	const url = new URL(request.url);
 	const code = url.searchParams.get('code') || '';
 	const state = url.searchParams.get('state') || '';
+	const safeCode = code ? escapeHtml(code.slice(0, 8) + '…') : '(none)';
+	const safeState = state ? escapeHtml(state) : '(none)';
 	const html = `<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -17,7 +28,7 @@ export async function GET(request: Request) {
 	<body>
 		<h1>Processing sign-in…</h1>
 		<p class="muted">If this window does not close automatically, you can close it.</p>
-		<p class="muted">code: <code>${code ? code.slice(0, 8) + '…' : '(none)'}</code>, state: <code>${state || '(none)'}</code></p>
+		<p class="muted">code: <code>${safeCode}</code>, state: <code>${safeState}</code></p>
 		<script>
 			(function(){
 				try {
