@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { buildClientAssertion } from '@/lib/jwtSign';
+import { resolveAndValidateTokenEndpoint } from '@/lib/tokenEndpoint';
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +21,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'missing_parameters' }, { status: 400, headers: { 'cache-control': 'no-store' } });
     }
 
-    const url = String(tokenEndpoint).replace('{tenant}', String(tenantId).trim());
+    const url = resolveAndValidateTokenEndpoint(tokenEndpoint, tenantId);
+    if (!url) {
+      return NextResponse.json({ error: 'invalid_token_endpoint' }, { status: 400, headers: { 'cache-control': 'no-store' } });
+    }
 
     const body = new URLSearchParams();
     body.set('grant_type', 'client_credentials');
