@@ -29,7 +29,12 @@ export const guessJwksUrl = (iss?: string, tid?: string, ver?: string) => {
     const host = u.host.toLowerCase();
     const tenant = (tid || 'common').trim();
     const v = (ver || (iss.includes('/v2.0') ? '2.0' : '1.0')).startsWith('2') ? 'v2.0' : 'v1.0';
-    if (host.includes('login.microsoftonline.com') || host.includes('sts.windows.net')) {
+    const isAllowedHost = (h: string, domain: string) =>
+      h === domain || h.endsWith('.' + domain);
+    if (
+      isAllowedHost(host, 'login.microsoftonline.com') ||
+      isAllowedHost(host, 'sts.windows.net')
+    ) {
       return `https://login.microsoftonline.com/${tenant}/discovery/v2.0/keys`;
     }
   } catch {}
