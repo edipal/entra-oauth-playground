@@ -1,6 +1,49 @@
 import { NextResponse } from 'next/server';
 import { buildClientAssertion } from '@/lib/jwtSign';
 
+// Validate and normalize the token endpoint URL to prevent SSRF.
+// Returns a fully resolved URL string with the tenant substituted, or null if invalid.
+function resolveAndValidateTokenEndpoint(tokenEndpoint: unknown, tenantId: unknown): string | null {
+  const raw = String(tokenEndpoint || '').trim();
+  const tenant = String(tenantId || '').trim();
+  if (!raw || !tenant) {
+    return null;
+  }
+
+  // Perform the {tenant} placeholder replacement before validation.
+  const replaced = raw.replace('{tenant}', tenant);
+
+  let url: URL;
+  try {
+    url = new URL(replaced);
+  } catch {
+    return null;
+  }
+
+  // Enforce HTTPS to avoid unencrypted or unusual schemes.
+  if (url.protocol !== 'https:') {
+    return null;
+  }
+
+  const hostname = url.hostname.toLowerCase();
+
+  // Example: allow-list known identity providers or domains.
+  // Adjust this list to your deployment needs.
+  const allowedHostSuffixes = [
+    '.login.microsoftonline.com',
+    '.sts.windows.net'
+  ];
+
+  const isAllowed =
+    allowedHostSuffixes.some(suffix => hostname === suffix.slice(1) || hostname.endsWith(suffix));
+
+  if (!isAllowed) {
+    return null;
+  }
+
+  return url.toString();
+}
+
 export async function POST(request: Request) {
   try {
     const json = await request.json();
@@ -24,7 +67,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'missing_parameters' }, { status: 400, headers: { 'cache-control': 'no-store' } });
     }
 
-    const url = String(tokenEndpoint).replace('{tenant}', String(tenantId).trim());
+    const url = resolveAndValidateTokenEndpoint(tokenEndpoint, tenantId);
+    if (!url) {
+      return NextResponse.json({ error: 'invalid_token_endpoint' }, { status: 400, headers: { 'cache-control': 'no-store' } });
+    }
 
     const body = new URLSearchParams();
     body.set('grant_type', 'authorization_code');
