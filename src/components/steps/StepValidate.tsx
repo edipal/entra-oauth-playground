@@ -126,7 +126,11 @@ export default function StepValidate(props: Props) {
         if (!idToken || !idIss) { setIdSig(s); return; }
         let jwksUrl = '';
         const host = (() => { try { return new URL(idIss!).host.toLowerCase(); } catch { return ''; } })();
-        if (host.includes('login.microsoftonline.com') || host.includes('sts.windows.net')) {
+        const microsoftHosts = new Set([
+          'login.microsoftonline.com',
+          'sts.windows.net',
+        ]);
+        if (host && microsoftHosts.has(host)) {
           // Try v2 then v1
           const tenant = (idPayload.tid || 'common').trim();
           const candidates = [
