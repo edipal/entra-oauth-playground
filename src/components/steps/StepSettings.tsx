@@ -1,5 +1,5 @@
 "use client";
-import React, { useId } from 'react';
+import React from 'react';
 import { InputText } from 'primereact/inputtext';
 import { InputSwitch } from 'primereact/inputswitch';
 import { Tooltip } from 'primereact/tooltip';
@@ -58,8 +58,7 @@ export default function AuthCodeStepSettingsCommon(props: Props) {
   // safe translation helper: if the key is missing return the provided fallback or an empty string
   const maybeT = (key: string, fallback = ''): string => TranslationUtils.maybeT(t, key, fallback);
 
-  // id used for the local-storage info tooltip
-  const localStorageIconId = useId();
+  const localStorageIconId = 'local-storage-notice-icon';
 
   return (
     <>

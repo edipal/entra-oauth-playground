@@ -268,7 +268,17 @@ export default function ClientCredentialsPage() {
     [StepIndex.Settings]: () => clientIdValid && tenantIdValid && scopesValid,
     [StepIndex.Authentication]: () => (clientAuthMethod === 'secret' ? (clientSecret.trim().length > 0) : (privateKeyPem.trim().length > 0 && certificatePem.trim().length > 0 && thumbprintSha1.trim().length > 0)),
     [StepIndex.Tokens]: () => !!accessToken,
-    [StepIndex.Decode]: () => true,
+    [StepIndex.Decode]: () => {
+      const hasAccessToken = !!accessToken;
+      const hasIdToken = !!idToken;
+      const accessDecoded = !!decodedAccessPayload;
+      const idDecoded = !!decodedIdPayload;
+
+      if (!hasAccessToken && !hasIdToken) return false;
+      if (hasAccessToken && hasIdToken) return accessDecoded && idDecoded;
+      if (hasAccessToken) return accessDecoded;
+      return idDecoded;
+    },
     [StepIndex.Validate]: () => true,
     [StepIndex.CallApi]: () => false
   };

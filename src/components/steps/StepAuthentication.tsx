@@ -224,7 +224,16 @@ export default function StepAuthentication(props: Props) {
                   <LabelWithHelp id="clientSecret" text={t('labels.clientSecret')} help={t('help.clientSecret')} />
                 </div>
                 <div>
-                  <Password id="clientSecret" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder={t('placeholders.clientSecret')} style={{ fontSize: '1.15rem', width: '100%' }} toggleMask feedback={false} />
+                  <Password
+                    id="clientSecret"
+                    value={clientSecret}
+                    onChange={(e) => setClientSecret(e.target.value)}
+                    placeholder={t('placeholders.clientSecret')}
+                    variant="outlined"
+                    className="client-secret-password"
+                    toggleMask
+                    feedback={false}
+                  />
                 </div>
               </div>
             </div>
