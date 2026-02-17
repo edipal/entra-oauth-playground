@@ -9,11 +9,6 @@ This is a proof of concept, not a thoughtfully designed and developed applicatio
 
 Ensure appropriate Entra ID security and governance are in place per your organization’s policies.
 
-## Security
-
-- Security policy: [SECURITY.md](./SECURITY.md)
-- Code owners: [.github/CODEOWNERS](./.github/CODEOWNERS)
-
 ## Overview
 This app helps you explore the most used Microsoft Entra ID OAuth 2.0 flows visually. It breaks down the complex "dance" of modern authentication into discrete, interactive steps.
 
