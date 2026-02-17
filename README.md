@@ -19,10 +19,10 @@ Supported flows:
 - **Authorization Code (Confidential Client)**
 - **Client Credentials (Confidential Client)**
 
-## Confidential client warning
+## Confidential client warning - when not running locally
 > ⚠️ **Confidential client flows require server-side token exchange.**
 >
-> Due to browser limitations, secrets (client secrets or private keys used for `client_assertion`) must be sent to a server-side component which performs the token endpoint request and signs assertions when needed. These secrets are used only transiently for the exchange and are not stored by this app (neither in the browser nor on the server).
+> Due to browser + Entra ID limitations, secrets (client secrets or private keys used for `client_assertion`) must be sent to a server-side component which performs the token endpoint request and signs assertions when needed. These secrets are used only transiently for the exchange and are not stored by this app (neither in the browser nor on the server).
 
 ## Tech stack
 - **Framework:** Next.js 15 (App Router, TypeScript)
