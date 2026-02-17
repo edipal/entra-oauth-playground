@@ -14,8 +14,8 @@ on:
   push:
     branches: [ "main" ]
 
-# Declare default permissions as read only.
-permissions: read-all
+# Do not grant broad default token permissions.
+permissions: {}
 
 jobs:
   analysis:
@@ -24,13 +24,14 @@ jobs:
     # `publish_results: true` only works when run from the default branch. conditional can be removed if disabled.
     if: github.event.repository.default_branch == github.ref_name || github.event_name == 'pull_request'
     permissions:
+      # Needed by checkout and repository reads.
+      contents: read
+      # Needed for some Scorecard checks when querying workflow metadata.
+      actions: read
       # Needed to upload the results to code-scanning dashboard.
       security-events: write
       # Needed to publish results and get a badge (see publish_results below).
       id-token: write
-      # Uncomment the permissions below if installing in a private repository.
-      # contents: read
-      # actions: read
 
     steps:
       - name: "Checkout code"
