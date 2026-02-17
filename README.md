@@ -113,6 +113,3 @@ Add your own screenshots to replace the placeholders below. Place images in `doc
     - Enter your **Client ID** and **Tenant ID**.
     - Select your desired **Scopes**.
 4. **Follow the Steps:** Click the "Next" button to progress through the steps.
-
-## License
-This project is released under the MIT License.
