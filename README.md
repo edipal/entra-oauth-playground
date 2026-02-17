@@ -112,7 +112,7 @@ Add your own screenshots to replace the placeholders below. Place images in `doc
 ## Usage
 
 1. **Register an App:** Go to the [Entra Admin Center](https://entra.microsoft.com/) and register an Application.
-2. **Configure Redirect URI:** Add `http://localhost:3000/callback/auth-code` (or your deployed URL). For **public clients**, add it under the **Single-page application** platform; for **confidential clients**, add it under the **Web** platform.
+2. **Configure Redirect URI:** Add `https://localhost:3000/callback/auth-code` (or your deployed URL). For **public clients**, add it under the **Single-page application** platform; for **confidential clients**, add it under the **Web** platform.
 3. **Start the Playground:**
     - Go to **Settings** in the app.
     - Enter your **Client ID** and **Tenant ID**.

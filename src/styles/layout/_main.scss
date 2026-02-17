@@ -26,3 +26,77 @@ a {
 .layout-container {
     min-height: 100vh;
 }
+
+.p-inputswitch {
+    position: relative;
+    display: inline-block;
+}
+
+.p-inputswitch .p-inputswitch-input {
+    appearance: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    z-index: 1;
+    outline: 0 none;
+    cursor: pointer;
+    border-radius: 30px;
+}
+
+.p-inputswitch .p-inputswitch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 1px solid transparent;
+}
+
+.p-inputswitch .p-inputswitch-slider:before {
+    position: absolute;
+    content: "";
+    top: 50%;
+}
+
+.p-inputswitch.p-highlight .p-inputswitch-slider {
+    background: var(--primary-color);
+}
+
+.p-inputswitch.p-highlight .p-inputswitch-slider:before {
+    background: var(--primary-color-text, rgba(255, 255, 255, 0.87));
+    transform: translateX(1.25rem);
+}
+
+.p-inputswitch:not(.p-disabled):has(.p-inputswitch-input:focus-visible) .p-inputswitch-slider {
+    outline: 0 none;
+    outline-offset: 0;
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--primary-color) 35%, transparent);
+}
+
+.client-secret-password {
+    width: 100%;
+}
+
+.client-secret-password .p-icon-field,
+.client-secret-password .p-icon-field-right {
+    width: 100%;
+    position: relative;
+}
+
+.client-secret-password .p-input-icon {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.client-secret-password .p-password-input {
+    width: 100%;
+    padding-right: 2.5rem;
+}

@@ -414,7 +414,17 @@ export default function AuthorizationCodePublicClientPage() {
     [StepIndex.Authorize]: () => callbackValidated || (!!authCode && (!stateParam || stateParam === extractedState)),
     [StepIndex.Callback]: () => callbackValidated || maxCompletedStep >= StepIndex.Tokens || (!!authCode && (!stateParam || stateParam === extractedState)),
     [StepIndex.Tokens]: () => !!accessToken,
-    [StepIndex.Decode]: () => true,
+    [StepIndex.Decode]: () => {
+      const hasAccessToken = !!accessToken;
+      const hasIdToken = !!idToken;
+      const accessDecoded = !!decodedAccessPayload;
+      const idDecoded = !!decodedIdPayload;
+
+      if (!hasAccessToken && !hasIdToken) return false;
+      if (hasAccessToken && hasIdToken) return accessDecoded && idDecoded;
+      if (hasAccessToken) return accessDecoded;
+      return idDecoded;
+    },
     [StepIndex.Validate]: () => true,
     [StepIndex.CallApi]: () => false
   };
