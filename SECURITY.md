@@ -10,9 +10,10 @@ Please do not open public GitHub issues for security vulnerabilities.
 
 Report vulnerabilities privately by using GitHub Security Advisories:
 
-1. Open the repository Security tab.
-2. Select **Report a vulnerability**.
-3. Include reproduction details, impact, and suggested mitigation if available.
+1. Open the repository **Security** tab.
+2. In the left menu, select **Advisories**.
+3. Click **New draft security advisory**.
+4. Include reproduction details, impact, and suggested mitigation if available.
 
 You can also contact the maintainer through GitHub profile contact options if needed.
 
