@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useContext } from "react";
+import pkg from '../../../package.json';
 import AppMenu from "./AppMenu";
 import { LayoutContext } from "@/context/layoutcontext";
 import { MenuProvider } from "@/context/menucontext";
@@ -48,6 +49,7 @@ const AppSidebar = () => {
                     <span className="fi fi-de text-2xl border-1 border-white-alpha-10 border-round-xs"></span>
                 </button>
             </div>
+            <div className="text-center text-sm font-medium pb-4" style={{ color: 'var(--menuitem-text-color, var(--text-color, #fff))' }}>v{pkg.version}</div>
         </>
     );
 };

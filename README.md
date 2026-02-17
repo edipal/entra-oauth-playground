@@ -1,6 +1,6 @@
 # Next.js Entra ID OAuth Playground
 
-[![CodeQL](https://github.com/edipal/entra-oauth-playground/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/edipal/entra-oauth-playground/actions/workflows/github-code-scanning/codeql)
+[![CodeQL](https://github.com/edipal/entra-oauth-playground/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/edipal/entra-oauth-playground/actions/workflows/codeql.yml)
 
 ## Disclaimer
 This project was created with the assistance of GitHub Copilot. Portions of the code, structure, and documentation were generated and then reviewed/edited by a human. Please validate and test in your environment and review results before relying on them.
@@ -8,6 +8,11 @@ This project was created with the assistance of GitHub Copilot. Portions of the 
 This is a proof of concept, not a thoughtfully designed and developed application. It may contain bugs, inefficiencies, and incomplete features.
 
 Ensure appropriate Entra ID security and governance are in place per your organization’s policies.
+
+## Security
+
+- Security policy: [SECURITY.md](./SECURITY.md)
+- Code owners: [.github/CODEOWNERS](./.github/CODEOWNERS)
 
 ## Overview
 This app helps you explore the most used Microsoft Entra ID OAuth 2.0 flows visually. It breaks down the complex "dance" of modern authentication into discrete, interactive steps.
