@@ -214,15 +214,16 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
   const openAuthorizePopup = () => {
     if (!authUrlPreview) return;
-    const w = 480; const h = 700;
-    const left = window.screenX + (window.outerWidth - w) / 2;
-    const top = window.screenY + (window.outerHeight - h) / 2;
-    popupRef.current = window.open(
-      authUrlPreview,
-      'oauth_auth_popup',
-      `width=${w},height=${h},left=${left},top=${top}`
-    );
-    popupRef.current?.focus();
+
+    const popup = window.open('', 'oauth_auth_popup');
+    if (!popup) {
+      window.location.assign(authUrlPreview);
+      return;
+    }
+
+    popupRef.current = popup;
+    popup.location.href = authUrlPreview;
+    popup.focus();
   };
 
   // Streamlined: when on Tokens step, auto exchange tokens once inputs are ready

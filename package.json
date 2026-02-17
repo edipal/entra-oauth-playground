@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "SASS_SILENCE_DEPRECATIONS=import,legacy-js-api next dev",
+    "dev": "SASS_SILENCE_DEPRECATIONS=import,legacy-js-api next dev --experimental-https",
     "build": "SASS_SILENCE_DEPRECATIONS=import,legacy-js-api next build",
     "start": "next start",
     "format": "prettier --write \"{app,demo,layout,types}/**/*.{js,ts,tsx,d.ts}\"",
