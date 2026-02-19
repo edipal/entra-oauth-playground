@@ -79,6 +79,64 @@ a {
     box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--primary-color) 35%, transparent);
 }
 
+.p-radiobutton {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    vertical-align: bottom;
+}
+
+.p-radiobutton .p-radiobutton-box {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.p-radiobutton .p-radiobutton-input {
+    -webkit-appearance: none;
+    appearance: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    z-index: 1;
+    outline: 0 none;
+    cursor: pointer;
+}
+
+.p-radiobutton .p-radiobutton-icon {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0) scale(0.1);
+    border-radius: 50%;
+    visibility: hidden;
+}
+
+.p-radiobutton.p-highlight .p-radiobutton-box {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+}
+
+.p-radiobutton.p-highlight .p-radiobutton-box .p-radiobutton-icon,
+.p-radiobutton .p-radiobutton-box.p-highlight .p-radiobutton-icon {
+    background: var(--primary-color-text, rgba(255, 255, 255, 0.87));
+    transform: translateZ(0) scale(1);
+    visibility: visible;
+}
+
+.p-radiobutton:not(.p-disabled):has(.p-radiobutton-input:focus-visible) .p-radiobutton-box {
+    outline: 0 none;
+    outline-offset: 0;
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--primary-color) 35%, transparent);
+}
+
 .client-secret-password {
     width: 100%;
 }

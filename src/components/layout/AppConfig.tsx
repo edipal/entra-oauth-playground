@@ -211,56 +211,14 @@ const AppConfig = (props: AppConfigProps) => {
                             <div className="flex align-items-center gap-2 w-6">
                                 <RadioButton
                                     name="menuMode"
-                                    value={"slim"}
-                                    checked={layoutConfig.menuMode === "slim"}
-                                    onChange={(e) => changeMenuMode(e)}
-                                    inputId="mode3"
-                                ></RadioButton>
-                                <label htmlFor="mode3">Slim</label>
-                            </div>
-                            <div className="flex align-items-center gap-2 w-6">
-                                <RadioButton
-                                    name="menuMode"
-                                    value={"slim-plus"}
-                                    checked={
-                                        layoutConfig.menuMode === "slim-plus"
-                                    }
-                                    onChange={(e) => changeMenuMode(e)}
-                                    inputId="mode4"
-                                ></RadioButton>
-                                <label htmlFor="mode4">Slim +</label>
-                            </div>
-                            <div className="flex align-items-center gap-2 w-6">
-                                <RadioButton
-                                    name="menuMode"
-                                    value={"drawer"}
-                                    checked={layoutConfig.menuMode === "drawer"}
-                                    onChange={(e) => changeMenuMode(e)}
-                                    inputId="mode7"
-                                ></RadioButton>
-                                <label htmlFor="mode7">Drawer</label>
-                            </div>
-                            <div className="flex align-items-center gap-2 w-6">
-                                <RadioButton
-                                    name="menuMode"
-                                    value={"reveal"}
-                                    checked={layoutConfig.menuMode === "reveal"}
-                                    onChange={(e) => changeMenuMode(e)}
-                                    inputId="mode5"
-                                ></RadioButton>
-                                <label htmlFor="mode6">Reveal</label>
-                            </div>
-                            <div className="flex align-items-center gap-2 w-6">
-                                <RadioButton
-                                    name="menuMode"
                                     value={"horizontal"}
                                     checked={
                                         layoutConfig.menuMode === "horizontal"
                                     }
                                     onChange={(e) => changeMenuMode(e)}
-                                    inputId="mode5"
+                                    inputId="mode6"
                                 ></RadioButton>
-                                <label htmlFor="mode5">Horizontal</label>
+                                <label htmlFor="mode6">Horizontal</label>
                             </div>
                         </div>
 
