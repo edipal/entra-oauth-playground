@@ -26,6 +26,7 @@
                 z-index: 999;
                 overflow: visible;
                 flex-direction: row;
+                align-items: center;
                 position: static;
 
                 .layout-menu-container {
@@ -38,6 +39,19 @@
 
                 .sidebar-header {
                     padding: 0 2rem;
+                }
+
+                .sidebar-footer-languages {
+                    margin-left: 1rem;
+                    margin-right: 0.5rem;
+                    padding-bottom: 0 !important;
+                }
+
+                .sidebar-footer-version {
+                    padding-bottom: 0 !important;
+                    margin-right: 1rem;
+                    line-height: 1;
+                    white-space: nowrap;
                 }
             }
 

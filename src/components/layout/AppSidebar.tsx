@@ -41,7 +41,7 @@ const AppSidebar = () => {
                 </MenuProvider>
             </div>
 
-            <div className="flex align-items-center justify-content-center gap-3 pb-4">
+            <div className="sidebar-footer-languages flex align-items-center justify-content-center gap-3 pb-4">
                 <button type="button" className="p-link inline-flex justify-content-center align-items-center w-3rem h-3rem border-circle hover:bg-primary transition-all transition-duration-200" onClick={() => changeLanguage('en')}>
                     <span className="fi fi-us text-2xl border-1 border-white-alpha-10 border-round-xs"></span>
                 </button>
@@ -49,7 +49,7 @@ const AppSidebar = () => {
                     <span className="fi fi-de text-2xl border-1 border-white-alpha-10 border-round-xs"></span>
                 </button>
             </div>
-            <div className="text-center text-sm font-medium pb-4" style={{ color: 'var(--menuitem-text-color, var(--text-color, #fff))' }}>v{pkg.version}</div>
+            <div className="sidebar-footer-version text-center text-sm font-medium pb-4" style={{ color: 'var(--menuitem-text-color, var(--text-color, #fff))' }}>v{pkg.version}</div>
         </>
     );
 };
