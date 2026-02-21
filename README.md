@@ -104,6 +104,41 @@ Add your own screenshots to replace the placeholders below. Place images in `doc
    npm run build
    ```
 
+## Docker image publishing (GitHub Actions)
+
+The workflow [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml) builds and pushes multi-arch images for:
+- `linux/amd64`
+- `linux/arm64`
+
+Tag behavior:
+- PR merged to `main` publishes `latest`.
+- New GitHub Release (tag like `v1.2.3`) publishes `latest`, `v1.2.3`, and `1.2`.
+
+### Required GitHub repository configuration
+
+Add these **Actions secrets** in your repository:
+- `DOCKERHUB_TOKEN` (Docker Hub access token, not your password)
+- `RELEASE_TOKEN` (GitHub PAT used by release workflow to create commit/tag/release and trigger downstream workflows)
+
+How to create the token in Docker Hub:
+1. Go to Docker Hub → **Account Settings** → **Personal access tokens**.
+2. Create a token with `Read, Write, Delete` scope (or at least `Read, Write`).
+3. Save it as `DOCKERHUB_TOKEN` in GitHub secrets.
+
+### Release recommendation
+
+Yes — even early in the project, using releases is useful.
+
+Use [`.github/workflows/release.yml`](.github/workflows/release.yml):
+1. Run **Actions → Release → Run workflow**.
+2. Choose bump type (`patch`, `minor`, or `major`).
+3. Workflow updates `package.json` (and `pnpm-lock.yaml`), commits, tags, and creates a GitHub Release.
+4. The release event triggers Docker publishing workflow automatically.
+
+`RELEASE_TOKEN` should be a GitHub fine-grained PAT with at least:
+- Repository access to this repo
+- `Contents: Read and write`
+
 ## Usage
 
 1. **Register an App:** Go to the [Entra Admin Center](https://entra.microsoft.com/) and register an Application.
