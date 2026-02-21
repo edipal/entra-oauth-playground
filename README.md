@@ -25,7 +25,7 @@ Supported flows:
 > Due to browser + Entra ID limitations, secrets (client secrets or private keys used for `client_assertion`) must be sent to a server-side component which performs the token endpoint request and signs assertions when needed. These secrets are used only transiently for the exchange and are not stored by this app (neither in the browser nor on the server).
 
 ## Tech stack
-- **Framework:** Next.js 15 (App Router, TypeScript)
+- **Framework:** Next.js 16 (App Router, TypeScript)
 - **UI Library:** PrimeReact + PrimeFlex + Sass
 - **Auth/Crypto:** `jose` (JWT signing/verification)
 - **i18n:** `next-intl`
@@ -97,47 +97,30 @@ Add your own screenshots to replace the placeholders below. Place images in `doc
    ```
 
 3. **Open the app:**
-   Visit [http://localhost:3000](http://localhost:3000). The app effectively handles locale redirection (e.g., to `/en`).
+   Visit [https://localhost:3000](https://localhost:3000). The app effectively handles locale redirection (e.g., to `/en`).
 
 4. **Build for production:**
    ```sh
    npm run build
    ```
 
-## Docker image publishing (GitHub Actions)
+## Run with Docker
 
-The workflow [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml) builds and pushes multi-arch images for:
-- `linux/amd64`
-- `linux/arm64`
+The Docker image runs over HTTP.
 
-Tag behavior:
-- PR merged to `main` publishes `latest`.
-- New GitHub Release (tag like `v1.2.3`) publishes `latest`, `v1.2.3`, and `1.2`.
+Run:
+```sh
+docker run --rm -p 3000:3000 edipal/entra-oauth-playground:latest
+```
 
-### Required GitHub repository configuration
+Open:
+- `http://localhost:3000`
 
-Add these **Actions secrets** in your repository:
-- `DOCKERHUB_TOKEN` (Docker Hub access token, not your password)
-- `RELEASE_TOKEN` (GitHub PAT used by release workflow to create commit/tag/release and trigger downstream workflows)
-
-How to create the token in Docker Hub:
-1. Go to Docker Hub → **Account Settings** → **Personal access tokens**.
-2. Create a token with `Read, Write, Delete` scope (or at least `Read, Write`).
-3. Save it as `DOCKERHUB_TOKEN` in GitHub secrets.
-
-### Release recommendation
-
-Yes — even early in the project, using releases is useful.
-
-Use [`.github/workflows/release.yml`](.github/workflows/release.yml):
-1. Run **Actions → Release → Run workflow**.
-2. Choose bump type (`patch`, `minor`, or `major`).
-3. Workflow updates `package.json` (and `pnpm-lock.yaml`), commits, tags, and creates a GitHub Release.
-4. The release event triggers Docker publishing workflow automatically.
-
-`RELEASE_TOKEN` should be a GitHub fine-grained PAT with at least:
-- Repository access to this repo
-- `Contents: Read and write`
+Safari note:
+- During sign-in, the browser usually starts on an `https://` Entra page and then redirects to your local callback.
+- In Safari (especially with HTTPS-Only enabled), this `https -> http://localhost` redirect can be blocked (`WebKitErrorDomain:305`).
+- Similar behavior can also happen in other browsers when HTTPS-Only / strict HTTPS modes are enabled.
+- If callback fails, try Chrome or Edge with default settings for local testing.
 
 ## Usage
 
