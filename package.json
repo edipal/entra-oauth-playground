@@ -6,7 +6,7 @@
     "dev": "SASS_SILENCE_DEPRECATIONS=import,legacy-js-api next dev --experimental-https",
     "build": "SASS_SILENCE_DEPRECATIONS=import,legacy-js-api next build",
     "start": "next start",
-    "format": "prettier --write \"{app,demo,layout,types}/**/*.{js,ts,tsx,d.ts}\"",
+    "format": "prettier --write \"{app,demo,layout,types,src}/**/*.{js,ts,tsx,d.ts}\"",
     "lint": "next lint"
   },
   "dependencies": {
