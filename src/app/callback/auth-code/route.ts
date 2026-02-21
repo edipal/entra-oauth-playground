@@ -1,19 +1,19 @@
 function escapeHtml(value: string): string {
-	return value
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;');
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export async function GET(request: Request) {
-	const url = new URL(request.url);
-	const code = url.searchParams.get('code') || '';
-	const state = url.searchParams.get('state') || '';
-	const safeCode = code ? escapeHtml(code.slice(0, 8) + '…') : '(none)';
-	const safeState = state ? escapeHtml(state) : '(none)';
-	const html = `<!DOCTYPE html>
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code") || "";
+  const state = url.searchParams.get("state") || "";
+  const safeCode = code ? escapeHtml(code.slice(0, 8) + "…") : "(none)";
+  const safeState = state ? escapeHtml(state) : "(none)";
+  const html = `<!DOCTYPE html>
 	<html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -49,28 +49,28 @@ export async function GET(request: Request) {
 		</script>
 	</body>
 	</html>`;
-	return new Response(html, {
-		status: 200,
-		headers: {
-			'content-type': 'text/html; charset=utf-8',
-			'cache-control': 'no-store'
-		}
-	});
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
 }
 
 export async function POST(request: Request) {
-	// Handle response_mode=form_post where the identity provider POSTs the
-	// code/state in the request body (application/x-www-form-urlencoded).
-	try {
-		const form = await request.formData();
-		// Reconstruct the original x-www-form-urlencoded body exactly (order preserved)
-		const params = new URLSearchParams();
-		for (const [k, v] of form.entries()) {
-			params.append(k, String(v));
-		}
-		const jsBody = JSON.stringify(params.toString());
+  // Handle response_mode=form_post where the identity provider POSTs the
+  // code/state in the request body (application/x-www-form-urlencoded).
+  try {
+    const form = await request.formData();
+    // Reconstruct the original x-www-form-urlencoded body exactly (order preserved)
+    const params = new URLSearchParams();
+    for (const [k, v] of form.entries()) {
+      params.append(k, String(v));
+    }
+    const jsBody = JSON.stringify(params.toString());
 
-		const html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 		<html lang="en">
 		<head>
 			<meta charset="utf-8" />
@@ -109,15 +109,14 @@ export async function POST(request: Request) {
 		</body>
 		</html>`;
 
-		return new Response(html, {
-			status: 200,
-			headers: {
-				'content-type': 'text/html; charset=utf-8',
-				'cache-control': 'no-store'
-			}
-		});
-	} catch (e) {
-		return new Response('Invalid request', { status: 400 });
-	}
+    return new Response(html, {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  } catch (e) {
+    return new Response("Invalid request", { status: 400 });
+  }
 }
-

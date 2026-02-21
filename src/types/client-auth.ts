@@ -1,1 +1,1 @@
-export type ClientAuthMethod = 'secret' | 'certificate';
+export type ClientAuthMethod = "secret" | "certificate";
