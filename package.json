@@ -1,6 +1,6 @@
 {
   "name": "entra-oauth-playground",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "dev": "SASS_SILENCE_DEPRECATIONS=import,legacy-js-api next dev --experimental-https",
