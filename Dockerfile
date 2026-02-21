@@ -31,7 +31,6 @@ COPY tsconfig.json ./
 COPY next-env.d.ts ./
 COPY src ./src
 COPY public ./public
-COPY certificates ./certificates
 
 RUN pnpm run build
 
