@@ -1,9 +1,9 @@
 "use client";
-import {InputTextarea} from 'primereact/inputtextarea';
-import {Button} from 'primereact/button';
-import {useTranslations} from 'next-intl';
-import LabelWithHelp from '@/components/LabelWithHelp';
-import { TranslationUtils } from '@/lib/translation';
+import { InputTextarea } from "primereact/inputtextarea";
+import { Button } from "primereact/button";
+import { useTranslations } from "next-intl";
+import LabelWithHelp from "@/components/LabelWithHelp";
+import { TranslationUtils } from "@/lib/translation";
 
 type Props = {
   tokenRequestPreview: unknown;
@@ -13,16 +13,22 @@ type Props = {
   resolvedTokenEndpoint?: string;
 };
 
-export default function StepTokens({ tokenRequestPreview, tokenResponseText, exchanging, onExchangeTokens, resolvedTokenEndpoint }: Props) {
-  const t = useTranslations('StepTokens');
-  const safeTWithFallback = (key: string, fallback = ''): string =>
+export default function StepTokens({
+  tokenRequestPreview,
+  tokenResponseText,
+  exchanging,
+  onExchangeTokens,
+  resolvedTokenEndpoint,
+}: Props) {
+  const t = useTranslations("StepTokens");
+  const safeTWithFallback = (key: string, fallback = ""): string =>
     TranslationUtils.safeTWithFallback(t, key, fallback);
   const toPretty = (v: unknown) => {
-    if (typeof v === 'string') return v;
+    if (typeof v === "string") return v;
     try {
       return JSON.stringify(v, null, 2);
     } catch {
-      return String(v ?? '');
+      return String(v ?? "");
     }
   };
   const reqStr = toPretty(tokenRequestPreview);
@@ -30,67 +36,114 @@ export default function StepTokens({ tokenRequestPreview, tokenResponseText, exc
   return (
     <>
       <section>
-        <p className="mb-3">{t('sections.tokens.description')}</p>
+        <p className="mb-3">{t("sections.tokens.description")}</p>
       </section>
 
       <div className="mb-4 surface-0 py-3 px-0 border-round">
-        <h4 className="mt-0 mb-3">{t('sections.tokens.requestTitle', { default: t('labels.tokenRequest') })}</h4>
+        <h4 className="mt-0 mb-3">
+          {t("sections.tokens.requestTitle", {
+            default: t("labels.tokenRequest"),
+          })}
+        </h4>
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.75rem' }}>
-              <div style={{ textAlign: 'left' }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(12rem, 14rem) 1fr",
+                alignItems: "center",
+                columnGap: "0.75rem",
+              }}
+            >
+              <div style={{ textAlign: "left" }}>
                 <LabelWithHelp
                   id="tokenEndpointPreview"
                   text={safeTWithFallback(
-                    'labels.tokenEndpointPreview',
-                    safeTWithFallback('labels.tokenEndpoint', 'Token endpoint')
+                    "labels.tokenEndpointPreview",
+                    safeTWithFallback("labels.tokenEndpoint", "Token endpoint"),
                   )}
-                  help={safeTWithFallback('help.tokenEndpointPreview', '')}
+                  help={safeTWithFallback("help.tokenEndpointPreview", "")}
                 />
               </div>
               <div>
-                <InputTextarea id="tokenEndpointPreview" rows={1} autoResize value={resolvedTokenEndpoint ?? ''} readOnly style={{ width: '100%' }} />
+                <InputTextarea
+                  id="tokenEndpointPreview"
+                  rows={1}
+                  autoResize
+                  value={resolvedTokenEndpoint ?? ""}
+                  readOnly
+                  style={{ width: "100%" }}
+                />
               </div>
             </div>
           </div>
           <div className="col-12">
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(12rem, 14rem) 1fr', alignItems: 'center', columnGap: '0.75rem' }}>
-              <div style={{ textAlign: 'left' }}>
-                <LabelWithHelp id="tokenRequestBody" text={t('labels.tokenRequest')} help={t('help.tokenRequest')} />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(12rem, 14rem) 1fr",
+                alignItems: "center",
+                columnGap: "0.75rem",
+              }}
+            >
+              <div style={{ textAlign: "left" }}>
+                <LabelWithHelp
+                  id="tokenRequestBody"
+                  text={t("labels.tokenRequest")}
+                  help={t("help.tokenRequest")}
+                />
               </div>
               <div>
-                <InputTextarea 
-                  id="tokenRequestBody" 
-                  value={`${reqStr ?? ''}`} 
-                  autoResize 
+                <InputTextarea
+                  id="tokenRequestBody"
+                  value={`${reqStr ?? ""}`}
+                  autoResize
                   rows={3}
-                  wrap='soft'
+                  wrap="soft"
                   readOnly
-                  style={{ width: '100%', whiteSpace: 'pre-wrap', resize: 'vertical' }}
+                  style={{
+                    width: "100%",
+                    whiteSpace: "pre-wrap",
+                    resize: "vertical",
+                  }}
                 />
               </div>
             </div>
           </div>
           <div className="col-12">
             <div className="flex gap-2 mt-3">
-              <Button type="button" label={exchanging ? t('buttons.sending') : t('buttons.send')} icon="pi pi-send" onClick={onExchangeTokens} disabled={exchanging || !(`${reqStr ?? ''}`)} />
+              <Button
+                type="button"
+                label={exchanging ? t("buttons.sending") : t("buttons.send")}
+                icon="pi pi-send"
+                onClick={onExchangeTokens}
+                disabled={exchanging || !`${reqStr ?? ""}`}
+              />
             </div>
           </div>
         </div>
       </div>
 
       <div className="surface-0 py-3 px-0 border-round">
-        <h4 className="mt-0 mb-3">{t('sections.tokens.responseTitle', { default: t('labels.responsePreview') })}</h4>
+        <h4 className="mt-0 mb-3">
+          {t("sections.tokens.responseTitle", {
+            default: t("labels.responsePreview"),
+          })}
+        </h4>
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
-            <InputTextarea 
-              id="tokenResponse" 
-              value={`${resStr ?? ''}`} 
+            <InputTextarea
+              id="tokenResponse"
+              value={`${resStr ?? ""}`}
               autoResize
-              rows={3} 
-              wrap='soft'
+              rows={3}
+              wrap="soft"
               readOnly
-              style={{ width: '100%', whiteSpace: 'pre-wrap', resize: 'vertical' }}
+              style={{
+                width: "100%",
+                whiteSpace: "pre-wrap",
+                resize: "vertical",
+              }}
             />
           </div>
         </div>

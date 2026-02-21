@@ -11,28 +11,36 @@ export async function generateRsaKeyPair(): Promise<{
   privateKey: CryptoKey;
   publicKey: CryptoKey;
 }> {
-  const subtle = (globalThis as any)?.crypto?.subtle as SubtleCrypto | undefined;
-  if (!subtle) throw new Error('WebCrypto SubtleCrypto is not available');
+  const subtle = (globalThis as any)?.crypto?.subtle as
+    | SubtleCrypto
+    | undefined;
+  if (!subtle) throw new Error("WebCrypto SubtleCrypto is not available");
 
   // Generate RSA-2048 key pair
   const keyPair = await subtle.generateKey(
     {
-      name: 'RSASSA-PKCS1-v1_5',
+      name: "RSASSA-PKCS1-v1_5",
       modulusLength: 2048,
       publicExponent: new Uint8Array([1, 0, 1]), // 65537
-      hash: 'SHA-256',
+      hash: "SHA-256",
     },
     true, // extractable
-    ['sign', 'verify']
+    ["sign", "verify"],
   );
 
   // Export private key as PKCS#8
-  const privateKeyArrayBuffer = await subtle.exportKey('pkcs8', keyPair.privateKey);
-  const privateKeyPem = arrayBufferToPem(privateKeyArrayBuffer, 'PRIVATE KEY');
+  const privateKeyArrayBuffer = await subtle.exportKey(
+    "pkcs8",
+    keyPair.privateKey,
+  );
+  const privateKeyPem = arrayBufferToPem(privateKeyArrayBuffer, "PRIVATE KEY");
 
   // Export public key as SPKI
-  const publicKeyArrayBuffer = await subtle.exportKey('spki', keyPair.publicKey);
-  const publicKeyPem = arrayBufferToPem(publicKeyArrayBuffer, 'PUBLIC KEY');
+  const publicKeyArrayBuffer = await subtle.exportKey(
+    "spki",
+    keyPair.publicKey,
+  );
+  const publicKeyPem = arrayBufferToPem(publicKeyArrayBuffer, "PUBLIC KEY");
 
   return {
     privateKeyPem,
@@ -59,17 +67,26 @@ export async function createSelfSignedCertificate(params: {
   thumbprintSha1Base64Url: string;
   thumbprintSha256Base64Url: string;
 }> {
-  const { publicKeyPem, privateKey, subject = 'CN=OAuth Playground Demo', validDays = 365 } = params;
+  const {
+    publicKeyPem,
+    privateKey,
+    subject = "CN=OAuth Playground Demo",
+    validDays = 365,
+  } = params;
 
-  const subtle = (globalThis as any)?.crypto?.subtle as SubtleCrypto | undefined;
-  if (!subtle) throw new Error('WebCrypto SubtleCrypto is not available');
+  const subtle = (globalThis as any)?.crypto?.subtle as
+    | SubtleCrypto
+    | undefined;
+  if (!subtle) throw new Error("WebCrypto SubtleCrypto is not available");
 
   // Extract the public key data from PEM (SPKI format)
-  const publicKeyData = pemToArrayBuffer(publicKeyPem, 'PUBLIC KEY');
+  const publicKeyData = pemToArrayBuffer(publicKeyPem, "PUBLIC KEY");
 
   // Build a proper X.509v3 certificate using ASN.1 DER encoding
   const notBefore = new Date();
-  const notAfter = new Date(notBefore.getTime() + validDays * 24 * 60 * 60 * 1000);
+  const notAfter = new Date(
+    notBefore.getTime() + validDays * 24 * 60 * 60 * 1000,
+  );
 
   // Generate serial number (random 8 bytes)
   const serialNumber = new Uint8Array(8);
@@ -85,21 +102,25 @@ export async function createSelfSignedCertificate(params: {
   });
 
   // Sign the TBSCertificate
-  const signature = await subtle.sign('RSASSA-PKCS1-v1_5', privateKey, tbsCertificate);
+  const signature = await subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    privateKey,
+    tbsCertificate,
+  );
 
   // Build the complete certificate (TBSCertificate + AlgorithmIdentifier + Signature)
   const certificate = buildCertificate(tbsCertificate, signature);
 
   // Convert to PEM format
-  const certificatePem = arrayBufferToPem(certificate, 'CERTIFICATE');
+  const certificatePem = arrayBufferToPem(certificate, "CERTIFICATE");
 
   // Calculate thumbprints (hash of the DER-encoded certificate)
-  const sha1Hash = await subtle.digest('SHA-1', certificate);
-  const sha256Hash = await subtle.digest('SHA-256', certificate);
+  const sha1Hash = await subtle.digest("SHA-1", certificate);
+  const sha256Hash = await subtle.digest("SHA-256", certificate);
 
   const thumbprintSha1 = arrayBufferToHex(sha1Hash);
   const thumbprintSha256 = arrayBufferToHex(sha256Hash);
-  
+
   // Also provide base64url-encoded thumbprints for JWT x5t header
   const thumbprintSha1Base64Url = arrayBufferToBase64Url(sha1Hash);
   const thumbprintSha256Base64Url = arrayBufferToBase64Url(sha256Hash);
@@ -146,11 +167,16 @@ function buildTBSCertificate(params: {
   parts.push(encodeASN1(0x02, serialNumber));
 
   // Signature algorithm (sha256WithRSAEncryption OID: 1.2.840.113549.1.1.11)
-  const sigAlgOID = new Uint8Array([0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b]);
-  const sigAlg = encodeASN1(0x30, concatenate([
-    encodeASN1(0x06, sigAlgOID),
-    encodeASN1(0x05, new Uint8Array(0)) // NULL
-  ]));
+  const sigAlgOID = new Uint8Array([
+    0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b,
+  ]);
+  const sigAlg = encodeASN1(
+    0x30,
+    concatenate([
+      encodeASN1(0x06, sigAlgOID),
+      encodeASN1(0x05, new Uint8Array(0)), // NULL
+    ]),
+  );
   parts.push(sigAlg);
 
   // Issuer (same as subject for self-signed)
@@ -158,10 +184,10 @@ function buildTBSCertificate(params: {
   parts.push(issuerDN);
 
   // Validity
-  const validity = encodeASN1(0x30, concatenate([
-    encodeUTCTime(notBefore),
-    encodeUTCTime(notAfter)
-  ]));
+  const validity = encodeASN1(
+    0x30,
+    concatenate([encodeUTCTime(notBefore), encodeUTCTime(notAfter)]),
+  );
   parts.push(validity);
 
   // Subject
@@ -179,7 +205,10 @@ function buildTBSCertificate(params: {
 /**
  * Builds the complete X.509 certificate structure.
  */
-function buildCertificate(tbsCertificate: ArrayBuffer, signature: ArrayBuffer): ArrayBuffer {
+function buildCertificate(
+  tbsCertificate: ArrayBuffer,
+  signature: ArrayBuffer,
+): ArrayBuffer {
   // Certificate SEQUENCE {
   //   tbsCertificate,
   //   signatureAlgorithm AlgorithmIdentifier,
@@ -192,16 +221,24 @@ function buildCertificate(tbsCertificate: ArrayBuffer, signature: ArrayBuffer): 
   parts.push(new Uint8Array(tbsCertificate));
 
   // Signature algorithm (sha256WithRSAEncryption)
-  const sigAlgOID = new Uint8Array([0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b]);
-  const sigAlg = encodeASN1(0x30, concatenate([
-    encodeASN1(0x06, sigAlgOID),
-    encodeASN1(0x05, new Uint8Array(0)) // NULL
-  ]));
+  const sigAlgOID = new Uint8Array([
+    0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b,
+  ]);
+  const sigAlg = encodeASN1(
+    0x30,
+    concatenate([
+      encodeASN1(0x06, sigAlgOID),
+      encodeASN1(0x05, new Uint8Array(0)), // NULL
+    ]),
+  );
   parts.push(sigAlg);
 
   // Signature value (BIT STRING)
   // BIT STRING format: [unused bits count] [data...]
-  const sigWithPadding = concatenate([new Uint8Array([0]), new Uint8Array(signature)]);
+  const sigWithPadding = concatenate([
+    new Uint8Array([0]),
+    new Uint8Array(signature),
+  ]);
   parts.push(encodeASN1(0x03, sigWithPadding));
 
   // Wrap in SEQUENCE
@@ -214,29 +251,32 @@ function buildCertificate(tbsCertificate: ArrayBuffer, signature: ArrayBuffer): 
  */
 function encodeDN(dn: string): Uint8Array {
   // Parse simple DN format "CN=Value" or "CN=Value,O=Org"
-  const parts = dn.split(',').map(p => p.trim());
+  const parts = dn.split(",").map((p) => p.trim());
   const rdns: Uint8Array[] = [];
 
   for (const part of parts) {
-    const [attrType, attrValue] = part.split('=').map(s => s.trim());
-    
+    const [attrType, attrValue] = part.split("=").map((s) => s.trim());
+
     // Map attribute type to OID
     let oid: Uint8Array;
-    if (attrType === 'CN') {
+    if (attrType === "CN") {
       oid = new Uint8Array([0x55, 0x04, 0x03]); // commonName
-    } else if (attrType === 'O') {
+    } else if (attrType === "O") {
       oid = new Uint8Array([0x55, 0x04, 0x0a]); // organizationName
-    } else if (attrType === 'C') {
+    } else if (attrType === "C") {
       oid = new Uint8Array([0x55, 0x04, 0x06]); // countryName
     } else {
       oid = new Uint8Array([0x55, 0x04, 0x03]); // default to CN
     }
 
     // AttributeTypeAndValue SEQUENCE
-    const attrTypeValue = encodeASN1(0x30, concatenate([
-      encodeASN1(0x06, oid),
-      encodeASN1(0x0c, new TextEncoder().encode(attrValue)) // UTF8String
-    ]));
+    const attrTypeValue = encodeASN1(
+      0x30,
+      concatenate([
+        encodeASN1(0x06, oid),
+        encodeASN1(0x0c, new TextEncoder().encode(attrValue)), // UTF8String
+      ]),
+    );
 
     // RelativeDistinguishedName SET
     rdns.push(encodeASN1(0x31, attrTypeValue));
@@ -251,11 +291,11 @@ function encodeDN(dn: string): Uint8Array {
  */
 function encodeUTCTime(date: Date): Uint8Array {
   const year = String(date.getUTCFullYear()).slice(2);
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  const hours = String(date.getUTCHours()).padStart(2, '0');
-  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
   const utcTime = `${year}${month}${day}${hours}${minutes}${seconds}Z`;
   return encodeASN1(0x17, new TextEncoder().encode(utcTime));
 }
@@ -303,7 +343,7 @@ function concatenate(arrays: Uint8Array[]): Uint8Array {
 function arrayBufferToPem(buffer: ArrayBuffer, label: string): string {
   const base64 = arrayBufferToBase64(buffer);
   const lines = base64.match(/.{1,64}/g) || [base64];
-  return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----`;
+  return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----`;
 }
 
 /**
@@ -313,9 +353,9 @@ function pemToArrayBuffer(pem: string, label: string): ArrayBuffer {
   const pemHeader = `-----BEGIN ${label}-----`;
   const pemFooter = `-----END ${label}-----`;
   const pemContents = pem
-    .replace(pemHeader, '')
-    .replace(pemFooter, '')
-    .replace(/\s/g, '');
+    .replace(pemHeader, "")
+    .replace(pemFooter, "")
+    .replace(/\s/g, "");
   return base64ToArrayBuffer(pemContents);
 }
 
@@ -324,18 +364,23 @@ function pemToArrayBuffer(pem: string, label: string): ArrayBuffer {
  */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
-  let binary = '';
+  let binary = "";
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  return typeof window !== 'undefined' ? window.btoa(binary) : Buffer.from(bytes).toString('base64');
+  return typeof window !== "undefined"
+    ? window.btoa(binary)
+    : Buffer.from(bytes).toString("base64");
 }
 
 /**
  * Converts base64 string to ArrayBuffer.
  */
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binary = typeof window !== 'undefined' ? window.atob(base64) : Buffer.from(base64, 'base64').toString('binary');
+  const binary =
+    typeof window !== "undefined"
+      ? window.atob(base64)
+      : Buffer.from(base64, "base64").toString("binary");
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
@@ -349,8 +394,8 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
 function arrayBufferToHex(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   return Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -359,8 +404,5 @@ function arrayBufferToHex(buffer: ArrayBuffer): string {
  */
 function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
   const base64 = arrayBufferToBase64(buffer);
-  return base64
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }

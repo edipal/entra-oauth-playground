@@ -1,6 +1,12 @@
 "use client";
-import React, {createContext, useContext, useEffect, useState, ReactNode} from 'react';
-import type { ClientAuthMethod } from '@/types/client-auth';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import type { ClientAuthMethod } from "@/types/client-auth";
 
 // Persisted configuration that users can edit and we keep across sessions
 export type AuthCodePublicClientConfig = {
@@ -139,127 +145,165 @@ type SettingsContextValue = {
   hydrated: boolean;
   // Convenience accessors for the auth code public client config
   authCodePublicClientConfig: AuthCodePublicClientConfig;
-  setAuthCodePublicClientConfig: (s: Partial<AuthCodePublicClientConfig> | ((prev: AuthCodePublicClientConfig) => Partial<AuthCodePublicClientConfig>)) => void;
+  setAuthCodePublicClientConfig: (
+    s:
+      | Partial<AuthCodePublicClientConfig>
+      | ((
+          prev: AuthCodePublicClientConfig,
+        ) => Partial<AuthCodePublicClientConfig>),
+  ) => void;
   // Runtime (not persisted)
   authCodePublicClientRuntime: AuthCodePublicClientRuntime;
-  setAuthCodePublicClientRuntime: (s: Partial<AuthCodePublicClientRuntime> | ((prev: AuthCodePublicClientRuntime) => Partial<AuthCodePublicClientRuntime>)) => void;
+  setAuthCodePublicClientRuntime: (
+    s:
+      | Partial<AuthCodePublicClientRuntime>
+      | ((
+          prev: AuthCodePublicClientRuntime,
+        ) => Partial<AuthCodePublicClientRuntime>),
+  ) => void;
   resetAuthCodePublicClientRuntime: () => void;
 
   // Confidential client accessors
   authCodeConfidentialClientConfig: AuthCodeConfidentialClientConfig;
-  setAuthCodeConfidentialClientConfig: (s: Partial<AuthCodeConfidentialClientConfig> | ((prev: AuthCodeConfidentialClientConfig) => Partial<AuthCodeConfidentialClientConfig>)) => void;
+  setAuthCodeConfidentialClientConfig: (
+    s:
+      | Partial<AuthCodeConfidentialClientConfig>
+      | ((
+          prev: AuthCodeConfidentialClientConfig,
+        ) => Partial<AuthCodeConfidentialClientConfig>),
+  ) => void;
   authCodeConfidentialClientRuntime: AuthCodeConfidentialClientRuntime;
-  setAuthCodeConfidentialClientRuntime: (s: Partial<AuthCodeConfidentialClientRuntime> | ((prev: AuthCodeConfidentialClientRuntime) => Partial<AuthCodeConfidentialClientRuntime>)) => void;
+  setAuthCodeConfidentialClientRuntime: (
+    s:
+      | Partial<AuthCodeConfidentialClientRuntime>
+      | ((
+          prev: AuthCodeConfidentialClientRuntime,
+        ) => Partial<AuthCodeConfidentialClientRuntime>),
+  ) => void;
   resetAuthCodeConfidentialClientRuntime: () => void;
 
   // Client credentials accessors
   clientCredentialsConfig: ClientCredentialsConfig;
-  setClientCredentialsConfig: (s: Partial<ClientCredentialsConfig> | ((prev: ClientCredentialsConfig) => Partial<ClientCredentialsConfig>)) => void;
+  setClientCredentialsConfig: (
+    s:
+      | Partial<ClientCredentialsConfig>
+      | ((prev: ClientCredentialsConfig) => Partial<ClientCredentialsConfig>),
+  ) => void;
   clientCredentialsRuntime: ClientCredentialsRuntime;
-  setClientCredentialsRuntime: (s: Partial<ClientCredentialsRuntime> | ((prev: ClientCredentialsRuntime) => Partial<ClientCredentialsRuntime>)) => void;
+  setClientCredentialsRuntime: (
+    s:
+      | Partial<ClientCredentialsRuntime>
+      | ((prev: ClientCredentialsRuntime) => Partial<ClientCredentialsRuntime>),
+  ) => void;
   resetClientCredentialsRuntime: () => void;
 };
 
 const defaultAuthCodePublicClientConfig: AuthCodePublicClientConfig = {
-  tenantId: '',
-  clientId: '',
-  redirectUri: '',
-  scopes: 'openid profile offline_access',
-  apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me',
+  tenantId: "",
+  clientId: "",
+  redirectUri: "",
+  scopes: "openid profile offline_access",
+  apiEndpointUrl: "https://graph.microsoft.com/v1.0/me",
   streamlined: false,
-  pkceEnabled: true
+  pkceEnabled: true,
 };
 
 const defaultSettings: Settings = {
   authCodePublicClient: defaultAuthCodePublicClientConfig,
   authCodeConfidentialClient: {
-    tenantId: '',
-    clientId: '',
-    redirectUri: '',
-    scopes: 'openid profile offline_access',
-    apiEndpointUrl: 'https://graph.microsoft.com/v1.0/me',
+    tenantId: "",
+    clientId: "",
+    redirectUri: "",
+    scopes: "openid profile offline_access",
+    apiEndpointUrl: "https://graph.microsoft.com/v1.0/me",
     streamlined: false,
     pkceEnabled: true,
-    clientAuthMethod: 'secret',
-    clientAssertionKid: '',
-    clientAssertionX5t: ''
+    clientAuthMethod: "secret",
+    clientAssertionKid: "",
+    clientAssertionX5t: "",
   },
   clientCredentials: {
-    tenantId: '',
-    clientId: '',
-    scopes: 'https://graph.microsoft.com/.default',
-    apiEndpointUrl: 'https://graph.microsoft.com/v1.0/users',
+    tenantId: "",
+    clientId: "",
+    scopes: "https://graph.microsoft.com/.default",
+    apiEndpointUrl: "https://graph.microsoft.com/v1.0/users",
     streamlined: false,
-    clientAuthMethod: 'secret',
-    clientAssertionKid: '',
-    clientAssertionX5t: '',
-    pkceEnabled: false
-  }
+    clientAuthMethod: "secret",
+    clientAssertionKid: "",
+    clientAssertionX5t: "",
+    pkceEnabled: false,
+  },
 };
 
 const defaultAuthCodePublicClientRuntime: AuthCodePublicClientRuntime = {
-  codeVerifier: '',
-  codeChallenge: '',
-  authEndpoint: 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize',
-  tokenEndpoint: 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token',
-  stateParam: '',
-  nonce: '',
-  callbackUrl: '',
-  callbackBody: '',
-  authCode: '',
-  extractedState: '',
+  codeVerifier: "",
+  codeChallenge: "",
+  authEndpoint:
+    "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
+  tokenEndpoint: "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+  stateParam: "",
+  nonce: "",
+  callbackUrl: "",
+  callbackBody: "",
+  authCode: "",
+  extractedState: "",
   callbackValidated: false,
-  accessToken: '',
-  idToken: ''
+  accessToken: "",
+  idToken: "",
 };
 
-const defaultAuthCodeConfidentialClientRuntime: AuthCodeConfidentialClientRuntime = {
-  codeVerifier: '',
-  codeChallenge: '',
-  authEndpoint: 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize',
-  tokenEndpoint: 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token',
-  stateParam: '',
-  nonce: '',
-  callbackUrl: '',
-  callbackBody: '',
-  authCode: '',
-  extractedState: '',
-  callbackValidated: false,
-  accessToken: '',
-  idToken: '',
-  clientSecret: '',
-  privateKeyPem: '',
-  publicKeyPem: '',
-  certificatePem: '',
-  thumbprintSha1: '',
-  thumbprintSha256: '',
-  thumbprintSha1Base64Url: '',
-  clientAssertion: '',
-  assertionClaims: '',
-  testAssertion: '',
-  decodedAssertion: ''
-};
+const defaultAuthCodeConfidentialClientRuntime: AuthCodeConfidentialClientRuntime =
+  {
+    codeVerifier: "",
+    codeChallenge: "",
+    authEndpoint:
+      "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
+    tokenEndpoint:
+      "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+    stateParam: "",
+    nonce: "",
+    callbackUrl: "",
+    callbackBody: "",
+    authCode: "",
+    extractedState: "",
+    callbackValidated: false,
+    accessToken: "",
+    idToken: "",
+    clientSecret: "",
+    privateKeyPem: "",
+    publicKeyPem: "",
+    certificatePem: "",
+    thumbprintSha1: "",
+    thumbprintSha256: "",
+    thumbprintSha1Base64Url: "",
+    clientAssertion: "",
+    assertionClaims: "",
+    testAssertion: "",
+    decodedAssertion: "",
+  };
 
 const defaultClientCredentialsRuntime: ClientCredentialsRuntime = {
-  tokenEndpoint: 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token',
-  accessToken: '',
-  idToken: '',
-  clientSecret: '',
-  privateKeyPem: '',
-  publicKeyPem: '',
-  certificatePem: '',
-  thumbprintSha1: '',
-  thumbprintSha256: '',
-  thumbprintSha1Base64Url: '',
-  clientAssertion: '',
-  assertionClaims: '',
-  testAssertion: '',
-  decodedAssertion: ''
+  tokenEndpoint: "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+  accessToken: "",
+  idToken: "",
+  clientSecret: "",
+  privateKeyPem: "",
+  publicKeyPem: "",
+  certificatePem: "",
+  thumbprintSha1: "",
+  thumbprintSha256: "",
+  thumbprintSha1Base64Url: "",
+  clientAssertion: "",
+  assertionClaims: "",
+  testAssertion: "",
+  decodedAssertion: "",
 };
 
-const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
+const SettingsContext = createContext<SettingsContextValue | undefined>(
+  undefined,
+);
 
-export function SettingsProvider({children}: {children: ReactNode}) {
+export function SettingsProvider({ children }: { children: ReactNode }) {
   // Persisted settings
   // Initialize with defaults for SSR consistency. We'll hydrate from localStorage after mount.
   const [settings, setSettingsState] = useState<Settings>(defaultSettings);
@@ -267,18 +311,33 @@ export function SettingsProvider({children}: {children: ReactNode}) {
 
   // After mount, read persisted settings (if any) and merge with defaults.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     try {
-      const raw = localStorage.getItem('app:settings');
+      const raw = localStorage.getItem("app:settings");
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<Settings>;
       const persistedPublic = parsed.authCodePublicClient || {};
-      const mergedPublic = { ...defaultAuthCodePublicClientConfig, ...persistedPublic };
+      const mergedPublic = {
+        ...defaultAuthCodePublicClientConfig,
+        ...persistedPublic,
+      };
       const persistedConf = parsed.authCodeConfidentialClient || {};
-      const mergedConf = { ...defaultSettings.authCodeConfidentialClient!, ...persistedConf };
+      const mergedConf = {
+        ...defaultSettings.authCodeConfidentialClient!,
+        ...persistedConf,
+      };
       const persistedClientCreds = parsed.clientCredentials || {};
-      const mergedClientCreds = { ...defaultSettings.clientCredentials!, ...persistedClientCreds };
-      const next = { ...defaultSettings, ...parsed, authCodePublicClient: mergedPublic, authCodeConfidentialClient: mergedConf, clientCredentials: mergedClientCreds } as Settings;
+      const mergedClientCreds = {
+        ...defaultSettings.clientCredentials!,
+        ...persistedClientCreds,
+      };
+      const next = {
+        ...defaultSettings,
+        ...parsed,
+        authCodePublicClient: mergedPublic,
+        authCodeConfidentialClient: mergedConf,
+        clientCredentials: mergedClientCreds,
+      } as Settings;
       setSettingsState(next);
     } catch {
       // ignore
@@ -288,93 +347,115 @@ export function SettingsProvider({children}: {children: ReactNode}) {
   }, []);
 
   // In-memory runtime for the current flow (not persisted)
-  const [authCodePublicClientRuntime, setRuntimeState] = useState<AuthCodePublicClientRuntime>(defaultAuthCodePublicClientRuntime);
-  const [authCodeConfidentialClientRuntime, setConfRuntimeState] = useState<AuthCodeConfidentialClientRuntime>(defaultAuthCodeConfidentialClientRuntime);
-  const [clientCredentialsRuntime, setClientCredsRuntimeState] = useState<ClientCredentialsRuntime>(defaultClientCredentialsRuntime);
+  const [authCodePublicClientRuntime, setRuntimeState] =
+    useState<AuthCodePublicClientRuntime>(defaultAuthCodePublicClientRuntime);
+  const [authCodeConfidentialClientRuntime, setConfRuntimeState] =
+    useState<AuthCodeConfidentialClientRuntime>(
+      defaultAuthCodeConfidentialClientRuntime,
+    );
+  const [clientCredentialsRuntime, setClientCredsRuntimeState] =
+    useState<ClientCredentialsRuntime>(defaultClientCredentialsRuntime);
 
   const persist = (next: Settings) => {
     try {
-      localStorage.setItem('app:settings', JSON.stringify(next));
+      localStorage.setItem("app:settings", JSON.stringify(next));
     } catch (e) {
       // ignore localStorage failures
     }
   };
 
   const setSettings = (s: Partial<Settings>) => {
-    setSettingsState(prev => {
-      const next = {...prev, ...s};
+    setSettingsState((prev) => {
+      const next = { ...prev, ...s };
       persist(next);
       return next;
     });
   };
 
-  const setAuthCodePublicClientConfig: SettingsContextValue['setAuthCodePublicClientConfig'] = (update) => {
-    setSettingsState(prev => {
-      const prevCfg = prev.authCodePublicClient || defaultAuthCodePublicClientConfig;
-      const patch = typeof update === 'function' ? update(prevCfg) : update;
-      const nextCfg = {...prevCfg, ...patch};
-      const next = {...prev, authCodePublicClient: nextCfg};
-      persist(next);
-      return next;
-    });
-  };
+  const setAuthCodePublicClientConfig: SettingsContextValue["setAuthCodePublicClientConfig"] =
+    (update) => {
+      setSettingsState((prev) => {
+        const prevCfg =
+          prev.authCodePublicClient || defaultAuthCodePublicClientConfig;
+        const patch = typeof update === "function" ? update(prevCfg) : update;
+        const nextCfg = { ...prevCfg, ...patch };
+        const next = { ...prev, authCodePublicClient: nextCfg };
+        persist(next);
+        return next;
+      });
+    };
 
-  const setAuthCodePublicClientRuntime: SettingsContextValue['setAuthCodePublicClientRuntime'] = (update) => {
-    setRuntimeState(prev => {
-      const patch = typeof update === 'function' ? update(prev) : update;
-      return {...prev, ...patch};
-    });
-  };
+  const setAuthCodePublicClientRuntime: SettingsContextValue["setAuthCodePublicClientRuntime"] =
+    (update) => {
+      setRuntimeState((prev) => {
+        const patch = typeof update === "function" ? update(prev) : update;
+        return { ...prev, ...patch };
+      });
+    };
 
-  const resetAuthCodePublicClientRuntime = () => setRuntimeState(defaultAuthCodePublicClientRuntime);
+  const resetAuthCodePublicClientRuntime = () =>
+    setRuntimeState(defaultAuthCodePublicClientRuntime);
 
-  const authCodePublicClientConfig = settings.authCodePublicClient || defaultAuthCodePublicClientConfig;
+  const authCodePublicClientConfig =
+    settings.authCodePublicClient || defaultAuthCodePublicClientConfig;
 
   // Confidential client setters
-  const setAuthCodeConfidentialClientConfig: SettingsContextValue['setAuthCodeConfidentialClientConfig'] = (update) => {
-    setSettingsState(prev => {
-      const prevCfg = prev.authCodeConfidentialClient || defaultSettings.authCodeConfidentialClient!;
-      const patch = typeof update === 'function' ? update(prevCfg) : update;
-      const nextCfg = { ...prevCfg, ...patch };
-      const next = { ...prev, authCodeConfidentialClient: nextCfg };
-      persist(next);
-      return next;
-    });
-  };
+  const setAuthCodeConfidentialClientConfig: SettingsContextValue["setAuthCodeConfidentialClientConfig"] =
+    (update) => {
+      setSettingsState((prev) => {
+        const prevCfg =
+          prev.authCodeConfidentialClient ||
+          defaultSettings.authCodeConfidentialClient!;
+        const patch = typeof update === "function" ? update(prevCfg) : update;
+        const nextCfg = { ...prevCfg, ...patch };
+        const next = { ...prev, authCodeConfidentialClient: nextCfg };
+        persist(next);
+        return next;
+      });
+    };
 
-  const setAuthCodeConfidentialClientRuntime: SettingsContextValue['setAuthCodeConfidentialClientRuntime'] = (update) => {
-    setConfRuntimeState(prev => {
-      const patch = typeof update === 'function' ? update(prev) : update;
-      return { ...prev, ...patch };
-    });
-  };
+  const setAuthCodeConfidentialClientRuntime: SettingsContextValue["setAuthCodeConfidentialClientRuntime"] =
+    (update) => {
+      setConfRuntimeState((prev) => {
+        const patch = typeof update === "function" ? update(prev) : update;
+        return { ...prev, ...patch };
+      });
+    };
 
-  const resetAuthCodeConfidentialClientRuntime = () => setConfRuntimeState(defaultAuthCodeConfidentialClientRuntime);
+  const resetAuthCodeConfidentialClientRuntime = () =>
+    setConfRuntimeState(defaultAuthCodeConfidentialClientRuntime);
 
-  const authCodeConfidentialClientConfig = settings.authCodeConfidentialClient || defaultSettings.authCodeConfidentialClient!;
+  const authCodeConfidentialClientConfig =
+    settings.authCodeConfidentialClient ||
+    defaultSettings.authCodeConfidentialClient!;
 
   // Client credentials setters
-  const setClientCredentialsConfig: SettingsContextValue['setClientCredentialsConfig'] = (update) => {
-    setSettingsState(prev => {
-      const prevCfg = prev.clientCredentials || defaultSettings.clientCredentials!;
-      const patch = typeof update === 'function' ? update(prevCfg) : update;
-      const nextCfg = { ...prevCfg, ...patch };
-      const next = { ...prev, clientCredentials: nextCfg };
-      persist(next);
-      return next;
-    });
-  };
+  const setClientCredentialsConfig: SettingsContextValue["setClientCredentialsConfig"] =
+    (update) => {
+      setSettingsState((prev) => {
+        const prevCfg =
+          prev.clientCredentials || defaultSettings.clientCredentials!;
+        const patch = typeof update === "function" ? update(prevCfg) : update;
+        const nextCfg = { ...prevCfg, ...patch };
+        const next = { ...prev, clientCredentials: nextCfg };
+        persist(next);
+        return next;
+      });
+    };
 
-  const setClientCredentialsRuntime: SettingsContextValue['setClientCredentialsRuntime'] = (update) => {
-    setClientCredsRuntimeState(prev => {
-      const patch = typeof update === 'function' ? update(prev) : update;
-      return { ...prev, ...patch };
-    });
-  };
+  const setClientCredentialsRuntime: SettingsContextValue["setClientCredentialsRuntime"] =
+    (update) => {
+      setClientCredsRuntimeState((prev) => {
+        const patch = typeof update === "function" ? update(prev) : update;
+        return { ...prev, ...patch };
+      });
+    };
 
-  const resetClientCredentialsRuntime = () => setClientCredsRuntimeState(defaultClientCredentialsRuntime);
+  const resetClientCredentialsRuntime = () =>
+    setClientCredsRuntimeState(defaultClientCredentialsRuntime);
 
-  const clientCredentialsConfig = settings.clientCredentials || defaultSettings.clientCredentials!;
+  const clientCredentialsConfig =
+    settings.clientCredentials || defaultSettings.clientCredentials!;
 
   const value: SettingsContextValue = {
     settings,
@@ -394,14 +475,18 @@ export function SettingsProvider({children}: {children: ReactNode}) {
     setClientCredentialsConfig,
     clientCredentialsRuntime,
     setClientCredentialsRuntime,
-    resetClientCredentialsRuntime
+    resetClientCredentialsRuntime,
   };
 
-  return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+  return (
+    <SettingsContext.Provider value={value}>
+      {children}
+    </SettingsContext.Provider>
+  );
 }
 
 export function useSettings() {
   const ctx = useContext(SettingsContext);
-  if (!ctx) throw new Error('useSettings must be used within SettingsProvider');
+  if (!ctx) throw new Error("useSettings must be used within SettingsProvider");
   return ctx;
 }
