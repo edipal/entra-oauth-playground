@@ -14,7 +14,7 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
 # Install dependencies based on the preferred package manager
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm i --frozen-lockfile
 
 # Rebuild the source code only when needed
@@ -25,7 +25,13 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY package.json ./
+COPY next.config.js ./
+COPY tsconfig.json ./
+COPY next-env.d.ts ./
+COPY src ./src
+COPY public ./public
+COPY certificates ./certificates
 
 RUN pnpm run build
 
@@ -42,12 +48,13 @@ COPY --from=builder /app/public ./public
 
 # Set the correct permission for prerender cache
 RUN mkdir .next
-RUN chown nextjs:nodejs .next
+RUN chown root:root .next
+RUN chmod 755 .next
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=root:root --chmod=755 /app/.next/standalone ./
+COPY --from=builder --chown=root:root --chmod=755 /app/.next/static ./.next/static
 
 USER nextjs
 
