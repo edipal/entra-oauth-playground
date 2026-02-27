@@ -2,6 +2,8 @@
 
 [![CodeQL](https://github.com/edipal/entra-oauth-playground/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/edipal/entra-oauth-playground/actions/workflows/github-code-scanning/codeql)
 
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=edipal_entra-oauth-playground&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=edipal_entra-oauth-playground)
+
 ## Disclaimer
 This project was created with the assistance of GitHub Copilot. Portions of the code, structure, and documentation were generated and then reviewed/edited by a human. Please validate and test in your environment and review results before relying on them.
 
