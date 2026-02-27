@@ -40,6 +40,16 @@ const AppMenu = () => {
         },
       ],
     },
+    {
+      label: t("Tools"),
+      items: [
+        {
+          label: t("JwtDecoder"),
+          icon: "pi pi-fw pi-file-edit",
+          to: "/tools/jwt-decoder",
+        },
+      ],
+    },
   ];
 
   return <AppSubMenu model={model} />;

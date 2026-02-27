@@ -5,6 +5,12 @@ import { useTranslations } from "next-intl";
 import { Dialog } from "primereact/dialog";
 import { useMemo, useState } from "react";
 import LabelWithHelp from "@/components/LabelWithHelp";
+import {
+  ACCESS_CLAIMS_DOC,
+  ID_CLAIMS_DOC,
+  OPTIONAL_CLAIMS_DOC,
+  parsePayloadToClaims,
+} from "@/lib/jwtClaims";
 
 type Props = {
   accessToken: string;
@@ -17,66 +23,6 @@ type Props = {
 };
 
 type TokenType = "access" | "id";
-
-type ClaimRow = {
-  name: string;
-  value: string;
-  description: string;
-};
-
-const ACCESS_CLAIMS_DOC =
-  "https://learn.microsoft.com/en-us/entra/identity-platform/access-token-claims-reference";
-const ID_CLAIMS_DOC =
-  "https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference";
-const OPTIONAL_CLAIMS_DOC =
-  "https://learn.microsoft.com/en-us/entra/identity-platform/optional-claims-reference";
-
-function formatClaimValue(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-function parsePayloadToClaims(
-  payload: string,
-  localizedDescriptions: Record<string, string>,
-  fallbackDescription: string,
-): ClaimRow[] {
-  if (!payload?.trim()) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(payload);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return [];
-    }
-
-    return Object.entries(parsed as Record<string, unknown>).map(
-      ([name, value]) => ({
-        name,
-        value: formatClaimValue(value),
-        description: localizedDescriptions[name] || fallbackDescription,
-      }),
-    );
-  } catch {
-    return [];
-  }
-}
 
 export default function StepDecode({
   accessToken,
