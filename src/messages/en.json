@@ -9,7 +9,30 @@
     "PublicClients": "Public Clients",
     "ConfidentialClients": "Confidential Clients",
     "AuthorizationCodeFlow": "Authorization Code Flow",
-    "ClientCredentialsFlow": "Client Credentials Flow"
+    "ClientCredentialsFlow": "Client Credentials Flow",
+    "Tools": "Tools",
+    "JwtDecoder": "JWT Decoder"
+  },
+  "ToolsJwtDecoder": {
+    "title": "JWT Decoder",
+    "description": "Paste a JWT and decode its header and payload claims.",
+    "labels": {
+      "jwt": "JWT",
+      "headerClaims": "Header claims",
+      "payloadClaims": "Payload claims"
+    },
+    "help": {
+      "jwt": "Paste a full JWT from another source. A leading 'Bearer ' prefix is ignored.",
+      "headerClaims": "Decoded JWT header claims.",
+      "payloadClaims": "Decoded JWT payload claims."
+    },
+    "buttons": {
+      "decode": "Decode",
+      "openClaims": "Open claim descriptions"
+    },
+    "claimsDialog": {
+      "title": "JWT payload claims"
+    }
   },
   "StepAuthorize": {
     "sections": {

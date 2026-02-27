@@ -5,6 +5,8 @@
     "PublicClients": "Public Clients",
     "ConfidentialClients": "Confidential Clients",
     "AuthorizationCodeFlow": "Authorization Code Flow",
-    "ClientCredentialsFlow": "Client Credentials Flow"
+    "ClientCredentialsFlow": "Client Credentials Flow",
+    "Tools": "Tools",
+    "JwtDecoder": "JWT Decoder"
   }
 }

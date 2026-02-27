@@ -9,7 +9,30 @@
     "PublicClients": "Öffentliche Clients",
     "ConfidentialClients": "Vertrauliche Clients",
     "AuthorizationCodeFlow": "Authorization Code Flow",
-    "ClientCredentialsFlow": "Client Credentials Flow"
+    "ClientCredentialsFlow": "Client Credentials Flow",
+    "Tools": "Tools",
+    "JwtDecoder": "JWT Decoder"
+  },
+  "ToolsJwtDecoder": {
+    "title": "JWT Decoder",
+    "description": "Fügen Sie ein JWT ein und dekodieren Sie Header- und Payload-Claims.",
+    "labels": {
+      "jwt": "JWT",
+      "headerClaims": "Header-Claims",
+      "payloadClaims": "Payload-Claims"
+    },
+    "help": {
+      "jwt": "Fügen Sie ein vollständiges JWT aus einer anderen Quelle ein. Ein führendes 'Bearer '-Präfix wird ignoriert.",
+      "headerClaims": "Dekodierte JWT-Header-Claims.",
+      "payloadClaims": "Dekodierte JWT-Payload-Claims."
+    },
+    "buttons": {
+      "decode": "Dekodieren",
+      "openClaims": "Claim-Beschreibungen öffnen"
+    },
+    "claimsDialog": {
+      "title": "JWT-Payload-Claims"
+    }
   },
   "StepAuthorize": {
     "sections": {
