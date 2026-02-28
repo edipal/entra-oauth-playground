@@ -4,8 +4,8 @@ export function randomBytes(length: number): Uint8Array {
   if (cryptoObj && typeof cryptoObj.getRandomValues === "function") {
     cryptoObj.getRandomValues(out);
   } else {
-    // Weak fallback; caller should avoid relying on cryptographic strength in this branch.
-    for (let i = 0; i < length; i++) out[i] = Math.floor(Math.random() * 256);
+    // No secure RNG available (no Web Crypto). Fail fast — do not use insecure fallbacks.
+    throw new Error("Secure random not available: missing globalThis.crypto.getRandomValues");
   }
   return out;
 }
