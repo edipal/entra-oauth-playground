@@ -149,7 +149,7 @@ export default function AuthCodeStepSettingsCommon(props: Props) {
                   value={tenantId}
                   onChange={(e) => setTenantId(e.target.value)}
                   placeholder={t("placeholders.tenantId")}
-                  className={!tenantIdValid ? "p-invalid" : ""}
+                  className={tenantIdValid ? "" : "p-invalid"}
                   style={{ width: "100%" }}
                 />
                 {!tenantIdValid && (
@@ -183,7 +183,7 @@ export default function AuthCodeStepSettingsCommon(props: Props) {
                   value={clientId}
                   onChange={(e) => setClientId(e.target.value)}
                   placeholder={t("placeholders.clientId")}
-                  className={!clientIdValid ? "p-invalid" : ""}
+                  className={clientIdValid ? "" : "p-invalid"}
                   style={{ width: "100%" }}
                 />
                 {!clientIdValid && (
@@ -388,7 +388,7 @@ export default function AuthCodeStepSettingsCommon(props: Props) {
                     id="redirectUri"
                     value={redirectUri}
                     readOnly
-                    className={!redirectUriValid ? "p-invalid" : ""}
+                    className={redirectUriValid ? "" : "p-invalid"}
                     style={{ width: "100%" }}
                   />
                   {!redirectUriValid && (

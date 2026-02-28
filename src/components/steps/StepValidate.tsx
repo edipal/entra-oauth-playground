@@ -62,8 +62,15 @@ const fmtEpoch = (v?: number) => {
   }
 };
 
-const ensureArray = (v: string | string[] | undefined): string[] =>
-  Array.isArray(v) ? v : typeof v === "string" ? [v] : [];
+const ensureArray = (v: string | string[] | undefined): string[] => {
+  if (Array.isArray(v)) {
+    return v;
+  }
+  if (typeof v === "string") {
+    return [v];
+  }
+  return [];
+};
 
 type SigStatus = {
   kid?: string;
@@ -79,6 +86,24 @@ type SigStatus = {
   reason?: string;
   publicKeyPem?: string;
 };
+
+function StatusIcon({
+  ok,
+  label,
+}: {
+  ok: boolean | undefined;
+  label?: string;
+}) {
+  return (
+    <span style={{ color: ok ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
+      <i
+        className={`pi ${ok ? "pi-check" : "pi-times"}`}
+        style={{ marginRight: 6 }}
+      />
+      {label}
+    </span>
+  );
+}
 
 export default function StepValidate(props: Props) {
   const t = useTranslations("StepValidate");
@@ -154,7 +179,7 @@ export default function StepValidate(props: Props) {
         let jwksUrl = "";
         const host = (() => {
           try {
-            return new URL(idIss!).host.toLowerCase();
+            return new URL(idIss).host.toLowerCase();
           } catch {
             return "";
           }
@@ -252,7 +277,7 @@ export default function StepValidate(props: Props) {
         let jwksUrl = "";
         const host = (() => {
           try {
-            return new URL(accIss!).host.toLowerCase();
+            return new URL(accIss).host.toLowerCase();
           } catch {
             return "";
           }
@@ -325,22 +350,6 @@ export default function StepValidate(props: Props) {
     accessPayload.tid,
     accIss,
   ]);
-
-  const StatusIcon = ({
-    ok,
-    label,
-  }: {
-    ok: boolean | undefined;
-    label?: string;
-  }) => (
-    <span style={{ color: ok ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
-      <i
-        className={`pi ${ok ? "pi-check" : "pi-times"}`}
-        style={{ marginRight: 6 }}
-      />
-      {label}
-    </span>
-  );
 
   // Server-side diagnostics removed per request.
 
@@ -420,7 +429,7 @@ export default function StepValidate(props: Props) {
   // Show a warning when validating Microsoft Graph access tokens: only Graph can verify its signatures
   const graphAud = "00000003-0000-0000-c000-000000000000";
   const graphAudUrl = "https://graph.microsoft.com";
-  const accessAudiences = ensureArray(accessPayload.aud as any);
+  const accessAudiences = ensureArray(accessPayload.aud);
   const isGraphAccessToken = accessAudiences.some((aud) => {
     const normalized = String(aud || "")
       .trim()
@@ -555,7 +564,8 @@ export default function StepValidate(props: Props) {
                   onClick={async (e) => {
                     e.preventDefault();
                     try {
-                      await navigator.clipboard.writeText(idSig.publicKeyPem!);
+                        if (idSig.publicKeyPem)
+                          await navigator.clipboard.writeText(idSig.publicKeyPem);
                     } catch {}
                   }}
                 >
@@ -726,9 +736,10 @@ export default function StepValidate(props: Props) {
                     onClick={async (e) => {
                       e.preventDefault();
                       try {
-                        await navigator.clipboard.writeText(
-                          accSig.publicKeyPem!,
-                        );
+                          if (accSig.publicKeyPem)
+                            await navigator.clipboard.writeText(
+                              accSig.publicKeyPem,
+                            );
                       } catch {}
                     }}
                   >

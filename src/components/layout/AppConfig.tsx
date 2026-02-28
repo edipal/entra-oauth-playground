@@ -171,7 +171,7 @@ const AppConfig = (props: AppConfigProps) => {
             className="w-2rem h-2rem ml-2"
             rounded
             text
-            disabled={layoutConfig.scale === scales[scales.length - 1]}
+            disabled={layoutConfig.scale === scales.at(-1)}
           ></Button>
         </div>
 

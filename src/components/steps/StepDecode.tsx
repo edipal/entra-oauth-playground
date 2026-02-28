@@ -3,7 +3,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { useTranslations } from "next-intl";
 import { Dialog } from "primereact/dialog";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import LabelWithHelp from "@/components/LabelWithHelp";
 import {
   ACCESS_CLAIMS_DOC,
@@ -22,6 +22,8 @@ type Props = {
   onDecodeTokens: () => void;
 };
 
+const renderCodeChunk = (chunks: ReactNode) => <code>{chunks}</code>;
+
 type TokenType = "access" | "id";
 
 export default function StepDecode({
@@ -32,7 +34,7 @@ export default function StepDecode({
   decodedIdHeader,
   decodedIdPayload,
   onDecodeTokens,
-}: Props) {
+}: Readonly<Props>) {
   const t = useTranslations("StepDecode");
   const [activeDialogToken, setActiveDialogToken] = useState<TokenType | null>(
     null,
@@ -230,7 +232,7 @@ export default function StepDecode({
                     />
                     <p className="m-0 text-sm">
                       {(t as any).rich("notes.accessHeaderNonce", {
-                        code: (chunks: any) => <code>{chunks}</code>,
+                          code: renderCodeChunk,
                       })}
                     </p>
                   </div>
@@ -348,7 +350,7 @@ export default function StepDecode({
         style={{ width: "min(62rem, 95vw)" }}
         onHide={() => setActiveDialogToken(null)}
       >
-        {!activeClaims.length ? (
+        {activeClaims.length === 0 ? (
           <p className="m-0">{t("claimsDialog.noClaims")}</p>
         ) : (
           <div className="overflow-auto">

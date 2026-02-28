@@ -355,7 +355,7 @@ function pemToArrayBuffer(pem: string, label: string): ArrayBuffer {
   const pemContents = pem
     .replace(pemHeader, "")
     .replace(pemFooter, "")
-    .replace(/\s/g, "");
+    .replaceAll(/\s/g, "");
   return base64ToArrayBuffer(pemContents);
 }
 
@@ -368,8 +368,9 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  return typeof window !== "undefined"
-    ? window.btoa(binary)
+  const hasWindow = typeof globalThis.window !== "undefined";
+  return hasWindow
+    ? globalThis.window.btoa(binary)
     : Buffer.from(bytes).toString("base64");
 }
 
@@ -377,9 +378,10 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
  * Converts base64 string to ArrayBuffer.
  */
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const hasWindow = typeof globalThis.window !== "undefined";
   const binary =
-    typeof window !== "undefined"
-      ? window.atob(base64)
+    hasWindow
+      ? globalThis.window.atob(base64)
       : Buffer.from(base64, "base64").toString("binary");
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -404,5 +406,5 @@ function arrayBufferToHex(buffer: ArrayBuffer): string {
  */
 function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
   const base64 = arrayBufferToBase64(buffer);
-  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  return base64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }

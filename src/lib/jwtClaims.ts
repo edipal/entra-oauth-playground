@@ -24,10 +24,14 @@ function formatClaimValue(value: unknown): string {
     return String(value);
   }
 
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
   try {
     return JSON.stringify(value, null, 2);
   } catch {
-    return String(value);
+    return "[unserializable value]";
   }
 }
 

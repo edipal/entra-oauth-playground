@@ -31,10 +31,7 @@ export default function StepCallback({
       const url = new URL(callbackUrl);
       callbackParams = new URLSearchParams(url.search);
     } catch (e) {
-      const q =
-        callbackUrl && callbackUrl.includes("?")
-          ? callbackUrl.split("?")[1]
-          : "";
+      const q = callbackUrl?.includes("?") ? callbackUrl.split("?")[1] : "";
       callbackParams = new URLSearchParams(q);
     }
   }

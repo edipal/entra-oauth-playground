@@ -31,8 +31,7 @@ const AppMenuitem = (props: AppMenuItemProps) => {
     ? props.parentKey + "-" + props.index
     : String(props.index);
   const isActiveRoute = !!itemTo && pathname === itemTo;
-  const active =
-    activeMenu === key || !!(activeMenu && activeMenu.startsWith(key + "-"));
+  const active = activeMenu === key || (activeMenu?.startsWith(key + "-") ?? false);
   const compactMode = isSlim() || isSlimPlus() || isHorizontal();
 
   useSubmenuOverlayPosition({

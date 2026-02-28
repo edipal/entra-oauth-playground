@@ -126,7 +126,7 @@ const Layout = (props: ChildContainerProps) => {
     } else {
       document.body.className = document.body.className.replace(
         new RegExp(
-          "(^|\\b)" + "blocked-scroll".split(" ").join("|") + "(\\b|$)",
+          String.raw`(^|\b)${"blocked-scroll".split(" ").join("|")}(\b|$)`,
           "gi",
         ),
         " ",

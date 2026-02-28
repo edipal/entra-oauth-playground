@@ -108,8 +108,8 @@ export default function AuthorizationCodePublicClientPage() {
 
   // Initialize redirectUri from current origin so it works in dev and prod
   useEffect(() => {
-    if (typeof window !== "undefined" && hydrated) {
-      const uri = `${window.location.origin}/callback/auth-code`;
+    if (typeof globalThis.window !== "undefined" && hydrated) {
+      const uri = `${globalThis.window.location.origin}/callback/auth-code`;
       if (!redirectUri) {
         setAuthCodePublicClientConfig((prev) => ({
           ...prev,
@@ -188,16 +188,16 @@ export default function AuthorizationCodePublicClientPage() {
     const onMessage = (ev: MessageEvent) => {
       const data = ev.data as any;
       // Basic origin check: only accept messages from same origin
-      if (typeof window !== "undefined" && ev.origin !== window.location.origin)
+      if (ev.origin !== globalThis.window?.location.origin)
         return;
-      if (!data || data.type !== "oauth_callback") return;
+      if (data?.type !== "oauth_callback") return;
       try {
-        const urlStr: string =
-          typeof data.url === "string"
-            ? data.url
-            : typeof data.href === "string"
-              ? data.href
-              : "";
+        let urlStr = "";
+        if (typeof data.url === "string") {
+          urlStr = data.url;
+        } else if (typeof data.href === "string") {
+          urlStr = data.href;
+        }
         if (!urlStr) return;
         const bodyStr: string = typeof data.body === "string" ? data.body : "";
         let code = "";
@@ -317,9 +317,9 @@ export default function AuthorizationCodePublicClientPage() {
   const openAuthorizePopup = () => {
     if (!authUrlPreview) return;
 
-    const popup = window.open("", "oauth_auth_popup");
+    const popup = globalThis.window.open("", "oauth_auth_popup");
     if (!popup) {
-      window.location.assign(authUrlPreview);
+      globalThis.window.location.assign(authUrlPreview);
       return;
     }
 
@@ -593,8 +593,8 @@ export default function AuthorizationCodePublicClientPage() {
     try {
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       // Fallback for environments where scrollIntoView doesn't affect the intended container
-      if (typeof window !== "undefined")
-        window.scrollTo({ top: 0, behavior: "smooth" });
+      if (typeof globalThis.window !== "undefined")
+        globalThis.window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {}
   }, [currentStep]);
   return (

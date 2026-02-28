@@ -4,8 +4,18 @@ export function resolveAndValidateTokenEndpoint(
   tokenEndpoint: unknown,
   tenantId: unknown,
 ): string | null {
-  const raw = String(tokenEndpoint || "").trim();
-  const tenant = String(tenantId || "").trim();
+  const raw =
+    typeof tokenEndpoint === "string" ||
+    typeof tokenEndpoint === "number" ||
+    typeof tokenEndpoint === "boolean"
+      ? String(tokenEndpoint).trim()
+      : "";
+  const tenant =
+    typeof tenantId === "string" ||
+    typeof tenantId === "number" ||
+    typeof tenantId === "boolean"
+      ? String(tenantId).trim()
+      : "";
   if (!raw || !tenant) {
     return null;
   }

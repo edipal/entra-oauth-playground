@@ -154,7 +154,7 @@ export default function JwtDecoderToolPage() {
             style={{ width: "min(62rem, 95vw)" }}
             onHide={() => setShowClaimsDialog(false)}
           >
-            {!claims.length ? (
+            {claims.length === 0 ? (
               <p className="m-0">{tDecode("claimsDialog.noClaims")}</p>
             ) : (
               <div className="overflow-auto">
