@@ -62,8 +62,15 @@ const fmtEpoch = (v?: number) => {
   }
 };
 
-const ensureArray = (v: string | string[] | undefined): string[] =>
-  Array.isArray(v) ? v : typeof v === "string" ? [v] : [];
+const ensureArray = (v: string | string[] | undefined): string[] => {
+  if (Array.isArray(v)) {
+    return v;
+  }
+  if (typeof v === "string") {
+    return [v];
+  }
+  return [];
+};
 
 type SigStatus = {
   kid?: string;
@@ -80,7 +87,27 @@ type SigStatus = {
   publicKeyPem?: string;
 };
 
-export default function StepValidate(props: Props) {
+function StatusIcon({
+  ok,
+  label,
+}: Readonly<{
+  ok: boolean | undefined;
+  label?: string;
+}>) {
+  return (
+    <span style={{ color: ok ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
+      <i
+        className={`pi ${ok ? "pi-check" : "pi-times"}`}
+        style={{ marginRight: 6 }}
+      />
+      {label}
+    </span>
+  );
+}
+
+const renderCode = (chunks: any) => <code>{chunks}</code>;
+
+export default function StepValidate(props: Readonly<Props>) {
   const t = useTranslations("StepValidate");
   const {
     tenantId,
@@ -119,12 +146,6 @@ export default function StepValidate(props: Props) {
   const accJwks = guessJwksUrl(accIss, accessPayload.tid, accessPayload.ver);
   const idJwks = guessJwksUrl(idIss, idPayload.tid, idPayload.ver);
 
-  const expectedScopes = useMemo(() => {
-    // We don't know which scopes the app expects here; show what the token has.
-    const scp = (accessPayload.scp || "").trim();
-    return scp ? scp.split(/\s+/) : [];
-  }, [accessPayload.scp]);
-
   // Signature verification status
   const [idSig, setIdSig] = useState<SigStatus>({});
   const [accSig, setAccSig] = useState<SigStatus>({});
@@ -154,7 +175,7 @@ export default function StepValidate(props: Props) {
         let jwksUrl = "";
         const host = (() => {
           try {
-            return new URL(idIss!).host.toLowerCase();
+            return new URL(idIss).host.toLowerCase();
           } catch {
             return "";
           }
@@ -252,7 +273,7 @@ export default function StepValidate(props: Props) {
         let jwksUrl = "";
         const host = (() => {
           try {
-            return new URL(accIss!).host.toLowerCase();
+            return new URL(accIss).host.toLowerCase();
           } catch {
             return "";
           }
@@ -325,22 +346,6 @@ export default function StepValidate(props: Props) {
     accessPayload.tid,
     accIss,
   ]);
-
-  const StatusIcon = ({
-    ok,
-    label,
-  }: {
-    ok: boolean | undefined;
-    label?: string;
-  }) => (
-    <span style={{ color: ok ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
-      <i
-        className={`pi ${ok ? "pi-check" : "pi-times"}`}
-        style={{ marginRight: 6 }}
-      />
-      {label}
-    </span>
-  );
 
   // Server-side diagnostics removed per request.
 
@@ -420,7 +425,7 @@ export default function StepValidate(props: Props) {
   // Show a warning when validating Microsoft Graph access tokens: only Graph can verify its signatures
   const graphAud = "00000003-0000-0000-c000-000000000000";
   const graphAudUrl = "https://graph.microsoft.com";
-  const accessAudiences = ensureArray(accessPayload.aud as any);
+  const accessAudiences = ensureArray(accessPayload.aud);
   const isGraphAccessToken = accessAudiences.some((aud) => {
     const normalized = String(aud || "")
       .trim()
@@ -446,7 +451,7 @@ export default function StepValidate(props: Props) {
           />
           <p className="m-0 text-sm">
             {(t as any).rich("validateUi.graphWarning", {
-              code: (chunks: any) => <code>{chunks}</code>,
+              code: renderCode,
               aud: graphAud,
             })}
           </p>
@@ -555,7 +560,8 @@ export default function StepValidate(props: Props) {
                   onClick={async (e) => {
                     e.preventDefault();
                     try {
-                      await navigator.clipboard.writeText(idSig.publicKeyPem!);
+                        if (idSig.publicKeyPem)
+                          await navigator.clipboard.writeText(idSig.publicKeyPem);
                     } catch {}
                   }}
                 >
@@ -726,9 +732,10 @@ export default function StepValidate(props: Props) {
                     onClick={async (e) => {
                       e.preventDefault();
                       try {
-                        await navigator.clipboard.writeText(
-                          accSig.publicKeyPem!,
-                        );
+                          if (accSig.publicKeyPem)
+                            await navigator.clipboard.writeText(
+                              accSig.publicKeyPem,
+                            );
                       } catch {}
                     }}
                   >
@@ -806,7 +813,7 @@ export default function StepValidate(props: Props) {
                 <code>
                   {Array.isArray(accessPayload.roles)
                     ? accessPayload.roles.join(" ")
-                    : accessPayload.roles || "—"}
+                    : accessPayload.roles ?? "—"}
                 </code>
                 <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
                   <span

@@ -24,11 +24,14 @@ export default function StepTokens({
   const safeTWithFallback = (key: string, fallback = ""): string =>
     TranslationUtils.safeTWithFallback(t, key, fallback);
   const toPretty = (v: unknown) => {
+    if (v === null || v === undefined) return "";
     if (typeof v === "string") return v;
+    if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint")
+      return String(v);
     try {
       return JSON.stringify(v, null, 2);
     } catch {
-      return String(v ?? "");
+      return "[unserializable value]";
     }
   };
   const reqStr = toPretty(tokenRequestPreview);

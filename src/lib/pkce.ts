@@ -2,12 +2,13 @@ export const base64UrlEncode = (input: ArrayBuffer) => {
   const bytes = new Uint8Array(input);
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++)
-    binary += String.fromCharCode(bytes[i]);
+    binary += String.fromCodePoint(bytes[i]);
+  const hasWindow = globalThis.window !== undefined;
   const b64 =
-    typeof window !== "undefined"
-      ? window.btoa(binary)
+    hasWindow
+      ? globalThis.window.btoa(binary)
       : Buffer.from(binary, "binary").toString("base64");
-  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return b64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 };
 
 export const randomCodeVerifier = (length = 96) => {

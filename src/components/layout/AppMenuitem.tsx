@@ -31,8 +31,7 @@ const AppMenuitem = (props: AppMenuItemProps) => {
     ? props.parentKey + "-" + props.index
     : String(props.index);
   const isActiveRoute = !!itemTo && pathname === itemTo;
-  const active =
-    activeMenu === key || !!(activeMenu && activeMenu.startsWith(key + "-"));
+  const active = activeMenu === key || (activeMenu?.startsWith(key + "-") ?? false);
   const compactMode = isSlim() || isSlimPlus() || isHorizontal();
 
   useSubmenuOverlayPosition({
@@ -71,6 +70,48 @@ const AppMenuitem = (props: AppMenuItemProps) => {
     setActiveMenu,
   ]);
 
+  const handleHoverNavigation = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (props.root && compactMode) {
+      const isSubmenu =
+        event.currentTarget.closest(
+          ".layout-root-menuitem.active-menuitem > ul",
+        ) !== null;
+      setLayoutState((prevLayoutState) => ({
+        ...prevLayoutState,
+        menuHoverActive: isSubmenu || !prevLayoutState.menuHoverActive,
+      }));
+    }
+  };
+
+  const toggleActiveState = () => {
+    if (item?.items) {
+      setActiveMenu(active ? props.parentKey! : key);
+
+      if (props.root && !active && compactMode) {
+        setLayoutState((prev) => ({
+          ...prev,
+          overlaySubmenuActive: true,
+        }));
+      }
+    } else {
+      if (!isDesktop()) {
+        setLayoutState((prev) => ({
+          ...prev,
+          staticMenuMobileActive: !prev.staticMenuMobileActive,
+        }));
+      }
+
+      if (compactMode) {
+        setLayoutState((prev) => ({
+          ...prev,
+          menuHoverActive: false,
+        }));
+      }
+
+      setActiveMenu(key);
+    }
+  };
+
   const itemClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     //avoid processing disabled items
     if (item!.disabled) {
@@ -79,59 +120,13 @@ const AppMenuitem = (props: AppMenuItemProps) => {
     }
 
     // navigate with hover
-    if (props.root && (isSlim() || isHorizontal() || isSlimPlus())) {
-      const isSubmenu =
-        event.currentTarget.closest(
-          ".layout-root-menuitem.active-menuitem > ul",
-        ) !== null;
-      if (isSubmenu)
-        setLayoutState((prevLayoutState) => ({
-          ...prevLayoutState,
-          menuHoverActive: true,
-        }));
-      else
-        setLayoutState((prevLayoutState) => ({
-          ...prevLayoutState,
-          menuHoverActive: !prevLayoutState.menuHoverActive,
-        }));
-    }
+    handleHoverNavigation(event);
 
     //execute command
-    if (item?.command) {
-      item?.command({ originalEvent: event, item: item });
-    }
+    item?.command?.({ originalEvent: event, item: item });
 
     // toggle active state
-    if (item?.items) {
-      setActiveMenu(active ? props.parentKey! : key);
-
-      if (
-        props.root &&
-        !active &&
-        (isSlim() || isHorizontal() || isSlimPlus())
-      ) {
-        setLayoutState((prevLayoutState) => ({
-          ...prevLayoutState,
-          overlaySubmenuActive: true,
-        }));
-      }
-    } else {
-      if (!isDesktop()) {
-        setLayoutState((prevLayoutState) => ({
-          ...prevLayoutState,
-          staticMenuMobileActive: !prevLayoutState.staticMenuMobileActive,
-        }));
-      }
-
-      if (isSlim() || isSlimPlus() || isHorizontal()) {
-        setLayoutState((prevLayoutState) => ({
-          ...prevLayoutState,
-          menuHoverActive: false,
-        }));
-      }
-
-      setActiveMenu(key);
-    }
+    toggleActiveState();
   };
 
   const onMouseEnter = () => {
@@ -190,50 +185,46 @@ const AppMenuitem = (props: AppMenuItemProps) => {
         <div className="layout-menuitem-root-text">{item?.label}</div>
       )}
       {(!item?.to || item?.items) && item?.visible !== false ? (
-        <>
-          <a
-            href={item?.url}
-            onClick={(e) => itemClick(e)}
-            className={classNames(item?.class, "p-ripple tooltip-target")}
-            target={item?.target}
-            data-pr-tooltip={item?.label}
-            data-pr-disabled={
-              !(isSlim() && props.root && !layoutState.menuHoverActive)
-            }
-            tabIndex={0}
-            onMouseEnter={onMouseEnter}
-          >
-            <i className={classNames("layout-menuitem-icon", item?.icon)}></i>
-            <span className="layout-menuitem-text">{item?.label}</span>
-            {item?.items && (
-              <i className="pi pi-fw pi-angle-down layout-submenu-toggler"></i>
-            )}
-            <Ripple />
-          </a>
-        </>
+        <a
+          href={item?.url}
+          onClick={(e) => itemClick(e)}
+          className={classNames(item?.class, "p-ripple tooltip-target")}
+          target={item?.target}
+          data-pr-tooltip={item?.label}
+          data-pr-disabled={
+            !(isSlim() && props.root && !layoutState.menuHoverActive)
+          }
+          tabIndex={0}
+          onMouseEnter={onMouseEnter}
+        >
+          <i className={classNames("layout-menuitem-icon", item?.icon)}></i>
+          <span className="layout-menuitem-text">{item?.label}</span>
+          {item?.items && (
+            <i className="pi pi-fw pi-angle-down layout-submenu-toggler"></i>
+          )}
+          <Ripple />
+        </a>
       ) : null}
 
       {item?.to && !item?.items && item?.visible !== false ? (
-        <>
-          <Link
-            href={item?.to}
-            replace={item?.replaceUrl}
-            onClick={(e) => itemClick(e)}
-            className={classNames(item?.class, "p-ripple ", {
-              "active-route": isActiveRoute,
-            })}
-            tabIndex={0}
-            onMouseEnter={onMouseEnter}
-          >
-            <i className={classNames("layout-menuitem-icon", item?.icon)}></i>
-            <span className="layout-menuitem-text">{item?.label}</span>
-            {badge}
-            {item?.items && (
-              <i className="pi pi-fw pi-angle-down layout-submenu-toggler"></i>
-            )}
-            <Ripple />
-          </Link>
-        </>
+        <Link
+          href={item?.to}
+          replace={item?.replaceUrl}
+          onClick={(e) => itemClick(e)}
+          className={classNames(item?.class, "p-ripple ", {
+            "active-route": isActiveRoute,
+          })}
+          tabIndex={0}
+          onMouseEnter={onMouseEnter}
+        >
+          <i className={classNames("layout-menuitem-icon", item?.icon)}></i>
+          <span className="layout-menuitem-text">{item?.label}</span>
+          {badge}
+          {item?.items && (
+            <i className="pi pi-fw pi-angle-down layout-submenu-toggler"></i>
+          )}
+          <Ripple />
+        </Link>
       ) : null}
       {subMenu}
     </li>

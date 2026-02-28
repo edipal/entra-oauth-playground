@@ -3,8 +3,6 @@ import {
   jwtVerify,
   decodeProtectedHeader,
   decodeJwt,
-  exportSPKI,
-  type JWTPayload,
 } from "jose";
 
 export type VerifyResult = {
@@ -35,9 +33,6 @@ export const guessJwksUrl = (iss?: string, tid?: string, ver?: string) => {
     const u = new URL(iss);
     const host = u.host.toLowerCase();
     const tenant = (tid || "common").trim();
-    const v = (ver || (iss.includes("/v2.0") ? "2.0" : "1.0")).startsWith("2")
-      ? "v2.0"
-      : "v1.0";
     const isAllowedHost = (h: string, domain: string) =>
       h === domain || h.endsWith("." + domain);
     if (
@@ -57,18 +52,6 @@ export async function verifyJwtSignature(
   expectedKid?: string,
 ): Promise<VerifyResult> {
   try {
-    // Decode header and payload for metadata (even if verification fails)
-    const header = decodeProtectedHeader(token);
-    const payload = decodeJwt(token) as JWTPayload & {
-      tid?: string;
-      ver?: string;
-    };
-
-    const alg = header.alg;
-    const kid = header.kid;
-    const ver = payload.ver;
-    const iss = payload.iss;
-
     // Create JWKS getter
     const JWKS = createRemoteJWKSet(new URL(jwksUrl));
 
@@ -87,17 +70,17 @@ export async function verifyJwtSignature(
       keyFound: true,
       alg: protectedHeader.alg,
       kid: protectedHeader.kid,
-      ver: (verifiedPayload as any).ver,
+      ver:
+        typeof verifiedPayload.ver === "string"
+          ? verifiedPayload.ver
+          : undefined,
       iss: verifiedPayload.iss,
     };
   } catch (e: any) {
     // Try to extract as much info as possible even on failure
     try {
       const header = decodeProtectedHeader(token);
-      const payload = decodeJwt(token) as JWTPayload & {
-        tid?: string;
-        ver?: string;
-      };
+      const payload = decodeJwt(token);
 
       const errorMsg = String(e.message || e);
       const isKeyNotFound =
@@ -114,7 +97,7 @@ export async function verifyJwtSignature(
           : "Verification failed",
         alg: header.alg,
         kid: header.kid,
-        ver: payload.ver,
+        ver: typeof payload.ver === "string" ? payload.ver : undefined,
         iss: payload.iss,
       };
     } catch {

@@ -22,11 +22,11 @@ const AppBreadcrumb = (props: AppBreadcrumbProps) => {
           {ObjectUtils.isNotEmpty(breadcrumb) ? (
             breadcrumb?.labels?.map((label, index) => {
               return (
-                <React.Fragment key={index}>
+                <React.Fragment key={label}>
                   {index !== 0 && (
                     <li className="layout-breadcrumb-chevron"> / </li>
                   )}
-                  <li key={index}>{label}</li>
+                  <li>{label}</li>
                 </React.Fragment>
               );
             })

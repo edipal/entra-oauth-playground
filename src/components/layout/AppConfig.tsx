@@ -1,6 +1,5 @@
 "use client";
 import type { AppConfigProps, ColorScheme } from "@/types";
-import { PrimeReactContext } from "primereact/api";
 import { Button } from "primereact/button";
 import { InputSwitch, InputSwitchChangeEvent } from "primereact/inputswitch";
 import { RadioButton, RadioButtonChangeEvent } from "primereact/radiobutton";
@@ -31,8 +30,6 @@ const AppConfig = (props: AppConfigProps) => {
     isSlimPlus,
     isHorizontal,
   } = useContext(LayoutContext);
-  const primeReactContext = useContext(PrimeReactContext);
-  const changeTheme = primeReactContext?.changeTheme;
 
   useEffect(() => {
     if (isSlim() || isSlimPlus() || isHorizontal()) {
@@ -62,7 +59,7 @@ const AppConfig = (props: AppConfigProps) => {
   const changeRipple = (e: InputSwitchChangeEvent) => {
     setLayoutConfig((prevState) => ({
       ...prevState,
-      ripple: e.value as boolean,
+      ripple: e.value,
     }));
   };
 
@@ -123,9 +120,9 @@ const AppConfig = (props: AppConfigProps) => {
       >
         <h5>Themes</h5>
         <div className="flex flex-wrap row-gap-3">
-          {componentThemes.map((theme, i) => {
+          {componentThemes.map((theme) => {
             return (
-              <div key={i} className="w-3">
+              <div key={theme.name} className="w-3">
                 <button
                   type="button"
                   className="cursor-pointer p-link w-2rem h-2rem border-circle flex-shrink-0 flex align-items-center justify-content-center"
@@ -153,10 +150,10 @@ const AppConfig = (props: AppConfigProps) => {
             disabled={layoutConfig.scale === scales[0]}
           ></Button>
           <div className="flex gap-2 align-items-center">
-            {scales.map((s, i) => {
+            {scales.map((s) => {
               return (
                 <i
-                  key={i}
+                  key={s}
                   className={classNames("pi pi-circle-fill text-300", {
                     "text-primary-500": s === layoutConfig.scale,
                   })}
@@ -171,7 +168,7 @@ const AppConfig = (props: AppConfigProps) => {
             className="w-2rem h-2rem ml-2"
             rounded
             text
-            disabled={layoutConfig.scale === scales[scales.length - 1]}
+            disabled={layoutConfig.scale === scales.at(-1)}
           ></Button>
         </div>
 

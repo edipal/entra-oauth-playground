@@ -1,0 +1,6 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "edipal-1",
+        "projectKey": "edipal_entra-oauth-playground"
+    }
+}

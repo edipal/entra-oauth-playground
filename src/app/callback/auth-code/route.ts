@@ -1,10 +1,10 @@
 function escapeHtml(value: string): string {
   return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#39;");
 }
 
 export async function GET(request: Request) {
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         "cache-control": "no-store",
       },
     });
-  } catch (e) {
-    return new Response("Invalid request", { status: 400 });
-  }
+	} catch {
+		return new Response("Invalid request", { status: 400 });
+	}
 }
