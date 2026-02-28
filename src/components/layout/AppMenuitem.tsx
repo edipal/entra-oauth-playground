@@ -21,29 +21,24 @@ const AppMenuitem = (props: AppMenuItemProps) => {
     isDesktop,
     setLayoutState,
     layoutState,
-    layoutConfig,
   } = useContext(LayoutContext);
   const submenuRef = useRef<HTMLUListElement>(null);
   const menuitemRef = useRef<HTMLLIElement>(null);
   const item = props.item;
+  const itemTo = item?.to;
+  const queryString = searchParams.toString();
   const key = props.parentKey
     ? props.parentKey + "-" + props.index
     : String(props.index);
-  const isActiveRoute = item!.to && pathname === item!.to;
+  const isActiveRoute = !!itemTo && pathname === itemTo;
   const active =
     activeMenu === key || !!(activeMenu && activeMenu.startsWith(key + "-"));
+  const compactMode = isSlim() || isSlimPlus() || isHorizontal();
 
   useSubmenuOverlayPosition({
-    target: menuitemRef.current,
-    overlay: submenuRef.current,
-    container:
-      menuitemRef.current &&
-      menuitemRef.current.closest(".layout-menu-container"),
-    when:
-      props.root &&
-      active &&
-      (isSlim() || isSlimPlus() || isHorizontal()) &&
-      isDesktop(),
+    targetRef: menuitemRef,
+    overlayRef: submenuRef,
+    when: props.root && active && compactMode && isDesktop(),
   });
 
   useEffect(() => {
@@ -54,20 +49,27 @@ const AppMenuitem = (props: AppMenuItemProps) => {
         resetMenu: false,
       }));
     }
-  }, [layoutState.resetMenu]);
+  }, [layoutState.resetMenu, setActiveMenu, setLayoutState]);
 
   useEffect(() => {
-    if (!(isSlim() || isSlimPlus() || isHorizontal()) && isActiveRoute) {
+    if (compactMode) return;
+
+    const fullPath = pathname + queryString;
+    const shouldActivate = isActiveRoute || (!!itemTo && itemTo === fullPath);
+
+    if (shouldActivate && activeMenu !== key) {
       setActiveMenu(key);
     }
-    const url = pathname + searchParams.toString();
-    const onRouteChange = () => {
-      if (!(isSlim() || isHorizontal()) && item!.to && item!.to === url) {
-        setActiveMenu(key);
-      }
-    };
-    onRouteChange();
-  }, [pathname, searchParams, layoutConfig]);
+  }, [
+    activeMenu,
+    compactMode,
+    isActiveRoute,
+    itemTo,
+    key,
+    pathname,
+    queryString,
+    setActiveMenu,
+  ]);
 
   const itemClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     //avoid processing disabled items

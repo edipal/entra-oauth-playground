@@ -1,6 +1,6 @@
 import type { Breadcrumb, BreadcrumbItem, MenuModel, MenuProps } from "@/types";
 import { Tooltip } from "primereact/tooltip";
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import AppMenuitem from "./AppMenuitem";
 import { LayoutContext } from "@/context/layoutcontext";
 import { MenuProvider } from "@/context/menucontext";
@@ -8,6 +8,7 @@ import { MenuProvider } from "@/context/menucontext";
 const AppSubMenu = (props: MenuProps) => {
   const { layoutState, setBreadcrumbs } = useContext(LayoutContext);
   const tooltipRef = useRef<Tooltip | null>(null);
+  const lastBreadcrumbsSignatureRef = useRef("");
 
   useEffect(() => {
     if (tooltipRef.current) {
@@ -16,11 +17,7 @@ const AppSubMenu = (props: MenuProps) => {
     }
   }, [layoutState.overlaySubmenuActive]);
 
-  useEffect(() => {
-    generateBreadcrumbs(props.model);
-  }, []);
-
-  const generateBreadcrumbs = (model: MenuModel[]) => {
+  const generatedBreadcrumbs = useMemo(() => {
     let breadcrumbs: Breadcrumb[] = [];
 
     const getBreadcrumb = (item: BreadcrumbItem, labels: string[] = []) => {
@@ -34,11 +31,25 @@ const AppSubMenu = (props: MenuProps) => {
       to && breadcrumbs.push({ labels, to });
     };
 
-    model.forEach((item) => {
+    props.model.forEach((item: MenuModel) => {
       getBreadcrumb(item);
     });
-    setBreadcrumbs(breadcrumbs);
-  };
+    return breadcrumbs;
+  }, [props.model]);
+
+  const generatedBreadcrumbsSignature = useMemo(
+    () => JSON.stringify(generatedBreadcrumbs),
+    [generatedBreadcrumbs],
+  );
+
+  useEffect(() => {
+    if (lastBreadcrumbsSignatureRef.current === generatedBreadcrumbsSignature) {
+      return;
+    }
+
+    lastBreadcrumbsSignatureRef.current = generatedBreadcrumbsSignature;
+    setBreadcrumbs(generatedBreadcrumbs);
+  }, [generatedBreadcrumbs, generatedBreadcrumbsSignature, setBreadcrumbs]);
 
   return (
     <MenuProvider>

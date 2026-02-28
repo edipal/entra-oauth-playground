@@ -247,6 +247,8 @@ export default function AuthorizationCodePublicClientPage() {
   // Streamlined: when on Tokens step, auto exchange tokens once inputs are ready
   const autoExchangedRef = useRef(false);
   const autoAdvancedFromTokensRef = useRef(false);
+  const handleExchangeTokensRef = useRef<() => Promise<void>>(async () => {});
+  const handleDecodeTokensRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!streamlined) return;
     if (currentStep !== StepIndex.Tokens) return;
@@ -271,7 +273,7 @@ export default function AuthorizationCodePublicClientPage() {
       tenantIdValid
     ) {
       autoExchangedRef.current = true;
-      void handleExchangeTokens();
+      void handleExchangeTokensRef.current();
     }
   }, [
     streamlined,
@@ -295,7 +297,7 @@ export default function AuthorizationCodePublicClientPage() {
     if (currentStep !== StepIndex.Decode) return;
     if (!autoDecodedRef.current) {
       autoDecodedRef.current = true;
-      handleDecodeTokens();
+      handleDecodeTokensRef.current();
     }
     // After a brief tick, move to Validate if we have some decoded content or tokens
     const hasSomething = !!accessToken || !!idToken;
@@ -360,7 +362,7 @@ export default function AuthorizationCodePublicClientPage() {
     return params.toString();
   }, [authCode, clientId, codeVerifier, redirectUri, scopes, pkceEnabled]);
 
-  const handleExchangeTokens = async () => {
+  async function handleExchangeTokens() {
     if (
       !authCode ||
       !clientId ||
@@ -417,10 +419,10 @@ export default function AuthorizationCodePublicClientPage() {
     } finally {
       setExchanging(false);
     }
-  };
+  }
 
   // Helpers to decode JWTs
-  const handleDecodeTokens = () => {
+  function handleDecodeTokens() {
     const acc = accessToken
       ? decodeJwt(accessToken)
       : { header: "", payload: "" };
@@ -429,7 +431,10 @@ export default function AuthorizationCodePublicClientPage() {
     setDecodedAccessPayload(acc.payload);
     setDecodedIdHeader(idt.header);
     setDecodedIdPayload(idt.payload);
-  };
+  }
+
+  handleExchangeTokensRef.current = handleExchangeTokens;
+  handleDecodeTokensRef.current = handleDecodeTokens;
 
   const handleCallProtectedApi = async () => {
     if (!apiEndpointUrl || !accessToken) return;

@@ -37,8 +37,10 @@ export default function StepDecode({
   const [activeDialogToken, setActiveDialogToken] = useState<TokenType | null>(
     null,
   );
-  const claimDescriptions =
-    (t.raw("claimDescriptions") as Record<string, string>) ?? {};
+  const claimDescriptions = useMemo(
+    () => (t.raw("claimDescriptions") as Record<string, string>) ?? {},
+    [t],
+  );
   const unknownClaimDescription = t("claimsDialog.unknownClaimDescription");
   // Compute rows from content lines so areas grow to show all content
   const calcRows = (value: string, minRows: number) => {
@@ -83,6 +85,14 @@ export default function StepDecode({
       ),
     [decodedIdPayload, claimDescriptions, unknownClaimDescription],
   );
+  const hasAccessHeaderNonce = useMemo(() => {
+    try {
+      const obj = JSON.parse(decodedAccessHeader || "{}");
+      return obj && typeof obj === "object" && "nonce" in obj;
+    } catch {
+      return (decodedAccessHeader || "").includes('"nonce"');
+    }
+  }, [decodedAccessHeader]);
   const activeClaims = activeDialogToken === "access" ? accessClaims : idClaims;
   const activeDialogTitle =
     activeDialogToken === "access"
@@ -207,14 +217,7 @@ export default function StepDecode({
                   }}
                 />
                 {/* Hint: Some providers include a JOSE 'nonce' header in access tokens; not used for OIDC nonce validation */}
-                {useMemo(() => {
-                  try {
-                    const obj = JSON.parse(decodedAccessHeader || "{}");
-                    return obj && typeof obj === "object" && "nonce" in obj;
-                  } catch {
-                    return (decodedAccessHeader || "").includes('"nonce"');
-                  }
-                }, [decodedAccessHeader]) && (
+                {hasAccessHeaderNonce && (
                   <div className="mt-2 flex gap-3 align-items-start pl-2">
                     <i
                       className="pi pi-exclamation-circle mr-2"

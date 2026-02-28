@@ -110,6 +110,8 @@ export default function ClientCredentialsPage() {
   // Streamlined: when on Tokens step, auto exchange tokens once inputs are ready
   const autoExchangedRef = useRef(false);
   const autoAdvancedFromTokensRef = useRef(false);
+  const handleExchangeTokensRef = useRef<() => Promise<void>>(async () => {});
+  const handleDecodeTokensRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!streamlined) return;
     if (currentStep !== StepIndex.Tokens) return;
@@ -131,7 +133,7 @@ export default function ClientCredentialsPage() {
       (clientAuthMethod === "secret" ? clientSecret : privateKeyPem)
     ) {
       autoExchangedRef.current = true;
-      void handleExchangeTokens();
+      void handleExchangeTokensRef.current();
     }
   }, [
     streamlined,
@@ -155,7 +157,7 @@ export default function ClientCredentialsPage() {
     if (currentStep !== StepIndex.Decode) return;
     if (!autoDecodedRef.current) {
       autoDecodedRef.current = true;
-      handleDecodeTokens();
+      handleDecodeTokensRef.current();
     }
     const hasSomething = !!accessToken || !!idToken;
     if (hasSomething && !autoAdvancedFromDecodeRef.current) {
@@ -193,7 +195,7 @@ export default function ClientCredentialsPage() {
     return params.toString();
   }, [clientId, scopes, clientAuthMethod, clientSecret, privateKeyPem]);
 
-  const handleExchangeTokens = async () => {
+  async function handleExchangeTokens() {
     if (!clientId || !tenantIdValid || !scopesValid || !tokenEndpoint) return;
     if (clientAuthMethod === "secret" && !clientSecret) return;
     if (clientAuthMethod === "certificate" && !privateKeyPem) return;
@@ -241,10 +243,10 @@ export default function ClientCredentialsPage() {
     } finally {
       setExchanging(false);
     }
-  };
+  }
 
   // Helpers to decode JWTs
-  const handleDecodeTokens = () => {
+  function handleDecodeTokens() {
     const acc = accessToken
       ? decodeJwt(accessToken)
       : { header: "", payload: "" };
@@ -253,7 +255,10 @@ export default function ClientCredentialsPage() {
     setDecodedAccessPayload(acc.payload);
     setDecodedIdHeader(idt.header);
     setDecodedIdPayload(idt.payload);
-  };
+  }
+
+  handleExchangeTokensRef.current = handleExchangeTokens;
+  handleDecodeTokensRef.current = handleDecodeTokens;
 
   const handleCallProtectedApi = async () => {
     if (!apiEndpointUrl || !accessToken) return;
