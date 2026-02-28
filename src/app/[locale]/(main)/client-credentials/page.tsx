@@ -491,7 +491,6 @@ export default function ClientCredentialsPage() {
           setClientAssertionKid={(v: string) =>
             setClientCredentialsConfig({ clientAssertionKid: v })
           }
-          clientAssertionX5t={clientAssertionX5t}
           setClientAssertionX5t={(v: string) =>
             setClientCredentialsConfig({ clientAssertionX5t: v })
           }
@@ -503,7 +502,6 @@ export default function ClientCredentialsPage() {
           setThumbprintSha1={(v: string) =>
             setClientCredentialsRuntime({ thumbprintSha1: v })
           }
-          thumbprintSha256={thumbprintSha256}
           setThumbprintSha256={(v: string) =>
             setClientCredentialsRuntime({ thumbprintSha256: v })
           }

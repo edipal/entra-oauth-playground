@@ -105,7 +105,7 @@ function StatusIcon({
   );
 }
 
-export default function StepValidate(props: Props) {
+export default function StepValidate(props: Readonly<Props>) {
   const t = useTranslations("StepValidate");
   const {
     tenantId,

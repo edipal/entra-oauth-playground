@@ -30,13 +30,11 @@ type Props = {
   setCertificatePem: (v: string) => void;
   clientAssertionKid: string;
   setClientAssertionKid: (v: string) => void;
-  clientAssertionX5t: string;
   setClientAssertionX5t: (v: string) => void;
   publicKeyPem: string;
   setPublicKeyPem: (v: string) => void;
   thumbprintSha1: string;
   setThumbprintSha1: (v: string) => void;
-  thumbprintSha256: string;
   setThumbprintSha256: (v: string) => void;
   thumbprintSha1Base64Url: string;
   setThumbprintSha1Base64Url: (v: string) => void;

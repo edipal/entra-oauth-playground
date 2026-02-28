@@ -108,7 +108,7 @@ export default function AuthorizationCodePublicClientPage() {
 
   // Initialize redirectUri from current origin so it works in dev and prod
   useEffect(() => {
-    if (typeof globalThis.window !== "undefined" && hydrated) {
+    if (globalThis.window !== undefined && hydrated) {
       const uri = `${globalThis.window.location.origin}/callback/auth-code`;
       if (!redirectUri) {
         setAuthCodePublicClientConfig((prev) => ({
@@ -593,7 +593,7 @@ export default function AuthorizationCodePublicClientPage() {
     try {
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       // Fallback for environments where scrollIntoView doesn't affect the intended container
-      if (typeof globalThis.window !== "undefined")
+      if (globalThis.window !== undefined)
         globalThis.window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {}
   }, [currentStep]);

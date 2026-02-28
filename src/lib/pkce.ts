@@ -3,7 +3,7 @@ export const base64UrlEncode = (input: ArrayBuffer) => {
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++)
     binary += String.fromCodePoint(bytes[i]);
-  const hasWindow = typeof globalThis.window !== "undefined";
+  const hasWindow = globalThis.window !== undefined;
   const b64 =
     hasWindow
       ? globalThis.window.btoa(binary)

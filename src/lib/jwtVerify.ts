@@ -3,7 +3,6 @@ import {
   jwtVerify,
   decodeProtectedHeader,
   decodeJwt,
-  type JWTPayload,
 } from "jose";
 
 export type VerifyResult = {
@@ -59,7 +58,6 @@ export async function verifyJwtSignature(
 
     const alg = header.alg;
     const kid = header.kid;
-    const ver = typeof payload.ver === "string" ? payload.ver : undefined;
     const iss = payload.iss;
 
     // Create JWKS getter

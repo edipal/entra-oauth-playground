@@ -311,7 +311,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   // After mount, read persisted settings (if any) and merge with defaults.
   useEffect(() => {
-    if (typeof globalThis.window === "undefined") return;
+    if (globalThis.window === undefined) return;
     try {
       const raw = localStorage.getItem("app:settings");
       if (!raw) return;
@@ -347,16 +347,19 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // In-memory runtime for the current flow (not persisted)
-  const [authCodePublicClientRuntime, setAuthCodePublicClientRuntimeState] =
+  const [
+    authCodePublicClientRuntime,
+    setAuthCodePublicClientRuntimeInternal,
+  ] =
     useState<AuthCodePublicClientRuntime>(defaultAuthCodePublicClientRuntime);
   const [
     authCodeConfidentialClientRuntime,
-    setAuthCodeConfidentialClientRuntimeState,
+    setAuthCodeConfidentialClientRuntimeInternal,
   ] =
     useState<AuthCodeConfidentialClientRuntime>(
       defaultAuthCodeConfidentialClientRuntime,
     );
-  const [clientCredentialsRuntime, setClientCredentialsRuntimeState] =
+  const [clientCredentialsRuntime, setClientCredentialsRuntimeInternal] =
     useState<ClientCredentialsRuntime>(defaultClientCredentialsRuntime);
 
   const persist = (next: Settings) => {
@@ -390,14 +393,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const setAuthCodePublicClientRuntime: SettingsContextValue["setAuthCodePublicClientRuntime"] =
     (update) => {
-      setAuthCodePublicClientRuntimeState((prev) => {
+      setAuthCodePublicClientRuntimeInternal((prev) => {
         const patch = typeof update === "function" ? update(prev) : update;
         return { ...prev, ...patch };
       });
     };
 
   const resetAuthCodePublicClientRuntime = () =>
-    setAuthCodePublicClientRuntimeState(defaultAuthCodePublicClientRuntime);
+    setAuthCodePublicClientRuntimeInternal(defaultAuthCodePublicClientRuntime);
 
   const authCodePublicClientConfig =
     settings.authCodePublicClient || defaultAuthCodePublicClientConfig;
@@ -419,14 +422,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const setAuthCodeConfidentialClientRuntime: SettingsContextValue["setAuthCodeConfidentialClientRuntime"] =
     (update) => {
-      setAuthCodeConfidentialClientRuntimeState((prev) => {
+      setAuthCodeConfidentialClientRuntimeInternal((prev) => {
         const patch = typeof update === "function" ? update(prev) : update;
         return { ...prev, ...patch };
       });
     };
 
   const resetAuthCodeConfidentialClientRuntime = () =>
-    setAuthCodeConfidentialClientRuntimeState(
+    setAuthCodeConfidentialClientRuntimeInternal(
       defaultAuthCodeConfidentialClientRuntime,
     );
 
@@ -450,14 +453,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const setClientCredentialsRuntime: SettingsContextValue["setClientCredentialsRuntime"] =
     (update) => {
-      setClientCredentialsRuntimeState((prev) => {
+      setClientCredentialsRuntimeInternal((prev) => {
         const patch = typeof update === "function" ? update(prev) : update;
         return { ...prev, ...patch };
       });
     };
 
   const resetClientCredentialsRuntime = () =>
-    setClientCredentialsRuntimeState(defaultClientCredentialsRuntime);
+    setClientCredentialsRuntimeInternal(defaultClientCredentialsRuntime);
 
   const clientCredentialsConfig =
     settings.clientCredentials || defaultSettings.clientCredentials!;

@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Card } from "primereact/card";
 import { Steps } from "primereact/steps";
 import type { MenuItem } from "primereact/menuitem";
 import { Button } from "primereact/button";
@@ -96,8 +95,6 @@ export default function AuthorizationCodeConfidentialClientPage() {
   const certificatePem = authCodeConfidentialClientRuntime.certificatePem || "";
   const publicKeyPem = authCodeConfidentialClientRuntime.publicKeyPem || "";
   const thumbprintSha1 = authCodeConfidentialClientRuntime.thumbprintSha1 || "";
-  const thumbprintSha256 =
-    authCodeConfidentialClientRuntime.thumbprintSha256 || "";
   const thumbprintSha1Base64Url =
     authCodeConfidentialClientRuntime.thumbprintSha1Base64Url || "";
   const assertionClaims =
@@ -138,7 +135,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
   // Initialize redirectUri from current origin
   useEffect(() => {
-    if (typeof globalThis.window !== "undefined" && hydrated) {
+    if (globalThis.window !== undefined && hydrated) {
       const uri = `${globalThis.window.location.origin}/callback/auth-code`;
       if (!redirectUri) {
         setAuthCodeConfidentialClientConfig((prev) => ({
@@ -779,7 +776,6 @@ export default function AuthorizationCodeConfidentialClientPage() {
           setClientAssertionKid={(v: string) =>
             setAuthCodeConfidentialClientConfig({ clientAssertionKid: v })
           }
-          clientAssertionX5t={clientAssertionX5t}
           setClientAssertionX5t={(v: string) =>
             setAuthCodeConfidentialClientConfig({ clientAssertionX5t: v })
           }
@@ -791,7 +787,6 @@ export default function AuthorizationCodeConfidentialClientPage() {
           setThumbprintSha1={(v: string) =>
             setAuthCodeConfidentialClientRuntime({ thumbprintSha1: v })
           }
-          thumbprintSha256={thumbprintSha256}
           setThumbprintSha256={(v: string) =>
             setAuthCodeConfidentialClientRuntime({ thumbprintSha256: v })
           }

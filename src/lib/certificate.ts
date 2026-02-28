@@ -368,7 +368,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  const hasWindow = typeof globalThis.window !== "undefined";
+  const hasWindow = globalThis.window !== undefined;
   return hasWindow
     ? globalThis.window.btoa(binary)
     : Buffer.from(bytes).toString("base64");
@@ -378,7 +378,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
  * Converts base64 string to ArrayBuffer.
  */
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const hasWindow = typeof globalThis.window !== "undefined";
+  const hasWindow = globalThis.window !== undefined;
   const binary =
     hasWindow
       ? globalThis.window.atob(base64)
