@@ -1,5 +1,6 @@
 "use client";
 import { useId, useState } from "react";
+import Image from "next/image";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
@@ -206,14 +207,13 @@ export default function StepAuthentication(props: Props) {
                   gap: "0.5rem",
                 }}
               >
-                <i
+                <Image
                   id={noteIconId}
-                  className="pi pi-exclamation-circle"
-                  aria-label={t("note.body")}
-                  role="img"
+                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFBB33'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E"
+                  alt={t("note.body")}
+                  width={16}
+                  height={16}
                   style={{
-                    color: "var(--yellow-500)",
-                    fontSize: "1rem",
                     display: "inline-flex",
                     alignItems: "center",
                     verticalAlign: "middle",

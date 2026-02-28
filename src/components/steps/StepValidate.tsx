@@ -105,6 +105,8 @@ function StatusIcon({
   );
 }
 
+const renderCode = (chunks: any) => <code>{chunks}</code>;
+
 export default function StepValidate(props: Readonly<Props>) {
   const t = useTranslations("StepValidate");
   const {
@@ -143,12 +145,6 @@ export default function StepValidate(props: Readonly<Props>) {
   const idMeta = buildMetadataUrl(idIss);
   const accJwks = guessJwksUrl(accIss, accessPayload.tid, accessPayload.ver);
   const idJwks = guessJwksUrl(idIss, idPayload.tid, idPayload.ver);
-
-  const expectedScopes = useMemo(() => {
-    // We don't know which scopes the app expects here; show what the token has.
-    const scp = (accessPayload.scp || "").trim();
-    return scp ? scp.split(/\s+/) : [];
-  }, [accessPayload.scp]);
 
   // Signature verification status
   const [idSig, setIdSig] = useState<SigStatus>({});
@@ -455,7 +451,7 @@ export default function StepValidate(props: Readonly<Props>) {
           />
           <p className="m-0 text-sm">
             {(t as any).rich("validateUi.graphWarning", {
-              code: (chunks: any) => <code>{chunks}</code>,
+              code: renderCode,
               aud: graphAud,
             })}
           </p>
@@ -817,7 +813,7 @@ export default function StepValidate(props: Readonly<Props>) {
                 <code>
                   {Array.isArray(accessPayload.roles)
                     ? accessPayload.roles.join(" ")
-                    : accessPayload.roles || "—"}
+                    : accessPayload.roles ?? "—"}
                 </code>
                 <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
                   <span

@@ -185,61 +185,72 @@ export default function AuthorizationCodePublicClientPage() {
 
   // Listen for postMessage from callback window
   useEffect(() => {
+    const handleOAuthCallback = (data: any) => {
+      let urlStr = "";
+      if (typeof data.url === "string") {
+        urlStr = data.url;
+      } else if (typeof data.href === "string") {
+        urlStr = data.href;
+      }
+      if (!urlStr) return;
+
+      const bodyStr: string = typeof data.body === "string" ? data.body : "";
+      let code = "";
+      let st = "";
+
+      if (bodyStr) {
+        const p = new URLSearchParams(bodyStr);
+        code = p.get("code") || "";
+        st = p.get("state") || "";
+      } else {
+        const u = new URL(urlStr);
+        code = u.searchParams.get("code") || "";
+        st = u.searchParams.get("state") || "";
+      }
+
+      // Mark callback as validated if state matches (or no state was set)
+      const ok = !!code && (!stateParam || stateParam === st);
+      setAuthCodePublicClientRuntime((prev) => ({
+        callbackUrl: urlStr,
+        callbackBody: bodyStr,
+        authCode: code,
+        extractedState: st,
+        callbackValidated: prev.callbackValidated || ok,
+      }));
+
+      // After receiving a code
+      if (streamlined && ok) {
+        // In streamlined mode with valid callback, jump straight to Tokens
+        setCurrentStep(5);
+        setMaxCompletedStep((m) => Math.max(m, 5));
+      } else {
+        // Otherwise go to Callback step
+        setCurrentStep(4);
+        setMaxCompletedStep((m) => Math.max(m, 4));
+      }
+    };
+
     const onMessage = (ev: MessageEvent) => {
       const data = ev.data as any;
       // Basic origin check: only accept messages from same origin
-      if (ev.origin !== globalThis.window?.location.origin)
-        return;
+      if (ev.origin !== globalThis.window?.location.origin) return;
       if (data?.type !== "oauth_callback") return;
+
       try {
-        let urlStr = "";
-        if (typeof data.url === "string") {
-          urlStr = data.url;
-        } else if (typeof data.href === "string") {
-          urlStr = data.href;
-        }
-        if (!urlStr) return;
-        const bodyStr: string = typeof data.body === "string" ? data.body : "";
-        let code = "";
-        let st = "";
-        if (bodyStr) {
-          const p = new URLSearchParams(bodyStr);
-          code = p.get("code") || "";
-          st = p.get("state") || "";
-        } else {
-          const u = new URL(urlStr);
-          code = u.searchParams.get("code") || "";
-          st = u.searchParams.get("state") || "";
-        }
-        // Mark callback as validated if state matches (or no state was set)
-        const ok = !!code && (!stateParam || stateParam === st);
-        setAuthCodePublicClientRuntime((prev) => ({
-          callbackUrl: urlStr,
-          callbackBody: bodyStr,
-          authCode: code,
-          extractedState: st,
-          callbackValidated: prev.callbackValidated || ok,
-        }));
-        // After receiving a code
-        if (streamlined && ok) {
-          // In streamlined mode with valid callback, jump straight to Tokens
-          setCurrentStep(5);
-          setMaxCompletedStep((m) => Math.max(m, 5));
-        } else {
-          // Otherwise go to Callback step
-          setCurrentStep(4);
-          setMaxCompletedStep((m) => Math.max(m, 4));
-        }
+        handleOAuthCallback(data);
       } catch {
         // ignore parse errors
       }
+
       try {
-        if (popupRef.current && !popupRef.current.closed)
+        if (popupRef.current && !popupRef.current.closed) {
           popupRef.current.close();
+        }
       } catch {
         // ignore
       }
     };
+
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [stateParam, setAuthCodePublicClientRuntime, streamlined]);

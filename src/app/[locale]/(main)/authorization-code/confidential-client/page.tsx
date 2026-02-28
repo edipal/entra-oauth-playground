@@ -211,52 +211,60 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
   // Listen for postMessage from callback window
   useEffect(() => {
+    const handleOAuthCallback = (data: any) => {
+      let urlStr = "";
+      if (typeof data.url === "string") {
+        urlStr = data.url;
+      } else if (typeof data.href === "string") {
+        urlStr = data.href;
+      }
+      if (!urlStr) return;
+
+      const bodyStr: string = typeof data.body === "string" ? data.body : "";
+      let code = "";
+      let st = "";
+
+      if (bodyStr) {
+        const p = new URLSearchParams(bodyStr);
+        code = p.get("code") || "";
+        st = p.get("state") || "";
+      } else {
+        const u = new URL(urlStr);
+        code = u.searchParams.get("code") || "";
+        st = u.searchParams.get("state") || "";
+      }
+
+      const ok = !!code && (!stateParam || stateParam === st);
+      
+      setAuthCodeConfidentialClientRuntime((prev) => ({
+        callbackUrl: urlStr,
+        callbackBody: bodyStr,
+        authCode: code,
+        extractedState: st,
+        callbackValidated: prev.callbackValidated || ok,
+      }));
+
+      const stepIndex = streamlined && ok ? StepIndex.Authentication : StepIndex.Callback;
+      setCurrentStep(stepIndex);
+      setMaxCompletedStep((m) => Math.max(m, stepIndex));
+    };
+
     const onMessage = (ev: MessageEvent) => {
       const data = ev.data as any;
-      if (ev.origin !== globalThis.window?.location.origin)
-        return;
+      if (ev.origin !== globalThis.window?.location.origin) return;
       if (data?.type !== "oauth_callback") return;
+
       try {
-        let urlStr = "";
-        if (typeof data.url === "string") {
-          urlStr = data.url;
-        } else if (typeof data.href === "string") {
-          urlStr = data.href;
-        }
-        if (!urlStr) return;
-        const bodyStr: string = typeof data.body === "string" ? data.body : "";
-        let code = "";
-        let st = "";
-        if (bodyStr) {
-          const p = new URLSearchParams(bodyStr);
-          code = p.get("code") || "";
-          st = p.get("state") || "";
-        } else {
-          const u = new URL(urlStr);
-          code = u.searchParams.get("code") || "";
-          st = u.searchParams.get("state") || "";
-        }
-        const ok = !!code && (!stateParam || stateParam === st);
-        setAuthCodeConfidentialClientRuntime((prev) => ({
-          callbackUrl: urlStr,
-          callbackBody: bodyStr,
-          authCode: code,
-          extractedState: st,
-          callbackValidated: prev.callbackValidated || ok,
-        }));
-        if (streamlined && ok) {
-          setCurrentStep(StepIndex.Authentication);
-          setMaxCompletedStep((m) => Math.max(m, StepIndex.Authentication));
-        } else {
-          setCurrentStep(StepIndex.Callback);
-          setMaxCompletedStep((m) => Math.max(m, StepIndex.Callback));
-        }
+        handleOAuthCallback(data);
       } catch {}
+
       try {
-        if (popupRef.current && !popupRef.current.closed)
+        if (popupRef.current && !popupRef.current.closed) {
           popupRef.current.close();
+        }
       } catch {}
     };
+
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [stateParam, setAuthCodeConfidentialClientRuntime, streamlined]);

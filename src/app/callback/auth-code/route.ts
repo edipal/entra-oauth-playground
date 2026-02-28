@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         "cache-control": "no-store",
       },
     });
-  } catch (e) {
-    return new Response("Invalid request", { status: 400 });
-  }
+	} catch {
+		return new Response("Invalid request", { status: 400 });
+	}
 }

@@ -1,10 +1,8 @@
 "use client";
 import type { AppTopbarRef, ChildContainerProps } from "@/types";
 import { usePathname, useSearchParams } from "next/navigation";
-import PrimeReact from "primereact/api";
 import {
   useEventListener,
-  useMountEffect,
   useResizeListener,
   useUnmountEffect,
 } from "primereact/hooks";
@@ -73,16 +71,14 @@ const Layout = (props: ChildContainerProps) => {
 
   const onMouseLeave = () => {
     if (!layoutState.anchored) {
-      if (!timeoutRef.current) {
-        timeoutRef.current = setTimeout(
-          () =>
-            setLayoutState((prevLayoutState) => ({
-              ...prevLayoutState,
-              sidebarActive: false,
-            })),
-          300,
-        );
-      }
+      timeoutRef.current ??= setTimeout(
+        () =>
+          setLayoutState((prevLayoutState) => ({
+            ...prevLayoutState,
+            sidebarActive: false,
+          })),
+        300,
+      );
     }
   };
 
@@ -124,7 +120,7 @@ const Layout = (props: ChildContainerProps) => {
     if (document.body.classList) {
       document.body.classList.remove("blocked-scroll");
     } else {
-      document.body.className = document.body.className.replace(
+      document.body.className = document.body.className.replaceAll(
         new RegExp(
           String.raw`(^|\b)${"blocked-scroll".split(" ").join("|")}(\b|$)`,
           "gi",
@@ -133,10 +129,6 @@ const Layout = (props: ChildContainerProps) => {
       );
     }
   };
-
-  useMountEffect(() => {
-    PrimeReact.ripple = true;
-  });
 
   useEffect(() => {
     if (
@@ -208,26 +200,25 @@ const Layout = (props: ChildContainerProps) => {
   });
 
   return (
-    <React.Fragment>
-      <div className={classNames("layout-container", containerClass)}>
-        <div
-          ref={sidebarRef}
-          className="layout-sidebar"
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-        >
-          <AppSidebar />
-        </div>
-        <div className="layout-content-wrapper">
-          <AppTopbar ref={topbarRef} />
+    <div className={classNames("layout-container", containerClass)}>
+      <section
+        ref={sidebarRef}
+        className="layout-sidebar"
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        aria-label="Sidebar"
+      >
+        <AppSidebar />
+      </section>
+      <div className="layout-content-wrapper">
+        <AppTopbar ref={topbarRef} />
 
-          <AppBreadCrumb className="content-breadcrumb"></AppBreadCrumb>
-          <div className="layout-content">{props.children}</div>
-        </div>
-        <AppConfig />
-        <div className="layout-mask"></div>
+        <AppBreadCrumb className="content-breadcrumb"></AppBreadCrumb>
+        <div className="layout-content">{props.children}</div>
       </div>
-    </React.Fragment>
+      <AppConfig />
+      <div className="layout-mask"></div>
+    </div>
   );
 };
 

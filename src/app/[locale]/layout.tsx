@@ -40,7 +40,7 @@ export default async function RootLayout({
       <body>
         <NextIntlClientProvider messages={messages}>
           <SettingsProvider>
-            <PrimeReactProvider>
+            <PrimeReactProvider value={{ ripple: true }}>
               <LayoutProvider>
                 <ThemeLink />
                 {children}

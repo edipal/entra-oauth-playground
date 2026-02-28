@@ -52,14 +52,6 @@ export async function verifyJwtSignature(
   expectedKid?: string,
 ): Promise<VerifyResult> {
   try {
-    // Decode header and payload for metadata (even if verification fails)
-    const header = decodeProtectedHeader(token);
-    const payload = decodeJwt(token);
-
-    const alg = header.alg;
-    const kid = header.kid;
-    const iss = payload.iss;
-
     // Create JWKS getter
     const JWKS = createRemoteJWKSet(new URL(jwksUrl));
 

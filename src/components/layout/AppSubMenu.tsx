@@ -24,10 +24,9 @@ const AppSubMenu = (props: MenuProps) => {
       const { label, to, items } = item;
 
       label && labels.push(label);
-      items &&
-        items.forEach((_item) => {
-          getBreadcrumb(_item, labels.slice());
-        });
+      items?.forEach((_item) => {
+        getBreadcrumb(_item, labels.slice());
+      });
       to && breadcrumbs.push({ labels, to });
     };
 
@@ -55,10 +54,10 @@ const AppSubMenu = (props: MenuProps) => {
     <MenuProvider>
       <ul className="layout-menu">
         {props.model.map((item, i) => {
-          return !item.seperator ? (
-            <AppMenuitem item={item} root={true} index={i} key={item.label} />
-          ) : (
+          return item.seperator ? (
             <li className="menu-separator"></li>
+          ) : (
+            <AppMenuitem item={item} root={true} index={i} key={item.label} />
           );
         })}
       </ul>
