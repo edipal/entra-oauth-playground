@@ -377,6 +377,7 @@ export default function StepValidate(props: Props) {
     idPayload.iat,
     idPayload.nbf,
     idPayload.nonce,
+    idPayload.tid,
     nowSec,
     skewSec,
     tenantId,

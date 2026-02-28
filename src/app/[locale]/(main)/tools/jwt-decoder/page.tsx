@@ -23,8 +23,10 @@ export default function JwtDecoderToolPage() {
   const [decodedPayload, setDecodedPayload] = useState("");
   const [showClaimsDialog, setShowClaimsDialog] = useState(false);
 
-  const claimDescriptions =
-    (tDecode.raw("claimDescriptions") as Record<string, string>) ?? {};
+  const claimDescriptions = useMemo(
+    () => (tDecode.raw("claimDescriptions") as Record<string, string>) ?? {},
+    [tDecode],
+  );
   const unknownClaimDescription = tDecode("claimsDialog.unknownClaimDescription");
 
   const claims = useMemo(

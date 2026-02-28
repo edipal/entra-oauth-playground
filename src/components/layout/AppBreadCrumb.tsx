@@ -1,19 +1,18 @@
 import type { AppBreadcrumbProps, Breadcrumb } from "@/types";
 import { usePathname } from "@/navigation";
 import { ObjectUtils } from "primereact/utils";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useMemo } from "react";
 import { LayoutContext } from "@/context/layoutcontext";
 
 const AppBreadcrumb = (props: AppBreadcrumbProps) => {
   const pathname = usePathname();
-  const [breadcrumb, setBreadcrumb] = useState<Breadcrumb | null>(null);
   const { breadcrumbs } = useContext(LayoutContext);
 
-  useEffect(() => {
+  const breadcrumb = useMemo(() => {
     const filteredBreadcrumbs = breadcrumbs?.find((crumb: Breadcrumb) => {
       return crumb.to?.replace(/\/$/, "") === pathname.replace(/\/$/, "");
     });
-    setBreadcrumb(filteredBreadcrumbs ?? null);
+    return filteredBreadcrumbs ?? null;
   }, [pathname, breadcrumbs]);
 
   return (

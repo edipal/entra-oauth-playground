@@ -281,6 +281,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
   // Streamlined: when on Tokens step, auto exchange tokens once inputs are ready
   const autoExchangedRef = useRef(false);
   const autoAdvancedFromTokensRef = useRef(false);
+  const handleExchangeTokensRef = useRef<() => Promise<void>>(async () => {});
+  const handleDecodeTokensRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!streamlined) return;
     if (currentStep !== StepIndex.Tokens) return;
@@ -303,7 +305,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
       tenantIdValid
     ) {
       autoExchangedRef.current = true;
-      void handleExchangeTokens();
+      handleExchangeTokensRef.current().catch(() => undefined);
     }
   }, [
     streamlined,
@@ -327,7 +329,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     if (currentStep !== StepIndex.Decode) return;
     if (!autoDecodedRef.current) {
       autoDecodedRef.current = true;
-      handleDecodeTokens();
+      handleDecodeTokensRef.current();
     }
     const hasSomething = !!accessToken || !!idToken;
     if (hasSomething && !autoAdvancedFromDecodeRef.current) {
@@ -394,7 +396,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     privateKeyPem,
   ]);
 
-  const handleExchangeTokens = async () => {
+  async function handleExchangeTokens() {
     if (
       !authCode ||
       !clientId ||
@@ -456,10 +458,10 @@ export default function AuthorizationCodeConfidentialClientPage() {
     } finally {
       setExchanging(false);
     }
-  };
+  }
 
   // Helpers to decode JWTs
-  const handleDecodeTokens = () => {
+  function handleDecodeTokens() {
     const acc = accessToken
       ? decodeJwt(accessToken)
       : { header: "", payload: "" };
@@ -468,7 +470,10 @@ export default function AuthorizationCodeConfidentialClientPage() {
     setDecodedAccessPayload(acc.payload);
     setDecodedIdHeader(idt.header);
     setDecodedIdPayload(idt.payload);
-  };
+  }
+
+  handleExchangeTokensRef.current = handleExchangeTokens;
+  handleDecodeTokensRef.current = handleDecodeTokens;
 
   const handleCallProtectedApi = async () => {
     if (!apiEndpointUrl || !accessToken) return;
@@ -591,7 +596,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     if (!canNext) return;
     // Streamlined: from Settings, auto-generate PKCE and skip the PKCE UI
     if (streamlined && currentStep === StepIndex.Settings) {
-      if (pkceEnabled) void handleGeneratePkce();
+      if (pkceEnabled) handleGeneratePkce().catch(() => undefined);
       setCurrentStep(StepIndex.Authorize);
       setMaxCompletedStep(
         (m) =>

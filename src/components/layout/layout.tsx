@@ -56,13 +56,13 @@ const Layout = (props: ChildContainerProps) => {
       },
     });
 
-  let timeout: ReturnType<typeof setTimeout> | null = null;
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onMouseEnter = () => {
     if (!layoutState.anchored) {
-      if (timeout) {
-        clearTimeout(timeout);
-        timeout = null;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
       setLayoutState((prevLayoutState) => ({
         ...prevLayoutState,
@@ -73,8 +73,8 @@ const Layout = (props: ChildContainerProps) => {
 
   const onMouseLeave = () => {
     if (!layoutState.anchored) {
-      if (!timeout) {
-        timeout = setTimeout(
+      if (!timeoutRef.current) {
+        timeoutRef.current = setTimeout(
           () =>
             setLayoutState((prevLayoutState) => ({
               ...prevLayoutState,
@@ -87,14 +87,29 @@ const Layout = (props: ChildContainerProps) => {
   };
 
   const hideMenu = useCallback(() => {
-    setLayoutState((prevLayoutState) => ({
-      ...prevLayoutState,
-      overlayMenuActive: false,
-      overlaySubmenuActive: false,
-      staticMenuMobileActive: false,
-      menuHoverActive: false,
-      resetMenu: (isSlim() || isSlimPlus() || isHorizontal()) && isDesktop(),
-    }));
+    setLayoutState((prevLayoutState) => {
+      const nextResetMenu =
+        (isSlim() || isSlimPlus() || isHorizontal()) && isDesktop();
+      const isAlreadyHidden =
+        !prevLayoutState.overlayMenuActive &&
+        !prevLayoutState.overlaySubmenuActive &&
+        !prevLayoutState.staticMenuMobileActive &&
+        !prevLayoutState.menuHoverActive &&
+        prevLayoutState.resetMenu === nextResetMenu;
+
+      if (isAlreadyHidden) {
+        return prevLayoutState;
+      }
+
+      return {
+        ...prevLayoutState,
+        overlayMenuActive: false,
+        overlaySubmenuActive: false,
+        staticMenuMobileActive: false,
+        menuHoverActive: false,
+        resetMenu: nextResetMenu,
+      };
+    });
   }, [isSlim, isSlimPlus, isHorizontal, isDesktop, setLayoutState]);
 
   const blockBodyScroll = () => {
@@ -144,9 +159,16 @@ const Layout = (props: ChildContainerProps) => {
       unblockBodyScroll();
     };
   }, [
+    bindDocumentResizeListener,
+    bindMenuOutsideClickListener,
+    isHorizontal,
+    isSlim,
+    isSlimPlus,
     layoutState.overlayMenuActive,
     layoutState.staticMenuMobileActive,
     layoutState.overlaySubmenuActive,
+    unbindDocumentResizeListener,
+    unbindMenuOutsideClickListener,
   ]);
 
   useEffect(() => {
@@ -154,7 +176,7 @@ const Layout = (props: ChildContainerProps) => {
       hideMenu();
     };
     onRouteChange();
-  }, [pathname, searchParams]);
+  }, [hideMenu, pathname, searchParams]);
 
   useUnmountEffect(() => {
     unbindMenuOutsideClickListener();

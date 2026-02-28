@@ -1,38 +1,52 @@
 import type { UseSubmenuOverlayPositionProps } from "@/types";
-import { useEventListener } from "primereact/hooks";
 import { DomHandler } from "primereact/utils";
 import { useContext, useEffect } from "react";
 import { LayoutContext } from "../context/layoutcontext";
 import { MenuContext } from "../context/menucontext";
 
 export const useSubmenuOverlayPosition = ({
-  target,
-  overlay,
-  container,
+  targetRef,
+  overlayRef,
   when,
 }: UseSubmenuOverlayPositionProps) => {
   const { isSlim, isSlimPlus, isHorizontal, setLayoutState } =
     useContext(LayoutContext);
   const { activeMenu } = useContext(MenuContext);
 
-  const handleScroll = () => {
-    setLayoutState((prevLayoutState) => ({
-      ...prevLayoutState,
-      overlayMenuActive: false,
-      overlaySubmenuActive: false,
-      staticMenuMobileActive: false,
-      menuHoverActive: false,
-      resetMenu: true,
-    }));
-  };
+  useEffect(() => {
+    if (!when) return;
 
-  const [bindScrollListener, unbindScrollListener] = useEventListener({
-    type: "scroll",
-    target: container as React.Ref<HTMLElement>,
-    listener: handleScroll,
-  });
+    const target = targetRef.current;
+    const container = target?.closest(".layout-menu-container") as
+      | HTMLElement
+      | null;
+    if (!container) return;
 
-  const calculatePosition = () => {
+    const onScroll = () => {
+      setLayoutState((prevLayoutState) => ({
+        ...prevLayoutState,
+        overlayMenuActive: false,
+        overlaySubmenuActive: false,
+        staticMenuMobileActive: false,
+        menuHoverActive: false,
+        resetMenu: true,
+      }));
+    };
+
+    container.addEventListener("scroll", onScroll);
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+    };
+  }, [setLayoutState, targetRef, when]);
+
+  useEffect(() => {
+    if (!when) return;
+
+    const target = targetRef.current;
+    const overlay = overlayRef.current;
+    const container = target?.closest(".layout-menu-container") as
+      | HTMLElement
+      | null;
     if (overlay && target) {
       const { left, top } = target.getBoundingClientRect();
       const { width: vWidth, height: vHeight } = DomHandler.getViewport();
@@ -42,33 +56,19 @@ export const useSubmenuOverlayPosition = ({
       );
 
       // reset
-      overlay.style.top = overlay.style.left = "";
+      const style = overlay.style;
+      style.top = "";
+      style.left = "";
 
       if (isHorizontal()) {
         const width = left + oWidth + scrollbarWidth;
-        overlay.style.left =
+        style.left =
           vWidth < width ? `${left - (width - vWidth)}px` : `${left}px`;
       } else if (isSlim() || isSlimPlus()) {
         const height = top + oHeight;
-        overlay.style.top =
+        style.top =
           vHeight < height ? `${top - (height - vHeight)}px` : `${top}px`;
       }
     }
-  };
-
-  useEffect(() => {
-    if (when) {
-      bindScrollListener();
-    }
-
-    return () => {
-      unbindScrollListener();
-    };
-  }, [when]);
-
-  useEffect(() => {
-    if (when) {
-      calculatePosition();
-    }
-  }, [when, activeMenu]);
+  }, [activeMenu, isHorizontal, isSlim, isSlimPlus, overlayRef, targetRef, when]);
 };
