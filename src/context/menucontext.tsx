@@ -1,5 +1,5 @@
 import type { MenuContextProps } from "@/types";
-import React, { createContext, useState } from "react";
+import React, { createContext, useMemo, useState } from "react";
 
 export const MenuContext = createContext({} as MenuContextProps);
 
@@ -10,10 +10,13 @@ interface MenuProviderProps {
 export const MenuProvider = (props: MenuProviderProps) => {
   const [activeMenu, setActiveMenu] = useState("");
 
-  const value = {
-    activeMenu,
-    setActiveMenu,
-  };
+  const value = useMemo(
+    () => ({
+      activeMenu,
+      setActiveMenu,
+    }),
+    [activeMenu],
+  );
 
   return (
     <MenuContext.Provider value={value}>{props.children}</MenuContext.Provider>

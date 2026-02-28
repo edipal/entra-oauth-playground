@@ -6,7 +6,6 @@ import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
-import { Tooltip } from "primereact/tooltip";
 import { useTranslations } from "next-intl";
 import LabelWithHelp from "@/components/LabelWithHelp";
 import type { ClientAuthMethod } from "@/types/client-auth";
@@ -49,7 +48,7 @@ type Props = {
   tokenEndpoint: string;
 };
 
-export default function StepAuthentication(props: Props) {
+export default function StepAuthentication(props: Readonly<Props>) {
   const {
     clientAuthMethod,
     setClientAuthMethod,

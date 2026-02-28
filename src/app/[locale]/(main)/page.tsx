@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import { Button } from "primereact/button";
 import { useTranslations } from "next-intl";
 
 export default function Page() {

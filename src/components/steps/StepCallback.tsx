@@ -18,7 +18,7 @@ export default function StepCallback({
   authCode,
   extractedState,
   expectedState,
-}: Props) {
+}: Readonly<Props>) {
   const t = useTranslations("StepCallback");
   // Parse callback params early so we can decide whether to show extracted fields
   let callbackParams: URLSearchParams | null = null;
@@ -30,7 +30,7 @@ export default function StepCallback({
     try {
       const url = new URL(callbackUrl);
       callbackParams = new URLSearchParams(url.search);
-    } catch (e) {
+    } catch {
       const q = callbackUrl?.includes("?") ? callbackUrl.split("?")[1] : "";
       callbackParams = new URLSearchParams(q);
     }

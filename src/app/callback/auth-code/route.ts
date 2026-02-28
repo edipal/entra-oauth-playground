@@ -66,7 +66,11 @@ export async function POST(request: Request) {
     // Reconstruct the original x-www-form-urlencoded body exactly (order preserved)
     const params = new URLSearchParams();
     for (const [k, v] of form.entries()) {
-      params.append(k, String(v));
+			if (typeof v === "string") {
+				params.append(k, v);
+			} else {
+				params.append(k, v.name);
+			}
     }
     const jsBody = JSON.stringify(params.toString());
 

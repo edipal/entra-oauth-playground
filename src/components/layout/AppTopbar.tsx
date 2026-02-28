@@ -2,26 +2,15 @@ import type { AppTopbarRef } from "@/types";
 import { forwardRef, useContext, useImperativeHandle, useRef } from "react";
 import AppBreadcrumb from "./AppBreadCrumb";
 import { LayoutContext } from "@/context/layoutcontext";
-import { usePathname, useRouter } from "@/navigation";
 
 const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
-  const { onMenuToggle, showProfileSidebar, showConfigSidebar } =
+  const { onMenuToggle } =
     useContext(LayoutContext);
   const menubuttonRef = useRef(null);
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const onConfigButtonClick = () => {
-    showConfigSidebar();
-  };
 
   useImperativeHandle(ref, () => ({
     menubutton: menubuttonRef.current,
   }));
-
-  const changeLanguage = (locale: string) => {
-    router.replace(pathname, { locale });
-  };
 
   return (
     <div className="layout-topbar">

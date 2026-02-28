@@ -5,8 +5,7 @@ export class TranslationUtils {
    */
   static safeT(t: any, key: string): string {
     try {
-      const anyT = t as any;
-      if (typeof anyT?.has === "function" && !anyT.has(key)) {
+      if (typeof t?.has === "function" && !t.has(key)) {
         return "";
       }
     } catch {
@@ -33,8 +32,7 @@ export class TranslationUtils {
    */
   static maybeT(t: any, key: string, fallback = ""): string {
     try {
-      const anyT = t as any;
-      if (typeof anyT?.has === "function" && !anyT.has(key)) {
+      if (typeof t?.has === "function" && !t.has(key)) {
         return fallback;
       }
     } catch {
@@ -42,7 +40,7 @@ export class TranslationUtils {
     }
     try {
       const v = t(key as any);
-      if (!v || typeof v !== "string" || v.indexOf(key) !== -1) return fallback;
+      if (!v || typeof v !== "string" || v.includes(key)) return fallback;
       return v;
     } catch {
       return fallback;

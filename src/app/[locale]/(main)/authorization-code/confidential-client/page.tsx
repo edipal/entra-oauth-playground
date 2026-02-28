@@ -250,7 +250,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     };
 
     const onMessage = (ev: MessageEvent) => {
-      const data = ev.data as any;
+      const data = ev.data;
       if (ev.origin !== globalThis.window?.location.origin) return;
       if (data?.type !== "oauth_callback") return;
 

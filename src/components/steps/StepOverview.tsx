@@ -6,7 +6,7 @@ type Props = {
   flowDiagram?: string;
 };
 
-export default function StepOverview({ flowIntro, flowDiagram }: Props) {
+export default function StepOverview({ flowIntro, flowDiagram }: Readonly<Props>) {
   const t = useTranslations("StepOverview");
   const introText = flowIntro || t("sections.settings.flowIntro");
   const diagramText = flowDiagram || t("sections.settings.flowDiagram");

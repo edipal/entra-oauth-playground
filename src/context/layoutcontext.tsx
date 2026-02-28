@@ -6,7 +6,7 @@ import type {
   LayoutContextProps,
   LayoutState,
 } from "@/types";
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 export const LayoutContext = React.createContext({} as LayoutContextProps);
 
@@ -35,7 +35,27 @@ export const LayoutProvider = (props: ChildContainerProps) => {
     anchored: false,
   });
 
-  const onMenuToggle = () => {
+  const isOverlay = useCallback(() => {
+    return layoutConfig.menuMode === "overlay";
+  }, [layoutConfig.menuMode]);
+
+  const isSlim = useCallback(() => {
+    return layoutConfig.menuMode === "slim";
+  }, [layoutConfig.menuMode]);
+
+  const isSlimPlus = useCallback(() => {
+    return layoutConfig.menuMode === "slim-plus";
+  }, [layoutConfig.menuMode]);
+
+  const isHorizontal = useCallback(() => {
+    return layoutConfig.menuMode === "horizontal";
+  }, [layoutConfig.menuMode]);
+
+  const isDesktop = useCallback(() => {
+    return window.innerWidth > 991;
+  }, []);
+
+  const onMenuToggle = useCallback(() => {
     if (isOverlay()) {
       setLayoutState((prevLayoutState) => ({
         ...prevLayoutState,
@@ -54,57 +74,51 @@ export const LayoutProvider = (props: ChildContainerProps) => {
         staticMenuMobileActive: !prevLayoutState.staticMenuMobileActive,
       }));
     }
-  };
+  }, [isDesktop, isOverlay]);
 
-  const showConfigSidebar = () => {
+  const showConfigSidebar = useCallback(() => {
     setLayoutState((prevLayoutState) => ({
       ...prevLayoutState,
       configSidebarVisible: true,
     }));
-  };
+  }, []);
 
-  const showProfileSidebar = () => {
+  const showProfileSidebar = useCallback(() => {
     setLayoutState((prevLayoutState) => ({
       ...prevLayoutState,
       profileSidebarVisible: !prevLayoutState.profileSidebarVisible,
     }));
-  };
+  }, []);
 
-  const isOverlay = () => {
-    return layoutConfig.menuMode === "overlay";
-  };
-
-  const isSlim = () => {
-    return layoutConfig.menuMode === "slim";
-  };
-
-  const isSlimPlus = () => {
-    return layoutConfig.menuMode === "slim-plus";
-  };
-
-  const isHorizontal = () => {
-    return layoutConfig.menuMode === "horizontal";
-  };
-
-  const isDesktop = () => {
-    return window.innerWidth > 991;
-  };
-
-  const value = {
-    layoutConfig,
-    setLayoutConfig,
-    layoutState,
-    setLayoutState,
-    onMenuToggle,
-    showConfigSidebar,
-    showProfileSidebar,
-    isSlim,
-    isSlimPlus,
-    isHorizontal,
-    isDesktop,
-    breadcrumbs,
-    setBreadcrumbs,
-  };
+  const value = useMemo(
+    () => ({
+      layoutConfig,
+      setLayoutConfig,
+      layoutState,
+      setLayoutState,
+      onMenuToggle,
+      showConfigSidebar,
+      showProfileSidebar,
+      isSlim,
+      isSlimPlus,
+      isHorizontal,
+      isDesktop,
+      breadcrumbs,
+      setBreadcrumbs,
+    }),
+    [
+      layoutConfig,
+      layoutState,
+      onMenuToggle,
+      showConfigSidebar,
+      showProfileSidebar,
+      isSlim,
+      isSlimPlus,
+      isHorizontal,
+      isDesktop,
+      breadcrumbs,
+    ],
+  );
 
   return (
     <LayoutContext.Provider value={value}>
