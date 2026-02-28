@@ -80,6 +80,10 @@ Add your own screenshots to replace the placeholders below. Place images in `doc
 
    ![Call API](./docs/screenshots/10-call-api.png)
 
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for the recommended workflow and PR checklist.
+
 ## Getting Started
 
 1. **Install dependencies:**
