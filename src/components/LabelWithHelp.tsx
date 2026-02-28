@@ -4,7 +4,7 @@ import { Tooltip } from "primereact/tooltip";
 
 type Props = { id?: string; text: string; help: string };
 
-export default function LabelWithHelp({ id, text, help }: Props) {
+export default function LabelWithHelp({ id, text, help }: Readonly<Props>) {
   const generatedId = useId();
   const iconId = id ? `${id}-help-icon` : `label-help-${generatedId}`;
 

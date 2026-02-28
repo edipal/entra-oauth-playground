@@ -30,7 +30,7 @@ type Props = {
   showAuthEndpoint?: boolean;
 };
 
-export default function AuthCodeStepSettingsCommon(props: Props) {
+export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
   const {
     t,
     safeT,

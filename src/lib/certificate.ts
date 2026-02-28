@@ -365,8 +365,8 @@ function pemToArrayBuffer(pem: string, label: string): ArrayBuffer {
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  for (const element of bytes) {
+    binary += String.fromCodePoint(element);
   }
   const hasWindow = globalThis.window !== undefined;
   return hasWindow

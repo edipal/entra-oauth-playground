@@ -1,24 +1,12 @@
-import Link from "next/link";
-import { useContext } from "react";
 import pkg from "../../../package.json";
 import AppMenu from "./AppMenu";
-import { LayoutContext } from "@/context/layoutcontext";
 import { MenuProvider } from "@/context/menucontext";
-import { LayoutState } from "@/types/layout";
 import { usePathname, useRouter } from "@/navigation";
 import Image from "next/image";
 
 const AppSidebar = () => {
-  const { setLayoutState } = useContext(LayoutContext);
   const router = useRouter();
   const pathname = usePathname();
-
-  const anchor = () => {
-    setLayoutState((prevLayoutState: LayoutState) => ({
-      ...prevLayoutState,
-      anchored: !prevLayoutState.anchored,
-    }));
-  };
 
   const changeLanguage = (locale: string) => {
     router.replace(pathname, { locale });

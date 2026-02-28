@@ -19,7 +19,7 @@ export default function StepTokens({
   exchanging,
   onExchangeTokens,
   resolvedTokenEndpoint,
-}: Props) {
+}: Readonly<Props>) {
   const t = useTranslations("StepTokens");
   const safeTWithFallback = (key: string, fallback = ""): string =>
     TranslationUtils.safeTWithFallback(t, key, fallback);

@@ -42,7 +42,7 @@ export default function StepAuthorize({
   authUrlPreview,
   onOpenPopup,
   hideAdvanced,
-}: Props) {
+}: Readonly<Props>) {
   const t = useTranslations("StepAuthorize");
   const responseModeOptions = [
     { label: t("options.responseMode.query"), value: "query" },

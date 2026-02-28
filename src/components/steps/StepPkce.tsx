@@ -20,7 +20,7 @@ export default function StepPkce({
   onGeneratePkce,
   codeVerifierValid = true,
   codeChallengeValid = true,
-}: Props) {
+}: Readonly<Props>) {
   const t = useTranslations("StepPkce");
   // consider a field invalid if it's empty OR the caller explicitly marks it invalid
   const hasCodeVerifier = !!(codeVerifier && codeVerifier.trim().length > 0);

@@ -21,7 +21,7 @@ export default function StepCallApi({
   apiResponseText,
   callingApi,
   onCallApi,
-}: Props) {
+}: Readonly<Props>) {
   const t = useTranslations("StepCallApi");
   return (
     <section>
