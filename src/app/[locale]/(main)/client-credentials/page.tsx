@@ -133,7 +133,7 @@ export default function ClientCredentialsPage() {
       (clientAuthMethod === "secret" ? clientSecret : privateKeyPem)
     ) {
       autoExchangedRef.current = true;
-      void handleExchangeTokensRef.current();
+      handleExchangeTokensRef.current().catch(() => undefined);
     }
   }, [
     streamlined,

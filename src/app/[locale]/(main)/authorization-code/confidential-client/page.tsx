@@ -305,7 +305,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
       tenantIdValid
     ) {
       autoExchangedRef.current = true;
-      void handleExchangeTokensRef.current();
+      handleExchangeTokensRef.current().catch(() => undefined);
     }
   }, [
     streamlined,
@@ -596,7 +596,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     if (!canNext) return;
     // Streamlined: from Settings, auto-generate PKCE and skip the PKCE UI
     if (streamlined && currentStep === StepIndex.Settings) {
-      if (pkceEnabled) void handleGeneratePkce();
+      if (pkceEnabled) handleGeneratePkce().catch(() => undefined);
       setCurrentStep(StepIndex.Authorize);
       setMaxCompletedStep(
         (m) =>

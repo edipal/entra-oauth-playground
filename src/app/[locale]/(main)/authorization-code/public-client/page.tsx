@@ -273,7 +273,7 @@ export default function AuthorizationCodePublicClientPage() {
       tenantIdValid
     ) {
       autoExchangedRef.current = true;
-      void handleExchangeTokensRef.current();
+      handleExchangeTokensRef.current().catch(() => undefined);
     }
   }, [
     streamlined,
@@ -551,7 +551,7 @@ export default function AuthorizationCodePublicClientPage() {
     // Special streamlined behavior: from Settings, auto-generate PKCE and skip the PKCE UI
     if (streamlined && currentStep === StepIndex.Settings) {
       // Generate PKCE (async) and jump to Authorize
-      if (pkceEnabled) void handleGeneratePkce();
+      if (pkceEnabled) handleGeneratePkce().catch(() => undefined);
       setCurrentStep(StepIndex.Authorize);
       setMaxCompletedStep(
         (m) =>
