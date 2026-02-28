@@ -347,18 +347,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // In-memory runtime for the current flow (not persisted)
-  const [
-    authCodePublicClientRuntime,
-    setAuthCodePublicClientRuntimeInternal,
-  ] =
+  const [authCodePublicClientRuntime, setAuthCodePublicClientRuntimeInternal] =
     useState<AuthCodePublicClientRuntime>(defaultAuthCodePublicClientRuntime);
   const [
     authCodeConfidentialClientRuntime,
     setAuthCodeConfidentialClientRuntimeInternal,
-  ] =
-    useState<AuthCodeConfidentialClientRuntime>(
-      defaultAuthCodeConfidentialClientRuntime,
-    );
+  ] = useState<AuthCodeConfidentialClientRuntime>(
+    defaultAuthCodeConfidentialClientRuntime,
+  );
   const [clientCredentialsRuntime, setClientCredentialsRuntimeInternal] =
     useState<ClientCredentialsRuntime>(defaultClientCredentialsRuntime);
 

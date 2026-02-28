@@ -66,7 +66,6 @@ export default function ClientCredentialsPage() {
   const certificatePem = clientCredentialsRuntime.certificatePem || "";
   const publicKeyPem = clientCredentialsRuntime.publicKeyPem || "";
   const thumbprintSha1 = clientCredentialsRuntime.thumbprintSha1 || "";
-  const thumbprintSha256 = clientCredentialsRuntime.thumbprintSha256 || "";
   const thumbprintSha1Base64Url =
     clientCredentialsRuntime.thumbprintSha1Base64Url || "";
   const assertionClaims = clientCredentialsRuntime.assertionClaims || "";

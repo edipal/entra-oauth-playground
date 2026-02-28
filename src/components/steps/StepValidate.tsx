@@ -90,10 +90,10 @@ type SigStatus = {
 function StatusIcon({
   ok,
   label,
-}: {
+}: Readonly<{
   ok: boolean | undefined;
   label?: string;
-}) {
+}>) {
   return (
     <span style={{ color: ok ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
       <i
