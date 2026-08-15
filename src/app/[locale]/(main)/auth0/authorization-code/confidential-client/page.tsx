@@ -1,0 +1,3 @@
+import AuthorizationCodeConfidentialClientFlow from "@/components/flows/AuthorizationCodeConfidentialClientFlow";
+
+export default AuthorizationCodeConfidentialClientFlow;

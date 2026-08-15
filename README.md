@@ -1,4 +1,4 @@
-# Next.js Entra ID OAuth Playground
+# Next.js OAuth/OIDC Playground
 
 [![CodeQL](https://github.com/edipal/entra-oauth-playground/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/edipal/entra-oauth-playground/actions/workflows/github-code-scanning/codeql)
 
@@ -12,9 +12,15 @@ This is a proof of concept, not a thoughtfully designed and developed applicatio
 Ensure appropriate Entra ID security and governance are in place per your organization’s policies.
 
 ## Overview
-This app helps you explore the most used Microsoft Entra ID OAuth 2.0 flows visually. It breaks down the complex "dance" of modern authentication into discrete, interactive steps.
+This app helps you explore common OAuth 2.0 and OpenID Connect flows visually. It breaks down the complex "dance" of modern authentication into discrete, interactive steps.
 
-You can configure your own Entra ID application details, then walk through the process of generating PKCE codes, building authorization URLs, handling callbacks, exchanging codes for tokens, and finally decoding, validating, and testing those tokens.
+You can configure your own identity provider application details, then walk through the process of generating PKCE codes, building authorization URLs, handling callbacks, exchanging codes for tokens, and finally decoding, validating, and testing those tokens.
+
+Supported identity providers:
+- **Microsoft Entra ID**
+- **Auth0**
+
+The app is split into provider workspaces. Switch between Microsoft Entra ID and Auth0 with the selector in the sidebar, directly under the logo — it sits above the menu because changing workspace rewrites the menu below it. In the slim and horizontal layouts, and on screens narrower than 992px, the sidebar cannot hold it and the selector moves to the top bar. Each workspace has its own routes, menu entries, and locally persisted settings; nothing is shared between them.
 
 Supported flows:
 - **Authorization Code (Public Client)**
@@ -24,7 +30,7 @@ Supported flows:
 ## Confidential client warning - when not running locally
 > ⚠️ **Confidential client flows require server-side token exchange.**
 >
-> Due to browser + Entra ID limitations, secrets (client secrets or private keys used for `client_assertion`) must be sent to a server-side component which performs the token endpoint request and signs assertions when needed. These secrets are used only transiently for the exchange and are not stored by this app (neither in the browser nor on the server).
+> Due to browser and identity provider limitations, secrets (client secrets or private keys used for `client_assertion`) must be sent to a server-side component which performs the token endpoint request and signs assertions when needed. These secrets are used only transiently for the exchange and are not stored by this app (neither in the browser nor on the server).
 
 ## Tech stack
 - **Framework:** Next.js 16 (App Router, TypeScript)
@@ -34,19 +40,34 @@ Supported flows:
 - **Deployment:** Vercel-ready
 
 ## Screenshots
-Add your own screenshots to replace the placeholders below. Place images in `docs/screenshots/` so they don’t ship with the app.
+Images live in `docs/screenshots/` so they don’t ship with the app. The values shown are demo
+configuration — placeholder tenant, client and audience identifiers that belong to no real directory,
+and tokens minted by the capture itself against a stubbed provider. Nothing here was issued to
+anyone, and nothing in it can be replayed.
 
-1. **Landing**
+Regenerate them with `pnpm screenshots` (see [e2e/screenshots.capture.ts](./e2e/screenshots.capture.ts)).
 
-   ![Landing](./docs/screenshots/00-landing.png)
+### Workspaces
+
+1. **Entra workspace landing**
+
+   ![Entra workspace](./docs/screenshots/00-landing.png)
+
+   **Auth0 workspace landing** — the same app, switched with the sidebar selector under the logo
+
+   ![Auth0 workspace](./docs/screenshots/00-landing-auth0.png)
 
 2. **Overview**
 
    ![Overview](./docs/screenshots/01-overview.png)
 
-3. **Settings**
+3. **Settings** — Entra is tenant-centric
 
    ![Settings](./docs/screenshots/02-settings.png)
+
+   **Settings** — Auth0 is issuer- and audience-centric, and settings are stored per workspace
+
+   ![Auth0 settings](./docs/screenshots/02-settings-auth0.png)
 
 4. **PKCE** (Authorization Code flows)
 
@@ -55,6 +76,16 @@ Add your own screenshots to replace the placeholders below. Place images in `doc
 5. **Authorize** (Authorization Code flows)
 
    ![Authorize](./docs/screenshots/04-authorize.png)
+
+   **Authorize** — Auth0 adds its own authorization parameters and Rich Authorization Requests
+
+   ![Auth0 authorize](./docs/screenshots/04-authorize-auth0.png)
+
+   **Authorize** — the Auth0 confidential client also picks a request mode: URL, PAR, JAR or
+   PAR + JAR. Shown here on PAR + JAR, which signs the parameters into a request object, pushes
+   it to Auth0 and launches with the returned `request_uri`
+
+   ![Auth0 confidential authorize](./docs/screenshots/04-authorize-auth0-confidential.png)
 
 6. **Callback** (Authorization Code flows)
 
@@ -80,6 +111,16 @@ Add your own screenshots to replace the placeholders below. Place images in `doc
 
    ![Call API](./docs/screenshots/10-call-api.png)
 
+### Shared tools
+
+12. **JWT Decoder** — available from both workspaces, and it also reads compact JWEs
+
+   ![JWT Decoder](./docs/screenshots/11-jwt-decoder.png)
+
+13. **Claim descriptions** — descriptions and reference links follow the active workspace
+
+   ![Claim descriptions](./docs/screenshots/12-claim-descriptions.png)
+
 ## Contributing
 
 Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for the recommended workflow and PR checklist.
@@ -88,27 +129,47 @@ Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for 
 
 1. **Install dependencies:**
    ```sh
-   npm install
-   # or
    pnpm install
    ```
 
 2. **Run the development server:**
    ```sh
-   npm run dev
-   # or
    pnpm dev
-   # or
-   npm run start # to run independent of next.js dev mode if needed
    ```
 
 3. **Open the app:**
    Visit [https://localhost:3000](https://localhost:3000). The app effectively handles locale redirection (e.g., to `/en`).
+   Provider workspaces are available under `/entra` and `/auth0`.
 
 4. **Build for production:**
    ```sh
-   npm run build
+   pnpm build
    ```
+
+## Testing
+
+```sh
+pnpm lint          # ESLint
+pnpm test          # unit tests (Vitest) over the pure library modules
+pnpm e2e:offline   # end-to-end, no credentials needed
+pnpm e2e:live      # end-to-end against real tenants
+pnpm e2e           # both Playwright projects
+```
+
+The end-to-end suites need browsers once per machine:
+
+```sh
+npx playwright install chromium
+```
+
+`pnpm e2e:offline` contacts no identity provider — it stubs one, including a full
+authorization-code round trip — so it is safe to run anywhere and takes well under a
+minute. `pnpm e2e:live` drives real applications and needs a `.env.e2e.local`; every
+spec skips itself with a named reason when its credentials are absent, so a partial
+configuration is fine.
+
+[e2e/README.md](./e2e/README.md) covers what each suite proves, what to provision in
+Entra and Auth0, and the provider settings that are easy to get wrong.
 
 ## Run with Docker
 
@@ -130,10 +191,15 @@ Safari note:
 
 ## Usage
 
-1. **Register an App:** Go to the [Entra Admin Center](https://entra.microsoft.com/) and register an Application.
-2. **Configure Redirect URI:** Add `https://localhost:3000/callback/auth-code` (or your deployed URL). For **public clients**, add it under the **Single-page application** platform; for **confidential clients**, add it under the **Web** platform.
-3. **Start the Playground:**
+1. **Register an App:** Create an application/client in Microsoft Entra ID or Auth0.
+2. **Configure Redirect URI:** Add `https://localhost:3000/callback/auth-code` (or your deployed URL). For Entra public clients, add it under the **Single-page application** platform; for Entra confidential clients, add it under the **Web** platform. For Auth0, add the same URL to the **Allowed Callback URLs** list.
+3. **Choose the Provider Workspace:** Use the sidebar selector under the logo to switch between Microsoft Entra ID and Auth0. Settings are stored separately per provider in browser local storage.
+4. **Enter Provider Details:**
+   - For Entra, enter the directory tenant GUID.
+   - For Auth0, enter the tenant issuer URL, for example `https://your-tenant.auth0.com`.
+5. **Start the Playground:**
     - Go to **Settings** in the app.
-    - Enter your **Client ID** and **Tenant ID**.
-    - Select your desired **Scopes**.
-4. **Follow the Steps:** Click the "Next" button to progress through the steps.
+   - Enter your **Client ID** and the provider-specific tenant or issuer value.
+   - Select your desired **Scopes**. For Auth0 API tokens and client credentials, set an **Audience** when your API requires one.
+   - For Auth0 authorization-code flows, Rich Authorization Requests (`authorization_details`) are available to both client types. Pushed Authorization Requests (PAR) and JWT-secured Authorization Requests (JAR) are offered in the **confidential** flow only — Auth0 authenticates the push, which a public client cannot do — and both need the Highly Regulated Identity add-on on the tenant. JAR additionally needs a signing key, which the Authorize step collects.
+6. **Follow the Steps:** Click the "Next" button to progress through the steps.

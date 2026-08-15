@@ -1,10 +1,10 @@
 function escapeHtml(value: string): string {
   return value
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("'", "&#39;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 export async function GET(request: Request) {
@@ -66,11 +66,11 @@ export async function POST(request: Request) {
     // Reconstruct the original x-www-form-urlencoded body exactly (order preserved)
     const params = new URLSearchParams();
     for (const [k, v] of form.entries()) {
-			if (typeof v === "string") {
-				params.append(k, v);
-			} else {
-				params.append(k, v.name);
-			}
+      if (typeof v === "string") {
+        params.append(k, v);
+      } else {
+        params.append(k, v.name);
+      }
     }
     const jsBody = JSON.stringify(params.toString());
 
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         "cache-control": "no-store",
       },
     });
-	} catch {
-		return new Response("Invalid request", { status: 400 });
-	}
+  } catch {
+    return new Response("Invalid request", { status: 400 });
+  }
 }

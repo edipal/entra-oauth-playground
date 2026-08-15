@@ -4,55 +4,89 @@ import { InputText } from "primereact/inputtext";
 import { InputSwitch } from "primereact/inputswitch";
 import { Tooltip } from "primereact/tooltip";
 import LabelWithHelp from "@/components/LabelWithHelp";
+import type { IdentityProviderId } from "@/lib/identityProvider";
+import { isEntraProvider } from "@/lib/identityProvider";
 import { TranslationUtils } from "@/lib/translation";
 
 type Props = {
-  t: (key: string) => string;
+  t: (key: string, values?: Record<string, string>) => string;
   safeT: (key: string) => string;
+  providerId: IdentityProviderId;
   tenantId: string;
   setTenantId: (v: string) => void;
+  issuerUrl: string;
+  setIssuerUrl: (v: string) => void;
   clientId: string;
   setClientId: (v: string) => void;
   redirectUri: string;
   scopes: string;
   setScopes: (v: string) => void;
+  audience: string;
+  setAudience: (v: string) => void;
   streamlined: boolean;
   setStreamlined: (v: boolean) => void;
   pkceEnabled: boolean;
   setPkceEnabled: (v: boolean) => void;
   resolvedAuthEndpoint: string;
   resolvedTokenEndpoint: string;
+  endpointOverrideEnabled: boolean;
+  setEndpointOverrideEnabled: (v: boolean) => void;
+  authEndpointOverride: string;
+  setAuthEndpointOverride: (v: string) => void;
+  tokenEndpointOverride: string;
+  setTokenEndpointOverride: (v: string) => void;
+  providerConfigValid: boolean;
   tenantIdValid: boolean;
+  issuerUrlValid: boolean;
   clientIdValid: boolean;
   redirectUriValid: boolean;
+  discoveryLoading?: boolean;
+  discoveryError?: string;
   showPkceToggle?: boolean;
   showRedirectUri?: boolean;
   showAuthEndpoint?: boolean;
+  showAudience?: boolean;
 };
 
 export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
   const {
     t,
     safeT,
+    providerId,
     tenantId,
     setTenantId,
+    issuerUrl,
+    setIssuerUrl,
     clientId,
     setClientId,
     redirectUri,
     scopes,
     setScopes,
+    audience,
+    setAudience,
     streamlined,
     setStreamlined,
     pkceEnabled,
     setPkceEnabled,
     resolvedAuthEndpoint,
     resolvedTokenEndpoint,
+    endpointOverrideEnabled,
+    setEndpointOverrideEnabled,
+    authEndpointOverride,
+    setAuthEndpointOverride,
+    tokenEndpointOverride,
+    setTokenEndpointOverride,
+    providerConfigValid,
     tenantIdValid,
+    issuerUrlValid,
     clientIdValid,
     redirectUriValid,
+    discoveryLoading = false,
+    discoveryError = "",
     showPkceToggle = true,
     showRedirectUri = true,
     showAuthEndpoint = true,
+    showAudience = false,
   } = props;
 
   // safe translation helper: if the key is missing return the provided fallback or an empty string
@@ -60,6 +94,7 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
     TranslationUtils.maybeT(t, key, fallback);
 
   const localStorageIconId = "local-storage-notice-icon";
+  const isEntra = isEntraProvider(providerId);
 
   return (
     <>
@@ -138,23 +173,49 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
             >
               <div style={{ textAlign: "left" }}>
                 <LabelWithHelp
-                  id="tenantId"
-                  text={t("labels.tenantId")}
-                  help={t("help.tenantId")}
+                  id={isEntra ? "tenantId" : "issuerUrl"}
+                  text={isEntra ? t("labels.tenantId") : t("labels.issuerUrl")}
+                  help={isEntra ? t("help.tenantId") : t("help.issuerUrl")}
                 />
               </div>
               <div>
-                <InputText
-                  id="tenantId"
-                  value={tenantId}
-                  onChange={(e) => setTenantId(e.target.value)}
-                  placeholder={t("placeholders.tenantId")}
-                  className={tenantIdValid ? "" : "p-invalid"}
-                  style={{ width: "100%" }}
-                />
-                {!tenantIdValid && (
+                {isEntra ? (
+                  <InputText
+                    id="tenantId"
+                    value={tenantId}
+                    onChange={(e) => setTenantId(e.target.value)}
+                    placeholder={t("placeholders.tenantId")}
+                    className={tenantIdValid ? "" : "p-invalid"}
+                    style={{ width: "100%" }}
+                  />
+                ) : (
+                  <InputText
+                    id="issuerUrl"
+                    value={issuerUrl}
+                    onChange={(e) => setIssuerUrl(e.target.value)}
+                    placeholder={t(`placeholders.issuerUrl.${providerId}`)}
+                    className={issuerUrlValid ? "" : "p-invalid"}
+                    style={{ width: "100%" }}
+                  />
+                )}
+                {isEntra && !tenantIdValid && (
                   <small className="p-error block mt-1">
                     {t("errors.tenantIdInvalid")}
+                  </small>
+                )}
+                {!isEntra && !issuerUrlValid && (
+                  <small className="p-error block mt-1">
+                    {t("errors.issuerUrlInvalid")}
+                  </small>
+                )}
+                {!isEntra && issuerUrlValid && discoveryLoading && (
+                  <small className="block mt-1 opacity-75">
+                    {t("status.discoveryLoading")}
+                  </small>
+                )}
+                {!isEntra && providerConfigValid && discoveryError && (
+                  <small className="p-error block mt-1">
+                    {t("errors.discoveryFailed", { error: discoveryError })}
                   </small>
                 )}
               </div>
@@ -188,14 +249,46 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
                 />
                 {!clientIdValid && (
                   <small className="p-error block mt-1">
-                    {clientId
-                      ? t("errors.clientIdInvalid")
-                      : t("errors.clientIdRequired")}
+                    {isEntra
+                      ? clientId
+                        ? t("errors.clientIdInvalid")
+                        : t("errors.clientIdRequired")
+                      : t("errors.clientIdRequiredGeneric")}
                   </small>
                 )}
               </div>
             </div>
           </div>
+
+          {showAudience && (
+            <div className="col-12 md:col-12">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
+                  alignItems: "center",
+                  columnGap: "1rem",
+                }}
+              >
+                <div style={{ textAlign: "left" }}>
+                  <LabelWithHelp
+                    id="audience"
+                    text={t("labels.audience")}
+                    help={t("help.audience")}
+                  />
+                </div>
+                <div>
+                  <InputText
+                    id="audience"
+                    value={audience}
+                    onChange={(e) => setAudience(e.target.value)}
+                    placeholder={t("placeholders.audience")}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="col-12 md:col-12">
             <div
@@ -305,11 +398,44 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
         <p className="mb-3 mt-3 text-sm opacity-75">
           {maybeT(
             "sections.settings.resolvedDescription",
-            "These values are derived from the tenant and other inputs. They are shown for reference and cannot be changed here.",
+            "These values are derived from the provider and other inputs. Enable endpoint overrides to edit them.",
           )}
         </p>
 
         <div className="grid formgrid p-fluid gap-3">
+          <div className="col-12 md:col-12">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
+                alignItems: "center",
+                columnGap: "1rem",
+              }}
+            >
+              <div style={{ textAlign: "left" }}>
+                <LabelWithHelp
+                  id="endpointOverrideEnabled"
+                  text={t("labels.endpointOverride")}
+                  help={t("help.endpointOverride")}
+                />
+              </div>
+              <div>
+                <div className="flex align-items-center gap-2">
+                  <InputSwitch
+                    inputId="endpointOverrideEnabled"
+                    checked={!!endpointOverrideEnabled}
+                    onChange={(e) => setEndpointOverrideEnabled(!!e.value)}
+                  />
+                  <label htmlFor="endpointOverrideEnabled" className="m-0">
+                    {endpointOverrideEnabled
+                      ? t("toggles.endpointOverrideOn")
+                      : t("toggles.endpointOverrideOff")}
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {showAuthEndpoint && (
             <div className="col-12 md:col-12">
               <div
@@ -330,8 +456,13 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
                 <div>
                   <InputText
                     id="authEndpoint"
-                    value={resolvedAuthEndpoint}
-                    readOnly
+                    value={
+                      endpointOverrideEnabled
+                        ? authEndpointOverride || resolvedAuthEndpoint
+                        : resolvedAuthEndpoint
+                    }
+                    onChange={(e) => setAuthEndpointOverride(e.target.value)}
+                    readOnly={!endpointOverrideEnabled}
                     style={{ width: "100%" }}
                   />
                 </div>
@@ -358,8 +489,13 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
               <div>
                 <InputText
                   id="tokenEndpoint"
-                  value={resolvedTokenEndpoint}
-                  readOnly
+                  value={
+                    endpointOverrideEnabled
+                      ? tokenEndpointOverride || resolvedTokenEndpoint
+                      : resolvedTokenEndpoint
+                  }
+                  onChange={(e) => setTokenEndpointOverride(e.target.value)}
+                  readOnly={!endpointOverrideEnabled}
                   style={{ width: "100%" }}
                 />
               </div>

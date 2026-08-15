@@ -9,17 +9,18 @@ import { Button } from "primereact/button";
 import { useTranslations } from "next-intl";
 import LabelWithHelp from "@/components/LabelWithHelp";
 import type { ClientAuthMethod } from "@/types/client-auth";
-import {
-  generateRsaKeyPair,
-  createSelfSignedCertificate,
-} from "@/lib/certificate";
+import CertificateCredential from "@/components/steps/entra/CertificateCredential";
+import Auth0PrivateKeyCredential from "@/components/steps/auth0/PrivateKeyCredential";
+import { generateRsaKeyPair } from "@/lib/certificate";
 import {
   buildClientAssertionClaims,
   buildClientAssertion,
 } from "@/lib/jwtSign";
 import { decodeJwt } from "@/lib/jwtDecode";
+import type { IdentityProviderId } from "@/lib/identityProvider";
 
 type Props = {
+  providerId: IdentityProviderId;
   clientAuthMethod: ClientAuthMethod;
   setClientAuthMethod: (v: ClientAuthMethod) => void;
   clientSecret: string;
@@ -45,11 +46,13 @@ type Props = {
   decodedAssertion: string;
   setDecodedAssertion: (v: string) => void;
   clientId: string;
-  tokenEndpoint: string;
+  /** Provider-specific `aud` for the assertion — see getClientAssertionAudience. */
+  assertionAudience: string;
 };
 
 export default function StepAuthentication(props: Readonly<Props>) {
   const {
+    providerId,
     clientAuthMethod,
     setClientAuthMethod,
     clientSecret,
@@ -75,20 +78,25 @@ export default function StepAuthentication(props: Readonly<Props>) {
     decodedAssertion,
     setDecodedAssertion,
     clientId,
-    tokenEndpoint,
+    assertionAudience,
   } = props;
 
   const t = useTranslations("StepAuthentication");
 
+  const isAuth0 = providerId === "auth0";
   const [generatingKeys, setGeneratingKeys] = useState(false);
-  const [generatingCert, setGeneratingCert] = useState(false);
   const [generatingAssertion, setGeneratingAssertion] = useState(false);
   const [kidConfirmed, setKidConfirmed] = useState(false);
   const noteIconId = useId();
 
   const methodOptions = [
     { label: t("methodOptions.secret"), value: "secret" },
-    { label: t("methodOptions.certificate"), value: "certificate" },
+    {
+      label: isAuth0
+        ? t("methodOptions.auth0PrivateKey")
+        : t("methodOptions.certificate"),
+      value: "certificate",
+    },
   ];
 
   const handleGenerateKeyPair = async () => {
@@ -105,64 +113,21 @@ export default function StepAuthentication(props: Readonly<Props>) {
     }
   };
 
-  const handleGenerateCertificate = async () => {
-    if (!publicKeyPem || !privateKeyPem) {
-      alert(t("errors.keyPairRequired"));
-      return;
-    }
-    setGeneratingCert(true);
-    try {
-      // Import private key for signing
-      const { importPKCS8 } = await import("jose");
-      const privateKey = await importPKCS8(privateKeyPem, "RS256");
-
-      const result = await createSelfSignedCertificate({
-        publicKeyPem,
-        privateKey,
-        subject: "CN=OAuth Playground Demo",
-        validDays: 365,
-      });
-
-      setCertificatePem(result.certificatePem);
-      setThumbprintSha1(result.thumbprintSha1);
-      setThumbprintSha256(result.thumbprintSha256);
-      setThumbprintSha1Base64Url(result.thumbprintSha1Base64Url);
-
-      // Automatically set SHA-1 thumbprint as kid (matches Entra ID portal)
-      setClientAssertionKid(result.thumbprintSha1);
-      // Set the base64url-encoded thumbprint for x5t JWT header
-      setClientAssertionX5t(result.thumbprintSha1Base64Url);
-      setKidConfirmed(false);
-    } catch (e: any) {
-      alert(t("errors.generateCertificate", { error: String(e) }));
-    } finally {
-      setGeneratingCert(false);
-    }
-  };
-
-  const handleConfirmKid = () => {
-    if (!clientAssertionKid) {
-      alert(t("errors.missingKid"));
-      return;
-    }
-    setKidConfirmed(true);
-  };
-
   const handlePreviewClaims = () => {
-    if (!clientId || !tokenEndpoint) {
+    if (!clientId || !assertionAudience) {
       alert(t("errors.missingClientConfig"));
       return;
     }
     const claims = buildClientAssertionClaims({
       clientId,
-      tokenEndpoint,
+      audience: assertionAudience,
       lifetimeSec: 60,
     });
     setAssertionClaims(JSON.stringify(claims, null, 2));
   };
 
   const handleGenerateTestAssertion = async () => {
-    if (!privateKeyPem || !clientId || !tokenEndpoint) {
+    if (!privateKeyPem || !clientId || !assertionAudience) {
       alert(t("errors.missingKeyOrConfig"));
       return;
     }
@@ -170,9 +135,10 @@ export default function StepAuthentication(props: Readonly<Props>) {
     try {
       const assertion = await buildClientAssertion({
         clientId,
-        tokenEndpoint,
+        audience: assertionAudience,
         privateKeyPem,
-        x5t: thumbprintSha1Base64Url || undefined,
+        // Auth0 has no certificate in the picture, so no x5t is ever sent.
+        x5t: isAuth0 ? undefined : thumbprintSha1Base64Url || undefined,
         kid: clientAssertionKid || undefined,
         lifetimeSec: 60,
       });
@@ -391,155 +357,29 @@ export default function StepAuthentication(props: Readonly<Props>) {
               </div>
             </div>
 
-            {/* Step 2: Generate Self-Signed Certificate */}
-            <div className="col-12">
-              <div className="flex gap-2 align-items-center mt-5 mb-2">
-                <h5
-                  className="m-0"
-                  style={{ fontSize: "1rem", fontWeight: 600 }}
-                >
-                  {t("steps.generateCertificate.title")}
-                </h5>
-                {certificatePem && (
-                  <span
-                    className="pi pi-check-circle"
-                    style={{ color: "var(--green-500)" }}
-                    aria-label={t("aria.certificateGenerated")}
-                  />
-                )}
-              </div>
-              <p className="text-sm mb-3 text-600">
-                {t("steps.generateCertificate.description")}
-              </p>
-              <Button
-                label={t("buttons.generateCertificate")}
-                icon="pi pi-file"
-                onClick={handleGenerateCertificate}
-                loading={generatingCert}
-                disabled={!privateKeyPem || !publicKeyPem}
-                className="mb-3"
+            {isAuth0 ? (
+              <Auth0PrivateKeyCredential
+                publicKeyPem={publicKeyPem}
+                clientAssertionKid={clientAssertionKid}
+                setClientAssertionKid={setClientAssertionKid}
+                setKidConfirmed={setKidConfirmed}
               />
-            </div>
-            <div className="col-12">
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(15rem, 18rem) 1fr",
-                  alignItems: "start",
-                  columnGap: "0.75rem",
-                }}
-              >
-                <div style={{ textAlign: "left" }}>
-                  <LabelWithHelp
-                    id="certificatePem"
-                    text={t("labels.certificatePem")}
-                    help={t("help.certificatePem")}
-                  />
-                </div>
-                <div>
-                  <InputTextarea
-                    id="certificatePem"
-                    rows={5}
-                    autoResize
-                    value={certificatePem}
-                    onChange={(e) => setCertificatePem(e.target.value)}
-                    placeholder={t("placeholders.certificatePem")}
-                    style={{
-                      width: "100%",
-                      whiteSpace: "pre-wrap",
-                      resize: "vertical",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="col-12">
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(15rem, 18rem) 1fr",
-                  alignItems: "center",
-                  columnGap: "0.75rem",
-                }}
-              >
-                <div style={{ textAlign: "left" }}>
-                  <LabelWithHelp
-                    id="thumbprintSha1"
-                    text={t("labels.thumbprintSha1")}
-                    help={t("help.thumbprintSha1")}
-                  />
-                </div>
-                <div>
-                  <InputText
-                    id="thumbprintSha1"
-                    value={thumbprintSha1}
-                    readOnly
-                    placeholder={t("placeholders.thumbprintSha1")}
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: "0.9rem",
-                      width: "100%",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3: Configure kid */}
-            <div className="col-12">
-              <div className="flex gap-2 align-items-center mt-5 mb-2">
-                <h5
-                  className="m-0"
-                  style={{ fontSize: "1rem", fontWeight: 600 }}
-                >
-                  {t("steps.configureKid.title")}
-                </h5>
-                {certificatePem && (
-                  <span
-                    className="pi pi-check-circle"
-                    style={{ color: "var(--green-500)" }}
-                    aria-label={t("aria.kidConfigured")}
-                  />
-                )}
-              </div>
-              <p className="text-sm mb-3 text-600">
-                {t("steps.configureKid.description")}
-              </p>
-              <Button
-                label={t("buttons.confirmKid")}
-                icon="pi pi-check"
-                onClick={handleConfirmKid}
-                disabled={!certificatePem || !clientAssertionKid}
-                className="mb-3"
+            ) : (
+              <CertificateCredential
+                privateKeyPem={privateKeyPem}
+                publicKeyPem={publicKeyPem}
+                certificatePem={certificatePem}
+                setCertificatePem={setCertificatePem}
+                thumbprintSha1={thumbprintSha1}
+                setThumbprintSha1={setThumbprintSha1}
+                setThumbprintSha256={setThumbprintSha256}
+                setThumbprintSha1Base64Url={setThumbprintSha1Base64Url}
+                clientAssertionKid={clientAssertionKid}
+                setClientAssertionKid={setClientAssertionKid}
+                setClientAssertionX5t={setClientAssertionX5t}
+                setKidConfirmed={setKidConfirmed}
               />
-            </div>
-            <div className="col-12">
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(15rem, 18rem) 1fr",
-                  alignItems: "center",
-                  columnGap: "0.75rem",
-                }}
-              >
-                <div style={{ textAlign: "left" }}>
-                  <LabelWithHelp
-                    id="clientAssertionKid"
-                    text={t("labels.clientAssertionKid")}
-                    help={t("help.clientAssertionKid")}
-                  />
-                </div>
-                <div>
-                  <InputText
-                    id="clientAssertionKid"
-                    value={clientAssertionKid}
-                    onChange={(e) => setClientAssertionKid(e.target.value)}
-                    placeholder={t("placeholders.clientAssertionKid")}
-                    style={{ fontFamily: "monospace", width: "100%" }}
-                  />
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Step 4: Preview Claims */}
             <div className="col-12">
@@ -565,7 +405,7 @@ export default function StepAuthentication(props: Readonly<Props>) {
                 label={t("buttons.previewClaims")}
                 icon="pi pi-eye"
                 onClick={handlePreviewClaims}
-                disabled={!kidConfirmed || !clientId || !tokenEndpoint}
+                disabled={!kidConfirmed || !clientId || !assertionAudience}
                 className="mb-3"
               />
             </div>
@@ -632,7 +472,7 @@ export default function StepAuthentication(props: Readonly<Props>) {
                   !assertionClaims ||
                   !privateKeyPem ||
                   !clientId ||
-                  !tokenEndpoint
+                  !assertionAudience
                 }
                 className="mb-3"
               />

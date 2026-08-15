@@ -1,5 +1,6 @@
 import pkg from "../../../package.json";
 import AppMenu from "./AppMenu";
+import ProviderSelector from "./ProviderSelector";
 import { MenuProvider } from "@/context/menucontext";
 import { usePathname, useRouter } from "@/navigation";
 import Image from "next/image";
@@ -26,10 +27,12 @@ const AppSidebar = () => {
         </div>
         <div className="sidebar-logo-text-col">
           <span className="sidebar-logo-text layout-menuitem-text sidebar-logo-playground">
-            Entra OAuth Playground
+            OAuth Playground
           </span>
         </div>
       </div>
+
+      <ProviderSelector variant="sidebar" />
 
       <div className="layout-menu-container">
         <MenuProvider>

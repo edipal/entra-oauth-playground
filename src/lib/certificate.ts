@@ -138,6 +138,51 @@ export async function createSelfSignedCertificate(params: {
  * Builds a TBSCertificate (To Be Signed Certificate) structure in DER format.
  * This is a simplified but valid X.509v3 certificate structure.
  */
+export type CertificateThumbprints = {
+  thumbprintSha1: string;
+  thumbprintSha256: string;
+  thumbprintSha1Base64Url: string;
+  thumbprintSha256Base64Url: string;
+};
+
+/**
+ * Derives the thumbprints of an existing certificate, so a certificate issued
+ * elsewhere can be used instead of one generated here. The values are hashes of
+ * the DER bytes, which is what Entra shows in the portal and what the `x5t`
+ * client-assertion header carries.
+ *
+ * Returns null when the input is not a parseable certificate PEM.
+ */
+export async function computeCertificateThumbprints(
+  certificatePem: string,
+): Promise<CertificateThumbprints | null> {
+  const trimmed = certificatePem?.trim();
+  if (!trimmed?.includes("-----BEGIN CERTIFICATE-----")) return null;
+
+  const subtle = (globalThis as any)?.crypto?.subtle as
+    | SubtleCrypto
+    | undefined;
+  if (!subtle) throw new Error("WebCrypto SubtleCrypto is not available");
+
+  let der: ArrayBuffer;
+  try {
+    der = pemToArrayBuffer(trimmed, "CERTIFICATE");
+  } catch {
+    return null;
+  }
+  if (der.byteLength === 0) return null;
+
+  const sha1Hash = await subtle.digest("SHA-1", der);
+  const sha256Hash = await subtle.digest("SHA-256", der);
+
+  return {
+    thumbprintSha1: arrayBufferToHex(sha1Hash),
+    thumbprintSha256: arrayBufferToHex(sha256Hash),
+    thumbprintSha1Base64Url: arrayBufferToBase64Url(sha1Hash),
+    thumbprintSha256Base64Url: arrayBufferToBase64Url(sha256Hash),
+  };
+}
+
 function buildTBSCertificate(params: {
   serialNumber: Uint8Array;
   subject: string;
@@ -379,10 +424,9 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
  */
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const hasWindow = globalThis.window !== undefined;
-  const binary =
-    hasWindow
-      ? globalThis.window.atob(base64)
-      : Buffer.from(base64, "base64").toString("binary");
+  const binary = hasWindow
+    ? globalThis.window.atob(base64)
+    : Buffer.from(base64, "base64").toString("binary");
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);

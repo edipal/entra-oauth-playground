@@ -9,14 +9,36 @@ import React, {
   ReactNode,
 } from "react";
 import type { ClientAuthMethod } from "@/types/client-auth";
+import type { IdentityProviderId } from "@/lib/identityProvider";
+import {
+  ENTRA_AUTH_ENDPOINT_TEMPLATE,
+  ENTRA_TOKEN_ENDPOINT_TEMPLATE,
+  PROVIDER_PRESETS,
+} from "@/lib/identityProvider";
+import { usePathname } from "@/navigation";
+import {
+  DEFAULT_PROVIDER_APP_ID,
+  getRouteProvider,
+  type ProviderAppId,
+} from "@/lib/providerRegistry";
 
 // Persisted configuration that users can edit and we keep across sessions
+export type AuthRequestMode = "url" | "par" | "jar" | "par-jar";
+
 export type AuthCodePublicClientConfig = {
+  providerId?: IdentityProviderId;
   tenantId?: string;
+  issuerUrl?: string;
   clientId?: string;
   redirectUri?: string;
   scopes?: string;
+  audience?: string;
   apiEndpointUrl?: string;
+  endpointOverrideEnabled?: boolean;
+  authEndpointOverride?: string;
+  tokenEndpointOverride?: string;
+  authRequestMode?: AuthRequestMode;
+  rarJson?: string;
   // Streamlined mode: auto-run steps and hide advanced fields in public client flow
   streamlined?: boolean;
   // PKCE (optional)
@@ -47,11 +69,19 @@ export type AuthCodePublicClientRuntime = {
 
 // Confidential Client (Authorization Code) — persisted configuration
 export type AuthCodeConfidentialClientConfig = {
+  providerId?: IdentityProviderId;
   tenantId?: string;
+  issuerUrl?: string;
   clientId?: string;
   redirectUri?: string;
   scopes?: string;
+  audience?: string;
   apiEndpointUrl?: string;
+  endpointOverrideEnabled?: boolean;
+  authEndpointOverride?: string;
+  tokenEndpointOverride?: string;
+  authRequestMode?: AuthRequestMode;
+  rarJson?: string;
   streamlined?: boolean;
   pkceEnabled?: boolean;
   clientAuthMethod?: ClientAuthMethod;
@@ -97,10 +127,15 @@ export type AuthCodeConfidentialClientRuntime = {
 
 // Client Credentials — persisted configuration
 export type ClientCredentialsConfig = {
+  providerId?: IdentityProviderId;
   tenantId?: string;
+  issuerUrl?: string;
   clientId?: string;
   scopes?: string;
+  audience?: string;
   apiEndpointUrl?: string;
+  endpointOverrideEnabled?: boolean;
+  tokenEndpointOverride?: string;
   streamlined?: boolean;
   clientAuthMethod?: ClientAuthMethod;
   // Optional header kid for client assertion (certificate mode)
@@ -200,24 +235,58 @@ type SettingsContextValue = {
   resetClientCredentialsRuntime: () => void;
 };
 
-const defaultAuthCodePublicClientConfig: AuthCodePublicClientConfig = {
+const defaultEntraAuthCodePublicClientConfig: AuthCodePublicClientConfig = {
+  providerId: "entra",
   tenantId: "",
+  issuerUrl: "",
   clientId: "",
   redirectUri: "",
-  scopes: "openid profile offline_access",
-  apiEndpointUrl: "https://graph.microsoft.com/v1.0/me",
+  scopes: PROVIDER_PRESETS.entra.defaultScopes.authCode,
+  audience: "",
+  apiEndpointUrl: PROVIDER_PRESETS.entra.defaultApiEndpoint.authCode,
+  endpointOverrideEnabled: false,
+  authEndpointOverride: "",
+  tokenEndpointOverride: "",
+  authRequestMode: "url",
+  rarJson: "",
+  streamlined: false,
+  pkceEnabled: true,
+};
+
+const defaultAuth0AuthCodePublicClientConfig: AuthCodePublicClientConfig = {
+  providerId: "auth0",
+  tenantId: "",
+  issuerUrl: "",
+  clientId: "",
+  redirectUri: "",
+  scopes: PROVIDER_PRESETS.auth0.defaultScopes.authCode,
+  audience: "",
+  apiEndpointUrl: PROVIDER_PRESETS.auth0.defaultApiEndpoint.authCode,
+  endpointOverrideEnabled: false,
+  authEndpointOverride: "",
+  tokenEndpointOverride: "",
+  authRequestMode: "url",
+  rarJson: "",
   streamlined: false,
   pkceEnabled: true,
 };
 
 const defaultSettings: Settings = {
-  authCodePublicClient: defaultAuthCodePublicClientConfig,
+  authCodePublicClient: defaultEntraAuthCodePublicClientConfig,
   authCodeConfidentialClient: {
+    providerId: "entra",
     tenantId: "",
+    issuerUrl: "",
     clientId: "",
     redirectUri: "",
-    scopes: "openid profile offline_access",
-    apiEndpointUrl: "https://graph.microsoft.com/v1.0/me",
+    scopes: PROVIDER_PRESETS.entra.defaultScopes.authCode,
+    audience: "",
+    apiEndpointUrl: PROVIDER_PRESETS.entra.defaultApiEndpoint.authCode,
+    endpointOverrideEnabled: false,
+    authEndpointOverride: "",
+    tokenEndpointOverride: "",
+    authRequestMode: "url",
+    rarJson: "",
     streamlined: false,
     pkceEnabled: true,
     clientAuthMethod: "secret",
@@ -225,10 +294,15 @@ const defaultSettings: Settings = {
     clientAssertionX5t: "",
   },
   clientCredentials: {
+    providerId: "entra",
     tenantId: "",
+    issuerUrl: "",
     clientId: "",
-    scopes: "https://graph.microsoft.com/.default",
-    apiEndpointUrl: "https://graph.microsoft.com/v1.0/users",
+    scopes: PROVIDER_PRESETS.entra.defaultScopes.clientCredentials,
+    audience: "",
+    apiEndpointUrl: PROVIDER_PRESETS.entra.defaultApiEndpoint.clientCredentials,
+    endpointOverrideEnabled: false,
+    tokenEndpointOverride: "",
     streamlined: false,
     clientAuthMethod: "secret",
     clientAssertionKid: "",
@@ -237,12 +311,91 @@ const defaultSettings: Settings = {
   },
 };
 
+const defaultAuth0Settings: Settings = {
+  authCodePublicClient: defaultAuth0AuthCodePublicClientConfig,
+  authCodeConfidentialClient: {
+    providerId: "auth0",
+    tenantId: "",
+    issuerUrl: "",
+    clientId: "",
+    redirectUri: "",
+    scopes: PROVIDER_PRESETS.auth0.defaultScopes.authCode,
+    audience: "",
+    apiEndpointUrl: PROVIDER_PRESETS.auth0.defaultApiEndpoint.authCode,
+    endpointOverrideEnabled: false,
+    authEndpointOverride: "",
+    tokenEndpointOverride: "",
+    authRequestMode: "url",
+    rarJson: "",
+    streamlined: false,
+    pkceEnabled: true,
+    clientAuthMethod: "secret",
+    clientAssertionKid: "",
+    clientAssertionX5t: "",
+  },
+  clientCredentials: {
+    providerId: "auth0",
+    tenantId: "",
+    issuerUrl: "",
+    clientId: "",
+    scopes: PROVIDER_PRESETS.auth0.defaultScopes.clientCredentials,
+    audience: "",
+    apiEndpointUrl: PROVIDER_PRESETS.auth0.defaultApiEndpoint.clientCredentials,
+    endpointOverrideEnabled: false,
+    tokenEndpointOverride: "",
+    streamlined: false,
+    clientAuthMethod: "secret",
+    clientAssertionKid: "",
+    clientAssertionX5t: "",
+    pkceEnabled: false,
+  },
+};
+
+type SettingsByProvider = Record<ProviderAppId, Settings>;
+
+const defaultSettingsByProvider: SettingsByProvider = {
+  entra: defaultSettings,
+  auth0: defaultAuth0Settings,
+};
+
+const getDefaultSettingsForProvider = (providerId: ProviderAppId): Settings =>
+  defaultSettingsByProvider[providerId];
+
+const SETTINGS_STORAGE_PREFIX = "app:settings:";
+
+const mergeProviderSettings = (
+  providerId: ProviderAppId,
+  persisted?: Partial<Settings>,
+): Settings => {
+  const defaults = getDefaultSettingsForProvider(providerId);
+
+  return {
+    authCodePublicClient: {
+      ...defaults.authCodePublicClient!,
+      ...(persisted?.authCodePublicClient || {}),
+      providerId,
+    },
+    authCodeConfidentialClient: {
+      ...defaults.authCodeConfidentialClient!,
+      ...(persisted?.authCodeConfidentialClient || {}),
+      providerId,
+    },
+    clientCredentials: {
+      ...defaults.clientCredentials!,
+      ...(persisted?.clientCredentials || {}),
+      providerId,
+    },
+  };
+};
+
+const storageKeyForProvider = (providerId: ProviderAppId) =>
+  `${SETTINGS_STORAGE_PREFIX}${providerId}`;
+
 const defaultAuthCodePublicClientRuntime: AuthCodePublicClientRuntime = {
   codeVerifier: "",
   codeChallenge: "",
-  authEndpoint:
-    "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
-  tokenEndpoint: "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+  authEndpoint: ENTRA_AUTH_ENDPOINT_TEMPLATE,
+  tokenEndpoint: ENTRA_TOKEN_ENDPOINT_TEMPLATE,
   stateParam: "",
   nonce: "",
   callbackUrl: "",
@@ -258,10 +411,8 @@ const defaultAuthCodeConfidentialClientRuntime: AuthCodeConfidentialClientRuntim
   {
     codeVerifier: "",
     codeChallenge: "",
-    authEndpoint:
-      "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
-    tokenEndpoint:
-      "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+    authEndpoint: ENTRA_AUTH_ENDPOINT_TEMPLATE,
+    tokenEndpoint: ENTRA_TOKEN_ENDPOINT_TEMPLATE,
     stateParam: "",
     nonce: "",
     callbackUrl: "",
@@ -285,7 +436,7 @@ const defaultAuthCodeConfidentialClientRuntime: AuthCodeConfidentialClientRuntim
   };
 
 const defaultClientCredentialsRuntime: ClientCredentialsRuntime = {
-  tokenEndpoint: "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+  tokenEndpoint: ENTRA_TOKEN_ENDPOINT_TEMPLATE,
   accessToken: "",
   idToken: "",
   clientSecret: "",
@@ -305,42 +456,36 @@ const SettingsContext = createContext<SettingsContextValue | undefined>(
   undefined,
 );
 
-export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>) {
+export function SettingsProvider({
+  children,
+}: Readonly<{ children: ReactNode }>) {
+  const pathname = usePathname();
+  const routeProvider = getRouteProvider(pathname);
+  const activeProviderId = routeProvider || DEFAULT_PROVIDER_APP_ID;
+
   // Persisted settings
-  // Initialize with defaults for SSR consistency. We'll hydrate from localStorage after mount.
-  const [settingsState, setSettingsState] = useState<Settings>(defaultSettings);
-  const settings = settingsState;
+  // Initialize with defaults for SSR consistency. We'll hydrate provider-scoped settings after mount.
+  const [settingsState, setSettingsState] = useState<SettingsByProvider>(
+    defaultSettingsByProvider,
+  );
+  const settings = settingsState[activeProviderId];
   const [hydrated, setHydrated] = useState(false);
 
-  // After mount, read persisted settings (if any) and merge with defaults.
+  // After mount, read persisted provider-scoped settings (if any) and merge with defaults.
   useEffect(() => {
     if (globalThis.window === undefined) return;
     try {
-      const raw = localStorage.getItem("app:settings");
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<Settings>;
-      const persistedPublic = parsed.authCodePublicClient || {};
-      const mergedPublic = {
-        ...defaultAuthCodePublicClientConfig,
-        ...persistedPublic,
-      };
-      const persistedConf = parsed.authCodeConfidentialClient || {};
-      const mergedConf = {
-        ...defaultSettings.authCodeConfidentialClient!,
-        ...persistedConf,
-      };
-      const persistedClientCreds = parsed.clientCredentials || {};
-      const mergedClientCreds = {
-        ...defaultSettings.clientCredentials!,
-        ...persistedClientCreds,
-      };
-      const next = {
-        ...defaultSettings,
-        ...parsed,
-        authCodePublicClient: mergedPublic,
-        authCodeConfidentialClient: mergedConf,
-        clientCredentials: mergedClientCreds,
-      } as Settings;
+      const next = { ...defaultSettingsByProvider };
+
+      for (const providerId of ["entra", "auth0"] as const) {
+        const raw = localStorage.getItem(storageKeyForProvider(providerId));
+        if (!raw) continue;
+        next[providerId] = mergeProviderSettings(
+          providerId,
+          JSON.parse(raw) as Partial<Settings>,
+        );
+      }
+
       setSettingsState(next);
     } catch {
       // ignore
@@ -350,8 +495,10 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
   }, []);
 
   // In-memory runtime for the current flow (not persisted)
-  const [authCodePublicClientRuntimeState, setAuthCodePublicClientRuntimeState] =
-    useState<AuthCodePublicClientRuntime>(defaultAuthCodePublicClientRuntime);
+  const [
+    authCodePublicClientRuntimeState,
+    setAuthCodePublicClientRuntimeState,
+  ] = useState<AuthCodePublicClientRuntime>(defaultAuthCodePublicClientRuntime);
   const authCodePublicClientRuntime = authCodePublicClientRuntimeState;
 
   const [
@@ -360,40 +507,71 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
   ] = useState<AuthCodeConfidentialClientRuntime>(
     defaultAuthCodeConfidentialClientRuntime,
   );
-  const authCodeConfidentialClientRuntime = authCodeConfidentialClientRuntimeState;
+  const authCodeConfidentialClientRuntime =
+    authCodeConfidentialClientRuntimeState;
 
   const [clientCredentialsRuntimeState, setClientCredentialsRuntimeState] =
     useState<ClientCredentialsRuntime>(defaultClientCredentialsRuntime);
   const clientCredentialsRuntime = clientCredentialsRuntimeState;
 
-  const persist = useCallback((next: Settings) => {
+  useEffect(() => {
+    setAuthCodePublicClientRuntimeState(defaultAuthCodePublicClientRuntime);
+    setAuthCodeConfidentialClientRuntimeState(
+      defaultAuthCodeConfidentialClientRuntime,
+    );
+    setClientCredentialsRuntimeState(defaultClientCredentialsRuntime);
+  }, [activeProviderId]);
+
+  const persist = useCallback((providerId: ProviderAppId, next: Settings) => {
     try {
-      localStorage.setItem("app:settings", JSON.stringify(next));
+      localStorage.setItem(
+        storageKeyForProvider(providerId),
+        JSON.stringify(next),
+      );
     } catch {
       // ignore localStorage failures
     }
   }, []);
 
-  const setSettings = useCallback((s: Partial<Settings>) => {
-    setSettingsState((prev) => {
-      const next = { ...prev, ...s };
-      persist(next);
-      return next;
-    });
-  }, [persist]);
+  const setSettings = useCallback(
+    (s: Partial<Settings>) => {
+      setSettingsState((prev) => {
+        const current = prev[activeProviderId];
+        const nextProviderSettings = mergeProviderSettings(activeProviderId, {
+          ...current,
+          ...s,
+        });
+        persist(activeProviderId, nextProviderSettings);
+        return { ...prev, [activeProviderId]: nextProviderSettings };
+      });
+    },
+    [activeProviderId, persist],
+  );
 
   const setAuthCodePublicClientConfig: SettingsContextValue["setAuthCodePublicClientConfig"] =
-    useCallback((update) => {
-      setSettingsState((prev) => {
-        const prevCfg =
-          prev.authCodePublicClient || defaultAuthCodePublicClientConfig;
-        const patch = typeof update === "function" ? update(prevCfg) : update;
-        const nextCfg = { ...prevCfg, ...patch };
-        const next = { ...prev, authCodePublicClient: nextCfg };
-        persist(next);
-        return next;
-      });
-    }, [persist]);
+    useCallback(
+      (update) => {
+        setSettingsState((prev) => {
+          const current = prev[activeProviderId];
+          const defaults = getDefaultSettingsForProvider(activeProviderId);
+          const prevCfg =
+            current.authCodePublicClient || defaults.authCodePublicClient!;
+          const patch = typeof update === "function" ? update(prevCfg) : update;
+          const nextCfg = {
+            ...prevCfg,
+            ...patch,
+            providerId: activeProviderId,
+          };
+          const nextProviderSettings = {
+            ...current,
+            authCodePublicClient: nextCfg,
+          };
+          persist(activeProviderId, nextProviderSettings);
+          return { ...prev, [activeProviderId]: nextProviderSettings };
+        });
+      },
+      [activeProviderId, persist],
+    );
 
   const setAuthCodePublicClientRuntime: SettingsContextValue["setAuthCodePublicClientRuntime"] =
     useCallback((update) => {
@@ -403,26 +581,42 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
       });
     }, []);
 
-  const resetAuthCodePublicClientRuntime = useCallback(() =>
-    setAuthCodePublicClientRuntimeState(defaultAuthCodePublicClientRuntime), []);
+  const resetAuthCodePublicClientRuntime = useCallback(
+    () =>
+      setAuthCodePublicClientRuntimeState(defaultAuthCodePublicClientRuntime),
+    [],
+  );
 
   const authCodePublicClientConfig =
-    settings.authCodePublicClient || defaultAuthCodePublicClientConfig;
+    settings.authCodePublicClient ||
+    getDefaultSettingsForProvider(activeProviderId).authCodePublicClient!;
 
   // Confidential client setters
   const setAuthCodeConfidentialClientConfig: SettingsContextValue["setAuthCodeConfidentialClientConfig"] =
-    useCallback((update) => {
-      setSettingsState((prev) => {
-        const prevCfg =
-          prev.authCodeConfidentialClient ||
-          defaultSettings.authCodeConfidentialClient!;
-        const patch = typeof update === "function" ? update(prevCfg) : update;
-        const nextCfg = { ...prevCfg, ...patch };
-        const next = { ...prev, authCodeConfidentialClient: nextCfg };
-        persist(next);
-        return next;
-      });
-    }, [persist]);
+    useCallback(
+      (update) => {
+        setSettingsState((prev) => {
+          const current = prev[activeProviderId];
+          const defaults = getDefaultSettingsForProvider(activeProviderId);
+          const prevCfg =
+            current.authCodeConfidentialClient ||
+            defaults.authCodeConfidentialClient!;
+          const patch = typeof update === "function" ? update(prevCfg) : update;
+          const nextCfg = {
+            ...prevCfg,
+            ...patch,
+            providerId: activeProviderId,
+          };
+          const nextProviderSettings = {
+            ...current,
+            authCodeConfidentialClient: nextCfg,
+          };
+          persist(activeProviderId, nextProviderSettings);
+          return { ...prev, [activeProviderId]: nextProviderSettings };
+        });
+      },
+      [activeProviderId, persist],
+    );
 
   const setAuthCodeConfidentialClientRuntime: SettingsContextValue["setAuthCodeConfidentialClientRuntime"] =
     useCallback((update) => {
@@ -432,28 +626,43 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
       });
     }, []);
 
-  const resetAuthCodeConfidentialClientRuntime = useCallback(() =>
-    setAuthCodeConfidentialClientRuntimeState(
-      defaultAuthCodeConfidentialClientRuntime,
-    ), []);
+  const resetAuthCodeConfidentialClientRuntime = useCallback(
+    () =>
+      setAuthCodeConfidentialClientRuntimeState(
+        defaultAuthCodeConfidentialClientRuntime,
+      ),
+    [],
+  );
 
   const authCodeConfidentialClientConfig =
     settings.authCodeConfidentialClient ||
-    defaultSettings.authCodeConfidentialClient!;
+    getDefaultSettingsForProvider(activeProviderId).authCodeConfidentialClient!;
 
   // Client credentials setters
   const setClientCredentialsConfig: SettingsContextValue["setClientCredentialsConfig"] =
-    useCallback((update) => {
-      setSettingsState((prev) => {
-        const prevCfg =
-          prev.clientCredentials || defaultSettings.clientCredentials!;
-        const patch = typeof update === "function" ? update(prevCfg) : update;
-        const nextCfg = { ...prevCfg, ...patch };
-        const next = { ...prev, clientCredentials: nextCfg };
-        persist(next);
-        return next;
-      });
-    }, [persist]);
+    useCallback(
+      (update) => {
+        setSettingsState((prev) => {
+          const current = prev[activeProviderId];
+          const defaults = getDefaultSettingsForProvider(activeProviderId);
+          const prevCfg =
+            current.clientCredentials || defaults.clientCredentials!;
+          const patch = typeof update === "function" ? update(prevCfg) : update;
+          const nextCfg = {
+            ...prevCfg,
+            ...patch,
+            providerId: activeProviderId,
+          };
+          const nextProviderSettings = {
+            ...current,
+            clientCredentials: nextCfg,
+          };
+          persist(activeProviderId, nextProviderSettings);
+          return { ...prev, [activeProviderId]: nextProviderSettings };
+        });
+      },
+      [activeProviderId, persist],
+    );
 
   const setClientCredentialsRuntime: SettingsContextValue["setClientCredentialsRuntime"] =
     useCallback((update) => {
@@ -463,11 +672,14 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
       });
     }, []);
 
-  const resetClientCredentialsRuntime = useCallback(() =>
-    setClientCredentialsRuntimeState(defaultClientCredentialsRuntime), []);
+  const resetClientCredentialsRuntime = useCallback(
+    () => setClientCredentialsRuntimeState(defaultClientCredentialsRuntime),
+    [],
+  );
 
   const clientCredentialsConfig =
-    settings.clientCredentials || defaultSettings.clientCredentials!;
+    settings.clientCredentials ||
+    getDefaultSettingsForProvider(activeProviderId).clientCredentials!;
 
   const value: SettingsContextValue = useMemo(
     () => ({
@@ -509,7 +721,7 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
       clientCredentialsRuntime,
       setClientCredentialsRuntime,
       resetClientCredentialsRuntime,
-    ]
+    ],
   );
 
   return (

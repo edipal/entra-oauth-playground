@@ -1,24 +1,34 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   buildMetadataUrl,
   guessJwksUrl,
   verifyJwtSignature,
 } from "@/lib/jwtVerify";
+import type { DecodedTokenFormat } from "@/lib/jwtDecode";
+import type { IdentityProviderId } from "@/lib/identityProvider";
+import {
+  DEFAULT_PROVIDER_ID,
+  getIssuerForValidation,
+  isEntraProvider,
+  issuerMatchesExpected,
+} from "@/lib/identityProvider";
 
 type Props = {
-  // Inputs to derive expectations
+  providerId?: IdentityProviderId;
   tenantId: string;
+  issuerUrl?: string;
   clientId: string;
+  expectedAudience?: string;
   expectedNonce: string;
   isClientCredentials: boolean;
-  // Decoded JWT parts (pretty JSON strings)
   decodedAccessHeader: string;
   decodedAccessPayload: string;
   decodedIdHeader: string;
   decodedIdPayload: string;
-  // Raw tokens (for signature verification)
+  decodedAccessFormat?: DecodedTokenFormat;
+  decodedIdFormat?: DecodedTokenFormat;
   accessToken?: string;
   idToken?: string;
 };
@@ -27,49 +37,22 @@ type JwtHeader = {
   alg?: string;
   kid?: string;
   typ?: string;
-  [k: string]: any;
+  [key: string]: unknown;
 };
+
 type JwtPayload = {
   iss?: string;
   aud?: string | string[];
   tid?: string;
   ver?: string;
-  scp?: string; // space-separated scopes
+  scp?: string;
   roles?: string[];
+  wids?: string[];
   nonce?: string;
   exp?: number;
   nbf?: number;
   iat?: number;
-  sub?: string;
-  [k: string]: any;
-};
-
-const parseJson = <T,>(s: string): T | undefined => {
-  try {
-    const obj = JSON.parse(s);
-    if (obj && typeof obj === "object") return obj as T;
-  } catch {}
-  return undefined;
-};
-
-const fmtEpoch = (v?: number) => {
-  if (!v && v !== 0) return "";
-  try {
-    const d = new Date(v * 1000);
-    return `${d.toLocaleString()} (${v})`;
-  } catch {
-    return String(v);
-  }
-};
-
-const ensureArray = (v: string | string[] | undefined): string[] => {
-  if (Array.isArray(v)) {
-    return v;
-  }
-  if (typeof v === "string") {
-    return [v];
-  }
-  return [];
+  [key: string]: unknown;
 };
 
 type SigStatus = {
@@ -87,13 +70,35 @@ type SigStatus = {
   publicKeyPem?: string;
 };
 
+const parseJson = <T,>(value: string): T | undefined => {
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object") return parsed as T;
+  } catch {}
+  return undefined;
+};
+
+const fmtEpoch = (value?: number) => {
+  if (!value && value !== 0) return "";
+  try {
+    return `${new Date(value * 1000).toLocaleString()} (${value})`;
+  } catch {
+    return String(value);
+  }
+};
+
+const ensureArray = (value: string | string[] | undefined): string[] => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") return [value];
+  return [];
+};
+
+const renderCode = (chunks: ReactNode) => <code>{chunks}</code>;
+
 function StatusIcon({
   ok,
   label,
-}: Readonly<{
-  ok: boolean | undefined;
-  label?: string;
-}>) {
+}: Readonly<{ ok: boolean | undefined; label?: string }>) {
   return (
     <span style={{ color: ok ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
       <i
@@ -105,19 +110,117 @@ function StatusIcon({
   );
 }
 
-const renderCode = (chunks: any) => <code>{chunks}</code>;
+const isMicrosoftIssuerHost = (issuer?: string) => {
+  if (!issuer) return false;
+  try {
+    const host = new URL(issuer).host.toLowerCase();
+    return host === "login.microsoftonline.com" || host === "sts.windows.net";
+  } catch {
+    return false;
+  }
+};
+
+async function resolveJwksCandidates(
+  issuer: string,
+  tenantId?: string,
+  providerId?: IdentityProviderId,
+): Promise<string[]> {
+  if (isEntraProvider(providerId) && !isMicrosoftIssuerHost(issuer)) {
+    return [];
+  }
+
+  if (isMicrosoftIssuerHost(issuer)) {
+    const tenant = (tenantId || "common").trim();
+    return [
+      `https://login.microsoftonline.com/${tenant}/discovery/v2.0/keys`,
+      `https://login.microsoftonline.com/${tenant}/discovery/keys`,
+    ];
+  }
+
+  const metadataUrl = buildMetadataUrl(issuer);
+  if (!metadataUrl || metadataUrl.includes("->")) return [];
+
+  try {
+    const response = await fetch(metadataUrl, { cache: "no-store" });
+    const json = await response.json();
+    if (json && typeof json === "object" && "jwks_uri" in json) {
+      return [String(json.jwks_uri)];
+    }
+  } catch {}
+
+  return [];
+}
+
+async function verifyTokenSignatureStatus({
+  token,
+  header,
+  payload,
+  providerId,
+}: {
+  token?: string;
+  header: JwtHeader;
+  payload: JwtPayload;
+  providerId?: IdentityProviderId;
+}): Promise<SigStatus> {
+  const status: SigStatus = {
+    kid: header.kid,
+    alg: header.alg,
+    ver: payload.ver,
+    iss: payload.iss,
+    metadataUrl: buildMetadataUrl(payload.iss),
+    jwksUrl: undefined,
+    jwksFetched: false,
+    keyFound: false,
+    verified: false,
+  };
+
+  if (!token || !payload.iss) return status;
+
+  try {
+    const candidates = await resolveJwksCandidates(
+      payload.iss,
+      payload.tid,
+      providerId,
+    );
+    if (candidates.length === 0) {
+      status.reason = "No JWKS URI could be resolved";
+      status.jwksUrl = guessJwksUrl(payload.iss, payload.tid, payload.ver);
+      return status;
+    }
+
+    for (const jwksUrl of candidates) {
+      const result = await verifyJwtSignature(token, jwksUrl, header.kid);
+      status.jwksUrl = jwksUrl;
+      status.jwksFetched = true;
+      status.keyFound = result.keyFound;
+      status.verified = !!result.ok;
+      if (result.error) status.error = result.error;
+      if (result.reason) status.reason = result.reason;
+      if (result.publicKeyPem) status.publicKeyPem = result.publicKeyPem;
+      if (result.ok) break;
+    }
+  } catch (error) {
+    status.error = String(error);
+  }
+
+  return status;
+}
 
 export default function StepValidate(props: Readonly<Props>) {
   const t = useTranslations("StepValidate");
   const {
+    providerId = DEFAULT_PROVIDER_ID,
     tenantId,
+    issuerUrl = "",
     clientId,
+    expectedAudience = "",
     expectedNonce,
     isClientCredentials,
     decodedAccessHeader,
     decodedAccessPayload,
     decodedIdHeader,
     decodedIdPayload,
+    decodedAccessFormat,
     accessToken,
     idToken,
   } = props;
@@ -145,294 +248,154 @@ export default function StepValidate(props: Readonly<Props>) {
   const idMeta = buildMetadataUrl(idIss);
   const accJwks = guessJwksUrl(accIss, accessPayload.tid, accessPayload.ver);
   const idJwks = guessJwksUrl(idIss, idPayload.tid, idPayload.ver);
+  const expectedIssuer = getIssuerForValidation({
+    providerId,
+    tenantId,
+    issuerUrl,
+  });
+  const issuerExpectationLabel = expectedIssuer
+    ? providerId === "entra"
+      ? `(tenant ${expectedIssuer})`
+      : `(issuer ${expectedIssuer})`
+    : "";
 
-  // Signature verification status
   const [idSig, setIdSig] = useState<SigStatus>({});
   const [accSig, setAccSig] = useState<SigStatus>({});
+  const [nowSec, setNowSec] = useState(0);
 
-  const idJwksUrlResolvedRef = useRef<string | undefined>(undefined);
-  const accJwksUrlResolvedRef = useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    // ID token signature verification
-    (async () => {
-      const s: SigStatus = {
-        kid: idHeader.kid,
-        alg: idHeader.alg,
-        ver: idPayload.ver,
-        iss: idIss,
-        metadataUrl: idMeta,
-        jwksUrl: undefined,
-        jwksFetched: false,
-        keyFound: false,
-        verified: false,
-      };
-      try {
-        if (!idToken || !idIss) {
-          setIdSig(s);
-          return;
-        }
-        let jwksUrl = "";
-        const host = (() => {
-          try {
-            return new URL(idIss).host.toLowerCase();
-          } catch {
-            return "";
-          }
-        })();
-        const microsoftHosts = new Set([
-          "login.microsoftonline.com",
-          "sts.windows.net",
-        ]);
-        if (host && microsoftHosts.has(host)) {
-          // Try v2 then v1
-          const tenant = (idPayload.tid || "common").trim();
-          const candidates = [
-            `https://login.microsoftonline.com/${tenant}/discovery/v2.0/keys`,
-            `https://login.microsoftonline.com/${tenant}/discovery/keys`,
-          ];
-          for (const url of candidates) {
-            try {
-              const result = await verifyJwtSignature(
-                idToken,
-                url,
-                idHeader.kid,
-              );
-              s.jwksUrl = url;
-              s.jwksFetched = true;
-              s.keyFound = result.keyFound;
-              s.verified = !!result.ok;
-              if (result.error) s.error = result.error;
-              if (result.reason) s.reason = result.reason;
-              if (result.publicKeyPem) s.publicKeyPem = result.publicKeyPem;
-              if (result.ok) break;
-            } catch (e: any) {
-              s.error = String(e);
-            }
-          }
-        } else if (idMeta && !idMeta.includes("->")) {
-          try {
-            const res = await fetch(idMeta, { cache: "no-store" });
-            const json = await res.json();
-            if (json && typeof json === "object" && json.jwks_uri)
-              jwksUrl = String(json.jwks_uri);
-          } catch {}
-        }
-        if (!s.jwksUrl) {
-          s.jwksUrl = jwksUrl || idJwks;
-          idJwksUrlResolvedRef.current = s.jwksUrl;
-          if (s.jwksUrl) {
-            s.jwksFetched = true;
-            const result = await verifyJwtSignature(
-              idToken,
-              s.jwksUrl,
-              idHeader.kid,
-            );
-            s.keyFound = result.keyFound;
-            s.verified = !!result.ok;
-            if (result.error) s.error = result.error;
-            if (result.reason) s.reason = result.reason;
-            if (result.publicKeyPem) s.publicKeyPem = result.publicKeyPem;
-          }
-        }
-      } catch (e: any) {
-        s.error = String(e);
-      }
-      setIdSig(s);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idToken, idHeader.kid, idHeader.alg, idPayload.tid, idIss]);
-
-  useEffect(() => {
-    // Access token signature verification
-    (async () => {
-      const s: SigStatus = {
-        kid: accessHeader.kid,
-        alg: accessHeader.alg,
-        ver: accessPayload.ver,
-        iss: accIss,
-        metadataUrl: accMeta,
-        jwksUrl: undefined,
-        jwksFetched: false,
-        keyFound: false,
-        verified: false,
-      };
-      try {
-        if (!accessToken || !accIss) {
-          setAccSig(s);
-          return;
-        }
-        // Skip signature verification for Microsoft Graph access tokens
-        const skipGraph =
-          String(accessPayload.aud || "") ===
-          "00000003-0000-0000-c000-000000000000";
-        if (skipGraph) {
-          setAccSig({});
-          return;
-        }
-        let jwksUrl = "";
-        const host = (() => {
-          try {
-            return new URL(accIss).host.toLowerCase();
-          } catch {
-            return "";
-          }
-        })();
-        const microsoftHosts = new Set([
-          "login.microsoftonline.com",
-          "sts.windows.net",
-        ]);
-        if (host && microsoftHosts.has(host)) {
-          // Try v2 then v1
-          const tenant = (accessPayload.tid || "common").trim();
-          const candidates = [
-            `https://login.microsoftonline.com/${tenant}/discovery/v2.0/keys`,
-            `https://login.microsoftonline.com/${tenant}/discovery/keys`,
-          ];
-          for (const url of candidates) {
-            try {
-              const result = await verifyJwtSignature(
-                accessToken,
-                url,
-                accessHeader.kid,
-              );
-              s.jwksUrl = url;
-              s.jwksFetched = true;
-              s.keyFound = result.keyFound;
-              s.verified = !!result.ok;
-              if (result.error) s.error = result.error;
-              if (result.reason) s.reason = result.reason;
-              if (result.publicKeyPem) s.publicKeyPem = result.publicKeyPem;
-              if (result.ok) break;
-            } catch (e: any) {
-              s.error = String(e);
-            }
-          }
-        } else if (accMeta && !accMeta.includes("->")) {
-          try {
-            const res = await fetch(accMeta, { cache: "no-store" });
-            const json = await res.json();
-            if (json && typeof json === "object" && json.jwks_uri)
-              jwksUrl = String(json.jwks_uri);
-          } catch {}
-        }
-        if (!s.jwksUrl) {
-          s.jwksUrl = jwksUrl || accJwks;
-          accJwksUrlResolvedRef.current = s.jwksUrl;
-          if (s.jwksUrl) {
-            s.jwksFetched = true;
-            const result = await verifyJwtSignature(
-              accessToken,
-              s.jwksUrl,
-              accessHeader.kid,
-            );
-            s.keyFound = result.keyFound;
-            s.verified = !!result.ok;
-            if (result.error) s.error = result.error;
-            if (result.reason) s.reason = result.reason;
-            if (result.publicKeyPem) s.publicKeyPem = result.publicKeyPem;
-          }
-        }
-      } catch (e: any) {
-        s.error = String(e);
-      }
-      setAccSig(s);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    accessToken,
-    accessHeader.kid,
-    accessHeader.alg,
-    accessPayload.tid,
-    accIss,
-  ]);
-
-  // Server-side diagnostics removed per request.
-
-  // Claim validation checks
-  const nowSec = Math.floor(Date.now() / 1000);
-  const skewSec = 300; // 5 minutes clock skew tolerance
-
-  const idClaimOk = useMemo(() => {
-    const aud = String(idPayload.aud ?? "");
-    const audOk = clientId ? aud === clientId : !!aud; // if no expected, require presence
-    const issOk = tenantId
-      ? idPayload.tid === tenantId || (idIss?.includes(tenantId) ?? false)
-      : !!idIss;
-    const nonceOk = expectedNonce ? idPayload.nonce === expectedNonce : true; // not required if not sent
-    const expOk =
-      typeof idPayload.exp === "number"
-        ? idPayload.exp > nowSec - skewSec
-        : false;
-    const nbfOk =
-      typeof idPayload.nbf === "number"
-        ? idPayload.nbf <= nowSec + skewSec
-        : true; // ok if missing
-    const iatOk =
-      typeof idPayload.iat === "number"
-        ? idPayload.iat <= nowSec + skewSec
-        : true; // ok if missing
-    return { audOk, issOk, nonceOk, expOk, nbfOk, iatOk };
-  }, [
-    clientId,
-    expectedNonce,
-    idIss,
-    idPayload.aud,
-    idPayload.exp,
-    idPayload.iat,
-    idPayload.nbf,
-    idPayload.nonce,
-    idPayload.tid,
-    nowSec,
-    skewSec,
-    tenantId,
-  ]);
-
-  const accClaimOk = useMemo(() => {
-    const aud = String(accessPayload.aud ?? "");
-    const audOk = !!aud; // without expected API audience, require presence
-    const issOk = tenantId
-      ? accessPayload.tid === tenantId || (accIss?.includes(tenantId) ?? false)
-      : !!accIss;
-    // For client credentials we cannot validate scopes without knowing granted app permissions.
-    // Mark scopes as "not validated" but do not fail if missing.
-    const scopesOk = true;
-    const expOk =
-      typeof accessPayload.exp === "number"
-        ? accessPayload.exp > nowSec - skewSec
-        : false;
-    const nbfOk =
-      typeof accessPayload.nbf === "number"
-        ? accessPayload.nbf <= nowSec + skewSec
-        : true;
-    const iatOk =
-      typeof accessPayload.iat === "number"
-        ? accessPayload.iat <= nowSec + skewSec
-        : true;
-    return { audOk, issOk, scopesOk, expOk, nbfOk, iatOk };
-  }, [
-    accessPayload.aud,
-    accessPayload.exp,
-    accessPayload.iat,
-    accessPayload.nbf,
-    accessPayload.tid,
-    accIss,
-    nowSec,
-    skewSec,
-    tenantId,
-  ]);
-
-  // Show a warning when validating Microsoft Graph access tokens: only Graph can verify its signatures
   const graphAud = "00000003-0000-0000-c000-000000000000";
   const graphAudUrl = "https://graph.microsoft.com";
-  const accessAudiences = ensureArray(accessPayload.aud);
+  const accessAudiences = useMemo(
+    () => ensureArray(accessPayload.aud),
+    [accessPayload.aud],
+  );
   const isGraphAccessToken = accessAudiences.some((aud) => {
     const normalized = String(aud || "")
       .trim()
       .replace(/\/$/, "");
     return normalized === graphAud || normalized === graphAudUrl;
   });
-  const isClientCredentialsFlow = isClientCredentials;
+  const accessTokenEncrypted =
+    decodedAccessFormat === "jwe" || typeof accessHeader.enc === "string";
+
+  useEffect(() => {
+    let active = true;
+
+    verifyTokenSignatureStatus({
+      token: idToken,
+      header: idHeader,
+      payload: idPayload,
+      providerId,
+    }).then((status) => {
+      if (active) setIdSig(status);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [idHeader, idPayload, idToken, providerId]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (isGraphAccessToken || accessTokenEncrypted) {
+      return () => {
+        active = false;
+      };
+    }
+
+    verifyTokenSignatureStatus({
+      token: accessToken,
+      header: accessHeader,
+      payload: accessPayload,
+      providerId,
+    }).then((status) => {
+      if (active) setAccSig(status);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    accessHeader,
+    accessPayload,
+    accessToken,
+    accessTokenEncrypted,
+    isGraphAccessToken,
+    providerId,
+  ]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setNowSec(Math.floor(Date.now() / 1000));
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  const skewSec = 300;
+
+  const idClaimOk = useMemo(() => {
+    const audiences = ensureArray(idPayload.aud);
+    return {
+      audOk: clientId ? audiences.includes(clientId) : audiences.length > 0,
+      issOk: issuerMatchesExpected(idIss, expectedIssuer, providerId),
+      nonceOk: expectedNonce ? idPayload.nonce === expectedNonce : true,
+      expOk:
+        typeof idPayload.exp === "number"
+          ? idPayload.exp > nowSec - skewSec
+          : false,
+      nbfOk:
+        typeof idPayload.nbf === "number"
+          ? idPayload.nbf <= nowSec + skewSec
+          : true,
+      iatOk:
+        typeof idPayload.iat === "number"
+          ? idPayload.iat <= nowSec + skewSec
+          : true,
+    };
+  }, [
+    clientId,
+    expectedIssuer,
+    expectedNonce,
+    idIss,
+    idPayload,
+    nowSec,
+    providerId,
+    skewSec,
+  ]);
+
+  const accClaimOk = useMemo(
+    () => ({
+      audOk: expectedAudience
+        ? accessAudiences.includes(expectedAudience)
+        : accessAudiences.length > 0,
+      issOk: issuerMatchesExpected(accIss, expectedIssuer, providerId),
+      scopesOk: true,
+      expOk:
+        typeof accessPayload.exp === "number"
+          ? accessPayload.exp > nowSec - skewSec
+          : false,
+      nbfOk:
+        typeof accessPayload.nbf === "number"
+          ? accessPayload.nbf <= nowSec + skewSec
+          : true,
+      iatOk:
+        typeof accessPayload.iat === "number"
+          ? accessPayload.iat <= nowSec + skewSec
+          : true,
+    }),
+    [
+      accIss,
+      accessAudiences,
+      accessPayload,
+      expectedIssuer,
+      expectedAudience,
+      nowSec,
+      providerId,
+      skewSec,
+    ],
+  );
 
   return (
     <section>
@@ -458,7 +421,6 @@ export default function StepValidate(props: Readonly<Props>) {
         </div>
       )}
 
-      {/* ID Token section */}
       {!!idToken && (
         <div className="mb-5">
           <h4 className="mt-3">{t("validateUi.idTokenTitle")}</h4>
@@ -554,20 +516,6 @@ export default function StepValidate(props: Readonly<Props>) {
           {idSig.publicKeyPem && (
             <details className="mt-2">
               <summary>{t("validateUi.publicKeyPem")}</summary>
-              <div className="flex align-items-center gap-2 mb-2">
-                <button
-                  className="p-button p-button-text p-button-sm"
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    try {
-                        if (idSig.publicKeyPem)
-                          await navigator.clipboard.writeText(idSig.publicKeyPem);
-                    } catch {}
-                  }}
-                >
-                  {t("validateUi.copy")}
-                </button>
-              </div>
               <pre style={{ whiteSpace: "pre-wrap" }}>{idSig.publicKeyPem}</pre>
             </details>
           )}
@@ -583,8 +531,7 @@ export default function StepValidate(props: Readonly<Props>) {
             </li>
             <li>
               {t("validateUi.claims.id.iss")}{" "}
-              <code>{idPayload.iss || "—"}</code>{" "}
-              {tenantId ? `(tenant ${tenantId})` : ""}
+              <code>{idPayload.iss || "—"}</code> {issuerExpectationLabel}
               <span className="ml-2">
                 <StatusIcon ok={idClaimOk.issOk} />
               </span>
@@ -617,12 +564,11 @@ export default function StepValidate(props: Readonly<Props>) {
         </div>
       )}
 
-      {/* Access Token section */}
       <div>
         <h4 className="mt-3">{t("validateUi.accessTokenTitle")}</h4>
         <h5 className="mt-2">
           {t("validateUi.signatureValidation")}{" "}
-          {isGraphAccessToken ? (
+          {isGraphAccessToken || accessTokenEncrypted ? (
             <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
               <span
                 className="pi pi-forward mr-2"
@@ -645,158 +591,105 @@ export default function StepValidate(props: Readonly<Props>) {
             )
           )}
         </h5>
-        {!isGraphAccessToken && (
-          <>
-            <ol>
-              <li>
-                {t("validateUi.steps.extractKid")}{" "}
-                <code>{accessHeader.kid || "—"}</code>{" "}
-                <span className="ml-2">
-                  <StatusIcon ok={!!accessHeader.kid} />
-                </span>
-              </li>
-              <li>
-                {t("validateUi.steps.extractAlg")}{" "}
-                <code>{accessHeader.alg || "—"}</code>{" "}
-                <span className="ml-2">
-                  <StatusIcon
-                    ok={!!accessHeader.alg && accessHeader.alg.startsWith("RS")}
-                  />
-                </span>
-              </li>
-              <li>
-                {t("validateUi.steps.extractVersion")}{" "}
-                <code>
-                  {accessPayload.ver ||
-                    (accIss?.includes("/v2.0") ? "2.0 (from iss)" : "1.0?")}
-                </code>{" "}
-                <span className="ml-2">
-                  <StatusIcon ok={true} />
-                </span>
-              </li>
-              <li>
-                {t("validateUi.steps.extractIssuer")}{" "}
-                <code>{accIss || "—"}</code>{" "}
-                <span className="ml-2">
-                  <StatusIcon ok={!!accIss} />
-                </span>
-              </li>
-              <li>
-                {t("validateUi.steps.buildMetadata")}{" "}
-                <code>{accMeta || "—"}</code>{" "}
-                <span className="ml-2">
-                  <StatusIcon ok={!!accMeta} />
-                </span>
-              </li>
-              <li>
-                {t("validateUi.steps.resolveJwks")}{" "}
-                <code>{accSig.jwksUrl || accJwks || "—"}</code>{" "}
-                <span className="ml-2">
-                  <StatusIcon ok={!!(accSig.jwksUrl || accJwks)} />
-                </span>
-              </li>
-              <li>
-                {t("validateUi.steps.fetchJwksFindKey")}{" "}
-                <code>{accessHeader.kid || "—"}</code>{" "}
-                <span className="ml-2">
-                  <StatusIcon ok={accSig.keyFound} />
-                </span>
-              </li>
-              <li>
-                {t("validateUi.steps.verifySignature")}{" "}
-                <code>{accessHeader.alg || "—"}</code>{" "}
-                <span className="ml-2">
-                  <StatusIcon ok={accSig.verified} />
-                </span>
-              </li>
-            </ol>
-            {accSig.reason && (
-              <p
-                className="mt-2"
-                style={{ color: accSig.verified ? "#16a34a" : "#dc2626" }}
-              >
-                {t("validateUi.reason")} {accSig.reason}
-              </p>
-            )}
-            {accSig.error && (
-              <p style={{ color: "#dc2626" }}>
-                {t("validateUi.error")} {accSig.error}
-              </p>
-            )}
-            {accSig.publicKeyPem && (
-              <details className="mt-2">
-                <summary>{t("validateUi.publicKeyPem")}</summary>
-                <div className="flex align-items-center gap-2 mb-2">
-                  <button
-                    className="p-button p-button-text p-button-sm"
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      try {
-                          if (accSig.publicKeyPem)
-                            await navigator.clipboard.writeText(
-                              accSig.publicKeyPem,
-                            );
-                      } catch {}
-                    }}
-                  >
-                    {t("validateUi.copy")}
-                  </button>
-                </div>
-                <pre style={{ whiteSpace: "pre-wrap" }}>
-                  {accSig.publicKeyPem}
-                </pre>
-              </details>
-            )}
-          </>
+        {accessTokenEncrypted && (
+          <p className="mt-2 text-sm opacity-75">
+            {t("validateUi.encryptedAccessToken")}
+          </p>
         )}
-        <h5 className="mt-3">{t("validateUi.claimValidations")}</h5>
-        <ul>
-          <li>
-            {t("validateUi.claims.access.ver")}{" "}
-            <code>{accessPayload.ver || "—"}</code>
-            <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
-              <span
-                className="pi pi-forward mr-2"
-                aria-label={t("validateUi.skippedAria")}
-              />
-              {t("validateUi.skipped")}
-            </span>
-          </li>
-          <li>
-            {t("validateUi.claims.access.aud")}{" "}
-            <code>{String(accessPayload.aud)}</code>{" "}
-            {isGraphAccessToken ? t("validateUi.claims.access.msGraph") : ""}
-            <span className="ml-2">
-              <StatusIcon ok={accClaimOk.audOk} />
-            </span>
-          </li>
-          <li>
-            {t("validateUi.claims.access.iss")}{" "}
-            <code>{accessPayload.iss || "—"}</code>{" "}
-            {tenantId ? `(tenant ${tenantId})` : ""}
-            <span className="ml-2">
-              <StatusIcon ok={accClaimOk.issOk} />
-            </span>
-          </li>
-          <li>
-            {t("validateUi.claims.access.exp")}{" "}
-            <code>{fmtEpoch(accessPayload.exp)}</code>
-            <span className="ml-2">
-              <StatusIcon ok={accClaimOk.expOk} />
-            </span>
-          </li>
-          <li>
-            {t("validateUi.claims.access.nbfIat")}: nbf{" "}
-            <code>{fmtEpoch(accessPayload.nbf)}</code>, iat{" "}
-            <code>{fmtEpoch(accessPayload.iat)}</code>
-            <span className="ml-2">
-              <StatusIcon ok={accClaimOk.nbfOk && accClaimOk.iatOk} />
-            </span>
-          </li>
-          {!isClientCredentialsFlow && (
+        {!isGraphAccessToken && !accessTokenEncrypted && (
+          <ol>
             <li>
-              {t("validateUi.claims.access.scp")}{" "}
-              <code>{accessPayload.scp || "—"}</code>
+              {t("validateUi.steps.extractKid")}{" "}
+              <code>{accessHeader.kid || "—"}</code>{" "}
+              <span className="ml-2">
+                <StatusIcon ok={!!accessHeader.kid} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.steps.extractAlg")}{" "}
+              <code>{accessHeader.alg || "—"}</code>{" "}
+              <span className="ml-2">
+                <StatusIcon
+                  ok={!!accessHeader.alg && accessHeader.alg.startsWith("RS")}
+                />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.steps.extractVersion")}{" "}
+              <code>{accessPayload.ver || "—"}</code>
+              <span className="ml-2">
+                <StatusIcon ok={true} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.steps.extractIssuer")} <code>{accIss || "—"}</code>{" "}
+              <span className="ml-2">
+                <StatusIcon ok={!!accIss} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.steps.buildMetadata")}{" "}
+              <code>{accMeta || "—"}</code>{" "}
+              <span className="ml-2">
+                <StatusIcon ok={!!accMeta} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.steps.resolveJwks")}{" "}
+              <code>{accSig.jwksUrl || accJwks || "—"}</code>{" "}
+              <span className="ml-2">
+                <StatusIcon ok={!!(accSig.jwksUrl || accJwks)} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.steps.fetchJwksFindKey")}{" "}
+              <code>{accessHeader.kid || "—"}</code>{" "}
+              <span className="ml-2">
+                <StatusIcon ok={accSig.keyFound} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.steps.verifySignature")}{" "}
+              <code>{accessHeader.alg || "—"}</code>{" "}
+              <span className="ml-2">
+                <StatusIcon ok={accSig.verified} />
+              </span>
+            </li>
+          </ol>
+        )}
+        {!isGraphAccessToken && !accessTokenEncrypted && accSig.reason && (
+          <p
+            className="mt-2"
+            style={{ color: accSig.verified ? "#16a34a" : "#dc2626" }}
+          >
+            {t("validateUi.reason")} {accSig.reason}
+          </p>
+        )}
+        {!isGraphAccessToken && !accessTokenEncrypted && accSig.error && (
+          <p style={{ color: "#dc2626" }}>
+            {t("validateUi.error")} {accSig.error}
+          </p>
+        )}
+        {!isGraphAccessToken &&
+          !accessTokenEncrypted &&
+          accSig.publicKeyPem && (
+            <details className="mt-2">
+              <summary>{t("validateUi.publicKeyPem")}</summary>
+              <pre style={{ whiteSpace: "pre-wrap" }}>
+                {accSig.publicKeyPem}
+              </pre>
+            </details>
+          )}
+        <h5 className="mt-3">{t("validateUi.claimValidations")}</h5>
+        {accessTokenEncrypted ? (
+          <p className="mt-2 text-sm opacity-75">
+            {t("validateUi.encryptedClaimValidation")}
+          </p>
+        ) : (
+          <ul>
+            <li>
+              {t("validateUi.claims.access.ver")}{" "}
+              <code>{accessPayload.ver || "—"}</code>
               <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
                 <span
                   className="pi pi-forward mr-2"
@@ -805,16 +698,40 @@ export default function StepValidate(props: Readonly<Props>) {
                 {t("validateUi.skipped")}
               </span>
             </li>
-          )}
-          {isClientCredentialsFlow && (
-            <>
+            <li>
+              {t("validateUi.claims.access.aud")}{" "}
+              <code>{String(accessPayload.aud)}</code>{" "}
+              {isGraphAccessToken ? t("validateUi.claims.access.msGraph") : ""}
+              <span className="ml-2">
+                <StatusIcon ok={accClaimOk.audOk} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.claims.access.iss")}{" "}
+              <code>{accessPayload.iss || "—"}</code> {issuerExpectationLabel}
+              <span className="ml-2">
+                <StatusIcon ok={accClaimOk.issOk} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.claims.access.exp")}{" "}
+              <code>{fmtEpoch(accessPayload.exp)}</code>
+              <span className="ml-2">
+                <StatusIcon ok={accClaimOk.expOk} />
+              </span>
+            </li>
+            <li>
+              {t("validateUi.claims.access.nbfIat")}: nbf{" "}
+              <code>{fmtEpoch(accessPayload.nbf)}</code>, iat{" "}
+              <code>{fmtEpoch(accessPayload.iat)}</code>
+              <span className="ml-2">
+                <StatusIcon ok={accClaimOk.nbfOk && accClaimOk.iatOk} />
+              </span>
+            </li>
+            {!isClientCredentials && (
               <li>
-                {t("validateUi.claims.access.roles")}{" "}
-                <code>
-                  {Array.isArray(accessPayload.roles)
-                    ? accessPayload.roles.join(" ")
-                    : accessPayload.roles ?? "—"}
-                </code>
+                {t("validateUi.claims.access.scp")}{" "}
+                <code>{accessPayload.scp || "—"}</code>
                 <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
                   <span
                     className="pi pi-forward mr-2"
@@ -823,25 +740,43 @@ export default function StepValidate(props: Readonly<Props>) {
                   {t("validateUi.skipped")}
                 </span>
               </li>
-              <li>
-                {t("validateUi.claims.access.wids")}{" "}
-                <code>
-                  {Array.isArray(accessPayload.wids)
-                    ? accessPayload.wids.join(" ")
-                    : accessPayload.wids || "—"}
-                </code>
-                <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
-                  <span
-                    className="pi pi-forward mr-2"
-                    aria-label={t("validateUi.skippedAria")}
-                  />
-                  {t("validateUi.skipped")}
-                </span>
-              </li>
-            </>
-          )}
-        </ul>
-        {/* Diagnostics UI removed */}
+            )}
+            {isClientCredentials && (
+              <>
+                <li>
+                  {t("validateUi.claims.access.roles")}{" "}
+                  <code>
+                    {Array.isArray(accessPayload.roles)
+                      ? accessPayload.roles.join(" ")
+                      : accessPayload.roles || "—"}
+                  </code>
+                  <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
+                    <span
+                      className="pi pi-forward mr-2"
+                      aria-label={t("validateUi.skippedAria")}
+                    />
+                    {t("validateUi.skipped")}
+                  </span>
+                </li>
+                <li>
+                  {t("validateUi.claims.access.wids")}{" "}
+                  <code>
+                    {Array.isArray(accessPayload.wids)
+                      ? accessPayload.wids.join(" ")
+                      : accessPayload.wids || "—"}
+                  </code>
+                  <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
+                    <span
+                      className="pi pi-forward mr-2"
+                      aria-label={t("validateUi.skippedAria")}
+                    />
+                    {t("validateUi.skipped")}
+                  </span>
+                </li>
+              </>
+            )}
+          </ul>
+        )}
       </div>
     </section>
   );

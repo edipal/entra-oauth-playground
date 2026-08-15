@@ -1,11 +1,32 @@
 {
   "HomePage": {
-    "title": "Microsoft Entra OAuth Playground",
-    "description": "Explore OAuth 2.0 and OpenID Connect flows end-to-end with a guided, step-by-step experience. Configure your Microsoft Entra app settings, generate authorization URLs, and walk through PKCE creation, callbacks, and token exchanges. See the exact requests and responses at each stage, decode and validate tokens, and understand key claims and security checks."
+    "title": "OAuth and OIDC Playground",
+    "description": "Explore OAuth 2.0 and OpenID Connect flows end-to-end with a guided, step-by-step experience. Choose an Entra or Auth0 workspace, configure app settings, generate authorization URLs, and walk through PKCE creation, callbacks, and token exchanges. See the exact requests and responses at each stage, decode and validate tokens, and understand key claims and security checks.",
+    "workspace": {
+      "entra": {
+        "title": "Microsoft Entra ID workspace",
+        "description": "Walk through OAuth 2.0 and OpenID Connect flows against a Microsoft Entra ID tenant. Settings in this workspace are tenant-centric and are stored separately from the Auth0 workspace."
+      },
+      "auth0": {
+        "title": "Auth0 workspace",
+        "description": "Walk through OAuth 2.0 and OpenID Connect flows against an Auth0 tenant. Settings in this workspace are issuer- and audience-centric, and the authorization code flows add Auth0 options such as RAR, PAR and JAR."
+      }
+    },
+    "flowsTitle": "Flows in this workspace",
+    "toolsTitle": "Shared tools"
+  },
+  "ProviderSelector": {
+    "label": "Identity provider workspace",
+    "options": {
+      "Entra": "Microsoft Entra ID",
+      "Auth0": "Auth0"
+    }
   },
   "Menu": {
     "Home": "Home",
     "GettingStarted": "Getting Started",
+    "Entra": "Microsoft Entra ID",
+    "Auth0": "Auth0",
     "PublicClients": "Public Clients",
     "ConfidentialClients": "Confidential Clients",
     "AuthorizationCodeFlow": "Authorization Code Flow",
@@ -15,16 +36,16 @@
   },
   "ToolsJwtDecoder": {
     "title": "JWT Decoder",
-    "description": "Paste a JWT and decode its header and payload claims.",
+    "description": "Paste a JWT or compact JWE and inspect its protected header and any readable payload claims.",
     "labels": {
-      "jwt": "JWT",
+      "jwt": "JWT or JWE",
       "headerClaims": "Header claims",
       "payloadClaims": "Payload claims"
     },
     "help": {
-      "jwt": "Paste a full JWT from another source. A leading 'Bearer ' prefix is ignored.",
-      "headerClaims": "Decoded JWT header claims.",
-      "payloadClaims": "Decoded JWT payload claims."
+      "jwt": "Paste a full JWT or compact JWE from another source. A leading 'Bearer ' prefix is ignored.",
+      "headerClaims": "Decoded JOSE protected header claims.",
+      "payloadClaims": "Decoded JSON payload claims when available. Encrypted JWE payloads cannot be decoded client-side."
     },
     "buttons": {
       "decode": "Decode",
@@ -37,7 +58,7 @@
   "StepAuthorize": {
     "sections": {
       "authorize": {
-        "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state and nonce, and PKCE parameters. You can also set response_mode, prompt, and login_hint to influence how the identity provider returns results or how the sign-in experience behaves. Click 'Open popup' to sign in and consent. After completing sign-in, the popup will redirect back and step 5 will auto-fill with the code."
+        "description": "We build the authorization URL including your client_id, redirect_uri, scopes, optional state and nonce, and PKCE parameters. Depending on the provider, you can also set prompt behavior, login hints, response handling, and other provider-specific authorization parameters before opening the popup. After completing sign-in, the popup will redirect back and the callback step will auto-fill with the returned values."
       },
       "settings": {
         "userProvidedTitle": "User-provided settings",
@@ -79,7 +100,7 @@
       "state": "Opaque value to maintain state between request and callback; helps prevent CSRF.",
       "nonce": "A string to associate a client session with an ID token; helps mitigate replay attacks.",
       "responseMode": "Where the response should be returned (query or form_post).",
-      "prompt": "Controls the behavior: login, consent, select_account, or none.",
+      "prompt": "Controls interactive behavior, for example login, consent, none, or provider-specific prompt values.",
       "loginHint": "Prefill the username or sign-in hint (e.g., email).",
       "authUrlPreview": "The full authorization URL that will open in the popup."
     }
@@ -96,13 +117,94 @@
       "apiResponse": "Response preview"
     },
     "help": {
-      "apiEndpoint": "HTTP endpoint to call with the access token (e.g., Microsoft Graph).",
+      "apiEndpoint": "HTTP endpoint to call with the access token (for example, Microsoft Graph or an OIDC userinfo endpoint).",
       "apiHeaders": "HTTP headers used for the API call (includes Authorization).",
       "apiResponse": "Raw response from the API call (pretty-printed if JSON)."
     },
     "buttons": {
       "sendGet": "Send GET",
       "sending": "Sending..."
+    }
+  },
+  "Auth0AuthorizationOptions": {
+    "modeDescriptions": {
+      "url": "Send the authorization request directly on the browser URL.",
+      "par": "Push the same authorization parameters to Auth0 first, then launch the browser with a request_uri.",
+      "jar": "Sign the same authorization parameters into a request object and send that object on the authorize URL. A runtime private key is required.",
+      "parJar": "Sign the authorization parameters into a request object, push it to Auth0, and launch with a request_uri. A runtime private key is required."
+    },
+    "labels": {
+      "mode": "Request mode",
+      "connection": "connection",
+      "connectionScope": "connection_scope",
+      "organization": "organization",
+      "invitation": "invitation",
+      "screenHint": "screen_hint",
+      "maxAge": "max_age",
+      "uiLocales": "ui_locales",
+      "acrValues": "acr_values",
+      "claimsLocales": "claims_locales",
+      "idTokenHint": "id_token_hint",
+      "rarJson": "Authorization details",
+      "requestObjectKey": "Request object signing key",
+      "requestObjectKid": "Request object key ID (kid)"
+    },
+    "help": {
+      "mode": "Auth0 authorization request transport: plain URL, pushed authorization request (PAR), JWT-secured authorization request (JAR), or PAR with a request object.",
+      "connection": "Optional Auth0 connection name to preselect a specific identity provider or database connection.",
+      "connectionScope": "Optional connection-specific scopes for supported upstream identity providers.",
+      "organization": "Optional Auth0 organization identifier or name for organization-aware login flows.",
+      "invitation": "Optional invitation identifier used together with organization invitations.",
+      "screenHint": "Optional hint for the Universal Login experience, for example starting on signup.",
+      "maxAge": "Maximum acceptable time in seconds since the user's last authentication.",
+      "uiLocales": "Ordered space-separated list of UI locales to request from the login experience.",
+      "acrValues": "Optional space-separated Authentication Context Class Reference values.",
+      "claimsLocales": "Ordered space-separated list of locales for claim values.",
+      "idTokenHint": "Previously issued ID token hint when the authorization request needs end-user context.",
+      "rarJson": "Optional Rich Authorization Requests JSON. Auth0 sends this as authorization_details.",
+      "requestObjectKey": "PKCS#8 PEM private key used to sign the request object. It stays in memory for this session and is never persisted. The same key is reused if you later choose private_key_jwt for client authentication.",
+      "requestObjectKid": "Identifies which registered key signed the request object. For Auth0 this is the key ID of the application credential holding the matching public key."
+    },
+    "placeholders": {
+      "connection": "Username-Password-Authentication",
+      "connectionScope": "read:profile write:profile",
+      "organization": "org_1234567890",
+      "invitation": "inv_1234567890",
+      "screenHint": "Select screen hint",
+      "maxAge": "3600",
+      "uiLocales": "en de",
+      "acrValues": "urn:mace:incommon:iap:silver",
+      "claimsLocales": "en de",
+      "idTokenHint": "eyJ...",
+      "rarJson": "['{'\"type\":\"payment_initiation\",\"locations\":[\"https://api.example.com\"]'}']",
+      "requestObjectKey": "-----BEGIN PRIVATE KEY-----",
+      "requestObjectKid": "Key ID of the registered signing key"
+    },
+    "options": {
+      "mode": {
+        "url": "URL",
+        "par": "PAR",
+        "jar": "JAR",
+        "parJar": "PAR + JAR"
+      },
+      "screenHint": {
+        "login": "login",
+        "signup": "signup"
+      }
+    },
+    "errors": {
+      "launchFailed": "Authorization launch failed.",
+      "parFailed": "PAR request failed.",
+      "parMissingRequestUri": "PAR response did not include a request_uri.",
+      "requestObjectMissingPrivateKey": "JAR requires a runtime private key. Generate or paste one before launching.",
+      "requestObjectFailed": "Request object creation failed.",
+      "requestObjectMissing": "Request object response did not include a request value.",
+      "rarInvalidJson": "Authorization details must be valid JSON.",
+      "rarNotArray": "Authorization details must be a JSON array of objects.",
+      "rarEmptyArray": "Authorization details must contain at least one entry.",
+      "rarEntryNotObject": "Every authorization details entry must be a JSON object.",
+      "rarEntryMissingType": "Every authorization details entry needs a non-empty \"type\" string.",
+      "rarTooLarge": "Authorization details must stay under {max} characters."
     }
   },
   "StepCallback": {
@@ -198,6 +300,8 @@
       "notVerified": "Not verified",
       "skipped": "Skipped",
       "skippedAria": "skipped",
+      "encryptedAccessToken": "This access token is an encrypted JWE. Only the protected header is readable here; signature validation must happen wherever the token can be decrypted.",
+      "encryptedClaimValidation": "Claim validation is skipped because the encrypted payload is not available in the browser.",
       "steps": {
         "extractKid": "Extract kid from token header",
         "extractAlg": "Extract alg from token header",
@@ -216,14 +320,14 @@
       "claims": {
         "id": {
           "aud": "aud must match client_id",
-          "iss": "iss must match tenant",
+          "iss": "iss must match provider issuer",
           "exp": "exp must be in the future",
           "nbfIat": "nbf/iat must be <= now (with small skew)",
           "nonce": "nonce must match"
         },
         "access": {
           "aud": "aud present (API audience)",
-          "iss": "iss must match tenant",
+          "iss": "iss must match provider issuer",
           "exp": "exp must be in the future",
           "nbfIat": "nbf/iat must be <= now (with small skew)",
           "scp": "scp (delegated scopes)",
@@ -238,79 +342,100 @@
   "StepSettings": {
     "sections": {
       "settings": {
-        "description": "Configure your client settings for the authorization code flow.",
+        "description": "Configure your provider and client settings for this flow.",
         "userProvidedTitle": "User-provided settings",
         "userProvidedDescription": "These fields are configurable by you and are used to build the authorization request.",
         "localStorageNotice": "These values will be saved in your browser's local storage for convenience.",
-        "resolvedTitle": "Resolved (read-only) values",
-        "resolvedDescription": "These values are derived from the tenant and other inputs. They are shown for reference and cannot be changed here."
+        "resolvedTitle": "Resolved values",
+        "resolvedDescription": "These values are derived from the provider and other inputs. Enable endpoint overrides to edit them."
       }
     },
     "labels": {
       "tenantId": "Entra Tenant ID",
+      "issuerUrl": "Issuer URL",
       "clientId": "Client ID",
       "scopes": "Scopes (space-separated)",
+      "audience": "Audience",
       "authEndpoint": "Authorization Endpoint",
       "tokenEndpoint": "Token Endpoint",
       "redirectUri": "Redirect URI",
       "streamlined": "Streamlined mode",
-      "pkceEnabled": "Use PKCE"
+      "pkceEnabled": "Use PKCE",
+      "endpointOverride": "Endpoint overrides"
     },
     "placeholders": {
       "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "scopes": "openid profile offline_access api://.../scope.read"
+      "issuerUrl": {
+        "entra": "",
+        "auth0": "https://your-tenant.auth0.com"
+      },
+      "clientId": "Application client ID",
+      "scopes": "openid profile offline_access api://.../scope.read",
+      "audience": "https://api.example.com"
     },
     "toggles": {
       "streamlinedOn": "Enabled",
       "streamlinedOff": "Disabled",
       "pkceEnabledOn": "Enabled",
-      "pkceEnabledOff": "Disabled"
+      "pkceEnabledOff": "Disabled",
+      "endpointOverrideOn": "Enabled",
+      "endpointOverrideOff": "Disabled"
     },
     "help": {
       "tenantId": "Directory (tenant) GUID of your Entra ID instance.",
-      "clientId": "Application (client) ID of your app registration.",
+      "issuerUrl": "HTTPS issuer URL from your Auth0 tenant. Discovery uses issuer/.well-known/openid-configuration.",
+      "clientId": "Application client ID from your provider registration.",
       "scopes": "Space-separated scopes to request (e.g., openid profile offline_access api://.../scope.read).",
-      "authEndpoint": "OAuth 2.0 v2 authorize endpoint. Tenant is substituted in {tenant}.",
-      "tokenEndpoint": "OAuth 2.0 v2 token endpoint. Tenant is substituted in {tenant}.",
+      "audience": "Optional API audience. Auth0 commonly requires this for API access and client credentials tokens.",
+      "authEndpoint": "Authorization endpoint resolved from the selected provider or OIDC discovery metadata.",
+      "tokenEndpoint": "Token endpoint resolved from the selected provider or OIDC discovery metadata.",
       "redirectUri": "Callback URL for this app. Must match the redirect URI in the app registration.",
       "streamlined": "Automatically runs steps and hides advanced fields to speed up the demo.",
-      "pkceEnabled": "PKCE is recommended for public clients and optional for confidential clients."
+      "pkceEnabled": "PKCE is recommended for public clients and optional for confidential clients.",
+      "endpointOverride": "Use custom authorization or token endpoints instead of the provider defaults or discovered metadata. Server-side token exchange still validates the endpoint."
     },
     "errors": {
       "tenantIdInvalid": "Tenant is required and must be a GUID",
+      "issuerUrlInvalid": "Issuer URL must be a valid HTTPS Auth0 tenant issuer URL",
+      "discoveryFailed": "Could not load OIDC discovery metadata: {error}",
       "clientIdRequired": "Client ID is required and must be a GUID",
       "clientIdInvalid": "Client ID must be a GUID",
+      "clientIdRequiredGeneric": "Client ID is required",
       "redirectUriInvalid": "Redirect URI must be a valid http(s) URL"
+    },
+    "status": {
+      "discoveryLoading": "Loading OIDC discovery metadata..."
     }
   },
   "StepDecode": {
     "sections": {
       "decode": {
-        "description": "Access and ID tokens are JWTs. Click 'Decode' to view the header and payload claims in a readable form."
+        "description": "Access and ID tokens are often JWTs, but some providers return encrypted JWE tokens. Click 'Decode' to inspect the protected header and any readable payload claims."
       }
     },
     "labels": {
-      "accessToken": "Access token (JWT)",
-      "idToken": "ID token (JWT)",
+      "accessToken": "Access token",
+      "idToken": "ID token",
       "accessHeader": "Access token header",
       "accessPayload": "Access token payload",
       "idHeader": "ID token header",
       "idPayload": "ID token payload"
     },
     "help": {
-      "accessToken": "Access token to call APIs. Shown as a JWT string.",
-      "idToken": "ID token representing the user identity. Shown as a JWT string.",
-      "accessHeader": "Decoded JWT header of the access token.",
-      "accessPayload": "Decoded JWT payload of the access token.",
-      "idHeader": "Decoded JWT header of the ID token.",
-      "idPayload": "Decoded JWT payload of the ID token."
+      "accessToken": "Access token to call APIs. Depending on the provider, this may be a signed JWT or an encrypted JWE.",
+      "idToken": "ID token representing the user identity. Typically a signed JWT.",
+      "accessHeader": "Decoded JOSE protected header of the access token.",
+      "accessPayload": "Decoded JSON payload of the access token when available. Encrypted JWE payloads are not readable client-side.",
+      "idHeader": "Decoded JOSE protected header of the ID token.",
+      "idPayload": "Decoded JSON payload of the ID token when available. Encrypted JWE payloads are not readable client-side."
     },
     "buttons": {
       "decode": "Decode"
     },
     "notes": {
-      "accessHeaderNonce": "This access token header contains a <code>nonce</code> field. This is a provider-specific JOSE header and is unrelated to the OIDC <code>nonce</code> claim, which is validated in the ID token payload."
+      "accessHeaderNonce": "This access token header contains a <code>nonce</code> field. This is a provider-specific JOSE header and is unrelated to the OIDC <code>nonce</code> claim, which is validated in the ID token payload.",
+      "encryptedPayloadPlaceholder": "[Encrypted JWE payload]",
+      "encryptedToken": "This token is an encrypted JWE. The protected header can be shown, but the payload cannot be decoded in the browser without the decryption key."
     },
     "claimsDialog": {
       "accessTitle": "Access token claims",
@@ -320,60 +445,83 @@
       "noClaims": "No claims available. Decode the token payload first.",
       "unknownClaimDescription": "Likely a custom or currently undocumented claim.",
       "references": {
-        "title": "Microsoft documentation",
+        "title": "Claim references",
         "access": "Access token claims reference",
         "id": "ID token claims reference",
-        "optional": "Optional claims reference"
+        "optional": "Optional claims reference",
+        "auth0": "Auth0 tokens",
+        "registered": "JWT registered claim names",
+        "iana": "IANA JWT claim registry"
       },
       "columns": {
         "name": "Name",
         "value": "Value",
         "description": "Description"
-      }
+      },
+      "namespacedClaimDescription": "Custom namespaced claim added by the tenant, for example through an Auth0 action or an Entra claims mapping policy. Namespaced claims are not part of the registered JWT claim set."
     },
     "claimDescriptions": {
-      "aud": "Audience: identifies the intended recipient of the token.",
-      "iss": "Issuer: the security token service that issued the token.",
-      "iat": "Issued at: the time when the token was issued.",
-      "nbf": "Not before: earliest time the token is valid.",
-      "exp": "Expiration time: latest time the token is valid.",
-      "sub": "Subject: stable identifier for the authenticated principal.",
-      "tid": "Tenant ID: Microsoft Entra tenant GUID.",
-      "ver": "Token version (for example 1.0 or 2.0).",
-      "nonce": "Nonce from the original auth request, used to mitigate replay in ID tokens.",
-      "at_hash": "Access token hash tied to the ID token in hybrid/auth flows.",
-      "c_hash": "Authorization code hash tied to the ID token in hybrid flows.",
-      "aio": "Internal claim used by Microsoft Entra for token reuse/telemetry semantics.",
-      "azp": "Authorized party: application allowed to use this token.",
-      "azpacr": "How the authorized party authenticated (for example public vs confidential).",
-      "appid": "Application ID of the client or calling app.",
-      "appidacr": "Authentication context class for the app identity.",
-      "idp": "Identity provider that authenticated the user.",
-      "oid": "Object ID of the user or service principal in the tenant.",
-      "preferred_username": "Preferred username display value, often suitable as sign-in hint.",
-      "name": "Human-readable display name for the user.",
-      "email": "Email address claim when configured and available.",
-      "given_name": "Given name (first name) of the user.",
-      "family_name": "Family name (last name) of the user.",
-      "upn": "User principal name.",
-      "unique_name": "Legacy unique username claim.",
-      "ipaddr": "IP address of the client at authentication time.",
-      "onprem_sid": "On-premises SID when synchronized from Active Directory.",
-      "pwd_exp": "Password expiration timestamp (legacy/conditional scenarios).",
-      "pwd_url": "URL where the user can change/reset password.",
-      "auth_time": "Time when user authentication occurred.",
-      "acr": "Authentication context class reference.",
-      "amr": "Authentication method references used during sign-in.",
-      "sid": "Session identifier for sign-in session tracking.",
-      "rh": "Refresh token/session binding hint used by Microsoft identity platform.",
-      "scp": "Scopes granted to the client for delegated access.",
-      "roles": "App roles or application permissions granted in the token.",
-      "wids": "Tenant-wide role template IDs assigned to the principal.",
-      "groups": "Security groups claim (may be omitted or overage-indicated for large memberships).",
-      "hasgroups": "Indicates group overage where full group list is not included in token.",
-      "uti": "Unique token identifier used for internal correlation.",
-      "xms_cc": "Client capability claim used for specific platform features.",
-      "xms_cae": "Continuous Access Evaluation related claim metadata."
+      "common": {
+        "aud": "Audience: identifies the intended recipient of the token.",
+        "iss": "Issuer: the security token service that issued the token.",
+        "iat": "Issued at: the time when the token was issued.",
+        "nbf": "Not before: earliest time the token is valid.",
+        "exp": "Expiration time: latest time the token is valid.",
+        "sub": "Subject: stable identifier for the authenticated principal.",
+        "jti": "JWT ID: unique identifier for this token, usable for replay detection.",
+        "nonce": "Nonce from the original auth request, used to mitigate replay in ID tokens.",
+        "at_hash": "Access token hash tied to the ID token in hybrid/auth flows.",
+        "c_hash": "Authorization code hash tied to the ID token in hybrid flows.",
+        "azp": "Authorized party: application allowed to use this token.",
+        "preferred_username": "Preferred username display value, often suitable as sign-in hint.",
+        "name": "Human-readable display name for the user.",
+        "email": "Email address claim when configured and available.",
+        "email_verified": "Whether the email address has been verified by the provider.",
+        "given_name": "Given name (first name) of the user.",
+        "family_name": "Family name (last name) of the user.",
+        "nickname": "Casual name for the user, may or may not be unique.",
+        "picture": "URL of a profile picture for the user.",
+        "locale": "Preferred locale of the user, for example en-US.",
+        "updated_at": "Time the user profile was last updated.",
+        "auth_time": "Time when user authentication occurred.",
+        "acr": "Authentication context class reference.",
+        "amr": "Authentication method references used during sign-in.",
+        "sid": "Session identifier for sign-in session tracking."
+      },
+      "entra": {
+        "tid": "Tenant ID: Microsoft Entra tenant GUID.",
+        "ver": "Token version (for example 1.0 or 2.0).",
+        "aio": "Internal claim used by Microsoft Entra for token reuse/telemetry semantics.",
+        "azpacr": "How the authorized party authenticated (for example public vs confidential).",
+        "appid": "Application ID of the client or calling app.",
+        "appidacr": "Authentication context class for the app identity.",
+        "idp": "Identity provider that authenticated the user.",
+        "oid": "Object ID of the user or service principal in the tenant.",
+        "upn": "User principal name.",
+        "unique_name": "Legacy unique username claim.",
+        "ipaddr": "IP address of the client at authentication time.",
+        "onprem_sid": "On-premises SID when synchronized from Active Directory.",
+        "pwd_exp": "Password expiration timestamp (legacy/conditional scenarios).",
+        "pwd_url": "URL where the user can change/reset password.",
+        "rh": "Refresh token/session binding hint used by Microsoft identity platform.",
+        "scp": "Scopes granted to the client for delegated access.",
+        "roles": "App roles or application permissions granted in the token.",
+        "wids": "Tenant-wide role template IDs assigned to the principal.",
+        "groups": "Security groups claim (may be omitted or overage-indicated for large memberships).",
+        "hasgroups": "Indicates group overage where full group list is not included in token.",
+        "uti": "Unique token identifier used for internal correlation.",
+        "xms_cc": "Client capability claim used for specific platform features.",
+        "xms_cae": "Continuous Access Evaluation related claim metadata."
+      },
+      "auth0": {
+        "scope": "Space-separated scopes granted to the client for this access token.",
+        "permissions": "Permissions granted to the token, present when the Auth0 API enables RBAC with permissions in the access token.",
+        "gty": "Grant type used to obtain this token, for example client-credentials or authorization_code.",
+        "client_id": "Client ID the token was issued to, typically present on client credentials tokens.",
+        "org_id": "Auth0 organization identifier when the user signed in through an organization.",
+        "org_name": "Auth0 organization name when the user signed in through an organization.",
+        "azp": "Authorized party: the client the token was issued to."
+      }
     }
   },
   "StepOverview": {
@@ -388,7 +536,8 @@
     "description": "Choose how the client will authenticate to the token endpoint when exchanging the authorization code.",
     "methodOptions": {
       "secret": "Client secret",
-      "certificate": "Certificate (private_key_jwt)"
+      "certificate": "Certificate (private_key_jwt)",
+      "auth0PrivateKey": "Private key (private_key_jwt)"
     },
     "labels": {
       "clientAuthMethod": "Client authentication",
@@ -407,12 +556,13 @@
       "clientSecret": "Your confidential client secret. For demo purposes this value stays in memory only (not persisted).",
       "privateKeyPem": "Keep this secure! This private key is used to sign the client assertion JWT.",
       "publicKeyPem": "The public key corresponding to your private key.",
-      "certificatePem": "Upload this certificate to Entra ID under App Registration → Certificates & secrets.",
-      "thumbprintSha1": "Use this as the Key ID (kid). This matches what you see in Entra ID portal.",
-      "clientAssertionKid": "This should match the \"Thumbprint\" shown in Entra ID → App Registration → Certificates & secrets",
+      "certificatePem": "Upload this certificate or public key material to your identity provider's client credentials or signing keys configuration.",
+      "thumbprintSha1": "Use this as the Key ID (kid) when your provider identifies uploaded certificates by thumbprint.",
+      "clientAssertionKid": "This should match the key identifier configured for the client signing key at your identity provider.",
       "assertionClaims": "Preview of the JWT claims that will be used in the client_assertion parameter.",
       "testAssertion": "A test client_assertion JWT generated with your private key.",
-      "decodedAssertion": "The decoded header and payload of the test JWT for verification purposes."
+      "decodedAssertion": "The decoded header and payload of the test JWT for verification purposes.",
+      "auth0ClientAssertionKid": "Auth0 derives this from the JWK thumbprint of your public key when the credential is created. The dashboard does not display it — read it from the Management API response for the credential."
     },
     "placeholders": {
       "clientAuthMethod": "Select Method",
@@ -424,7 +574,8 @@
       "clientAssertionKid": "Auto-filled when certificate is generated",
       "assertionClaims": "Click \"Preview Claims\" to see the JWT claims",
       "testAssertion": "Click \"Generate Test Assertion\" to create a test JWT",
-      "decodedAssertion": "Generated automatically when test assertion is created"
+      "decodedAssertion": "Generated automatically when test assertion is created",
+      "auth0ClientAssertionKid": "Key ID returned by Auth0 for the credential"
     },
     "steps": {
       "generateKeyPair": {
@@ -433,11 +584,11 @@
       },
       "generateCertificate": {
         "title": "Step 2: Create Self-Signed Certificate",
-        "description": "Create a self-signed X.509 certificate to upload to Microsoft Entra ID. The certificate thumbprint can be used as the kid."
+        "description": "Create a self-signed X.509 certificate to upload to your identity provider. The certificate thumbprint can be used as the kid."
       },
       "configureKid": {
         "title": "Step 3: Key ID (kid) - Auto-populated",
-        "description": "The certificate thumbprint (SHA-1) is automatically used as the Key ID and matches what you see in Entra ID portal."
+        "description": "The certificate thumbprint (SHA-1) is automatically used as the Key ID. Some providers display the same value as a certificate thumbprint."
       },
       "previewClaims": {
         "title": "Step 4: Preview Client Assertion Claims",
@@ -446,6 +597,14 @@
       "testAssertion": {
         "title": "Step 5: Test Generate Signed Assertion",
         "description": "Generate a test client_assertion JWT to verify it's working. The actual assertion will be created when calling the token endpoint."
+      },
+      "auth0RegisterPublicKey": {
+        "title": "Step 2: Register the public key with Auth0",
+        "description": "Copy the public key above into your application's Credentials tab, under Private Key JWT, with signing algorithm RS256. Auth0 stores the public key itself — no certificate is involved, so there is no thumbprint to compute here."
+      },
+      "auth0ConfigureKid": {
+        "title": "Step 3: Key ID (kid) - from the Auth0 credential",
+        "description": "Auth0 generates the key ID when it stores the credential, so it has to be read back rather than derived. Paste it here to identify which credential signed the assertion."
       }
     },
     "buttons": {
@@ -552,8 +711,7 @@
         }
       }
     }
-  }
-  ,
+  },
   "ClientCredentials": {
     "Main": {
       "title": "Client Credentials",

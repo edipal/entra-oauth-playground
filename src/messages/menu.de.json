@@ -2,6 +2,8 @@
   "Menu": {
     "Home": "Startseite",
     "GettingStarted": "Erste Schritte",
+    "Entra": "Microsoft Entra ID",
+    "Auth0": "Auth0",
     "PublicClients": "Öffentliche Clients",
     "ConfidentialClients": "Vertrauliche Clients",
     "AuthorizationCodeFlow": "Authorization Code Flow",

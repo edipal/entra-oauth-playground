@@ -31,7 +31,8 @@ const AppMenuitem = (props: AppMenuItemProps) => {
     ? props.parentKey + "-" + props.index
     : String(props.index);
   const isActiveRoute = !!itemTo && pathname === itemTo;
-  const active = activeMenu === key || (activeMenu?.startsWith(key + "-") ?? false);
+  const active =
+    activeMenu === key || (activeMenu?.startsWith(key + "-") ?? false);
   const compactMode = isSlim() || isSlimPlus() || isHorizontal();
 
   useSubmenuOverlayPosition({
@@ -70,7 +71,9 @@ const AppMenuitem = (props: AppMenuItemProps) => {
     setActiveMenu,
   ]);
 
-  const handleHoverNavigation = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleHoverNavigation = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+  ) => {
     if (props.root && compactMode) {
       const isSubmenu =
         event.currentTarget.closest(

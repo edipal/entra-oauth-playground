@@ -9,3 +9,10 @@ yarn-error.log*
 pnpm-debug.log*
 .env*
 certificates
+# e2e
+.env.e2e.local
+# the template carries no secrets and must stay tracked
+!.env.e2e.example
+e2e-report/
+test-results/
+playwright-report/

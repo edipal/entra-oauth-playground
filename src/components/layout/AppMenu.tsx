@@ -2,45 +2,48 @@ import type { MenuModel } from "@/types";
 import AppSubMenu from "./AppSubMenu";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { useActiveProvider } from "@/hooks/useActiveProvider";
+import { PROVIDER_APPS, getProviderRoutePath } from "@/lib/providerRegistry";
 
 const AppMenu = () => {
   const t = useTranslations("Menu");
-  const model: MenuModel[] = useMemo(
-    () => [
+  const { activeProviderId } = useActiveProvider();
+
+  const model: MenuModel[] = useMemo(() => {
+    const providerApp = PROVIDER_APPS[activeProviderId];
+    const publicFlows = providerApp.flows.filter(
+      (flow) => flow.group === "public",
+    );
+    const confidentialFlows = providerApp.flows.filter(
+      (flow) => flow.group === "confidential",
+    );
+
+    return [
       {
         label: t("Home"),
         items: [
           {
-            label: t("GettingStarted"),
+            label: t(providerApp.labelKey),
             icon: "pi pi-fw pi-home",
-            to: "/",
+            to: providerApp.landingPath,
           },
         ],
       },
       {
         label: t("PublicClients"),
-        items: [
-          {
-            label: t("AuthorizationCodeFlow"),
-            icon: "pi pi-fw pi-desktop",
-            to: "/authorization-code/public-client",
-          },
-        ],
+        items: publicFlows.map((flow) => ({
+          label: t(flow.labelKey),
+          icon: flow.icon,
+          to: getProviderRoutePath(activeProviderId, flow.pathSuffix),
+        })),
       },
       {
         label: t("ConfidentialClients"),
-        items: [
-          {
-            label: t("AuthorizationCodeFlow"),
-            icon: "pi pi-fw pi-server",
-            to: "/authorization-code/confidential-client",
-          },
-          {
-            label: t("ClientCredentialsFlow"),
-            icon: "pi pi-fw pi-key",
-            to: "/client-credentials",
-          },
-        ],
+        items: confidentialFlows.map((flow) => ({
+          label: t(flow.labelKey),
+          icon: flow.icon,
+          to: getProviderRoutePath(activeProviderId, flow.pathSuffix),
+        })),
       },
       {
         label: t("Tools"),
@@ -52,9 +55,8 @@ const AppMenu = () => {
           },
         ],
       },
-    ],
-    [t],
-  );
+    ];
+  }, [activeProviderId, t]);
 
   return <AppSubMenu model={model} />;
 };

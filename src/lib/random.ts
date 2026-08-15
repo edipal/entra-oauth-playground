@@ -5,7 +5,9 @@ export function randomBytes(length: number): Uint8Array {
     cryptoObj.getRandomValues(out);
   } else {
     // No secure RNG available (no Web Crypto). Fail fast — do not use insecure fallbacks.
-    throw new Error("Secure random not available: missing globalThis.crypto.getRandomValues");
+    throw new Error(
+      "Secure random not available: missing globalThis.crypto.getRandomValues",
+    );
   }
   return out;
 }

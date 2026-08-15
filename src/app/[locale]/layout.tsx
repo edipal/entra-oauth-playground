@@ -13,8 +13,9 @@ import ThemeLink from "@/components/ThemeLink";
 import { SettingsProvider } from "@/components/SettingsContext";
 
 export const metadata: Metadata = {
-  title: "Entra OAuth Playground",
-  description: "Entra OAuth Playground with Next.js and PrimeReact",
+  title: "OAuth Playground",
+  description:
+    "OAuth and OIDC Playground for Microsoft Entra ID and Auth0, built with Next.js and PrimeReact",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",

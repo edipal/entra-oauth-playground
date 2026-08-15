@@ -7,18 +7,28 @@ import { type ReactNode, useMemo, useState } from "react";
 import LabelWithHelp from "@/components/LabelWithHelp";
 import {
   ACCESS_CLAIMS_DOC,
+  AUTH0_TOKENS_DOC,
+  IANA_JWT_CLAIMS_DOC,
   ID_CLAIMS_DOC,
+  JWT_REGISTERED_CLAIMS_DOC,
   OPTIONAL_CLAIMS_DOC,
   parsePayloadToClaims,
+  resolveClaimDescriptions,
+  type ClaimDescriptionGroups,
 } from "@/lib/jwtClaims";
+import type { DecodedTokenFormat } from "@/lib/jwtDecode";
+import type { IdentityProviderId } from "@/lib/identityProvider";
 
 type Props = {
   accessToken: string;
   idToken: string;
   decodedAccessHeader: string;
   decodedAccessPayload: string;
+  decodedAccessFormat: DecodedTokenFormat;
   decodedIdHeader: string;
   decodedIdPayload: string;
+  decodedIdFormat: DecodedTokenFormat;
+  providerId?: IdentityProviderId;
   onDecodeTokens: () => void;
 };
 
@@ -31,8 +41,11 @@ export default function StepDecode({
   idToken,
   decodedAccessHeader,
   decodedAccessPayload,
+  decodedAccessFormat,
   decodedIdHeader,
   decodedIdPayload,
+  decodedIdFormat,
+  providerId = "entra",
   onDecodeTokens,
 }: Readonly<Props>) {
   const t = useTranslations("StepDecode");
@@ -40,10 +53,31 @@ export default function StepDecode({
     null,
   );
   const claimDescriptions = useMemo(
-    () => (t.raw("claimDescriptions") as Record<string, string>) ?? {},
-    [t],
+    () =>
+      resolveClaimDescriptions(
+        (t.raw("claimDescriptions") as ClaimDescriptionGroups) ?? {},
+        providerId,
+      ),
+    [t, providerId],
   );
   const unknownClaimDescription = t("claimsDialog.unknownClaimDescription");
+  const namespacedClaimDescription = t(
+    "claimsDialog.namespacedClaimDescription",
+  );
+  const accessPayloadValue = useMemo(
+    () =>
+      decodedAccessFormat === "jwe"
+        ? t("notes.encryptedPayloadPlaceholder")
+        : decodedAccessPayload,
+    [decodedAccessFormat, decodedAccessPayload, t],
+  );
+  const idPayloadValue = useMemo(
+    () =>
+      decodedIdFormat === "jwe"
+        ? t("notes.encryptedPayloadPlaceholder")
+        : decodedIdPayload,
+    [decodedIdFormat, decodedIdPayload, t],
+  );
   // Compute rows from content lines so areas grow to show all content
   const calcRows = (value: string, minRows: number) => {
     try {
@@ -62,12 +96,12 @@ export default function StepDecode({
     [decodedIdHeader],
   );
   const rowsAccessPayload = useMemo(
-    () => calcRows(decodedAccessPayload, 10),
-    [decodedAccessPayload],
+    () => calcRows(accessPayloadValue, 10),
+    [accessPayloadValue],
   );
   const rowsIdPayload = useMemo(
-    () => calcRows(decodedIdPayload, 10),
-    [decodedIdPayload],
+    () => calcRows(idPayloadValue, 10),
+    [idPayloadValue],
   );
   const accessClaims = useMemo(
     () =>
@@ -75,8 +109,14 @@ export default function StepDecode({
         decodedAccessPayload,
         claimDescriptions,
         unknownClaimDescription,
+        namespacedClaimDescription,
       ),
-    [decodedAccessPayload, claimDescriptions, unknownClaimDescription],
+    [
+      decodedAccessPayload,
+      claimDescriptions,
+      unknownClaimDescription,
+      namespacedClaimDescription,
+    ],
   );
   const idClaims = useMemo(
     () =>
@@ -84,8 +124,14 @@ export default function StepDecode({
         decodedIdPayload,
         claimDescriptions,
         unknownClaimDescription,
+        namespacedClaimDescription,
       ),
-    [decodedIdPayload, claimDescriptions, unknownClaimDescription],
+    [
+      decodedIdPayload,
+      claimDescriptions,
+      unknownClaimDescription,
+      namespacedClaimDescription,
+    ],
   );
   const hasAccessHeaderNonce = useMemo(() => {
     try {
@@ -101,11 +147,35 @@ export default function StepDecode({
       ? t("claimsDialog.accessTitle")
       : t("claimsDialog.idTitle");
   const primaryDocUrl =
-    activeDialogToken === "access" ? ACCESS_CLAIMS_DOC : ID_CLAIMS_DOC;
+    providerId === "auth0"
+      ? AUTH0_TOKENS_DOC
+      : activeDialogToken === "access"
+        ? ACCESS_CLAIMS_DOC
+        : ID_CLAIMS_DOC;
   const primaryDocLabel =
-    activeDialogToken === "access"
-      ? t("claimsDialog.references.access")
-      : t("claimsDialog.references.id");
+    providerId === "auth0"
+      ? t("claimsDialog.references.auth0")
+      : activeDialogToken === "access"
+        ? t("claimsDialog.references.access")
+        : t("claimsDialog.references.id");
+  const supplementalDocs =
+    providerId === "auth0"
+      ? [
+          {
+            href: JWT_REGISTERED_CLAIMS_DOC,
+            label: t("claimsDialog.references.registered"),
+          },
+          {
+            href: IANA_JWT_CLAIMS_DOC,
+            label: t("claimsDialog.references.iana"),
+          },
+        ]
+      : [
+          {
+            href: OPTIONAL_CLAIMS_DOC,
+            label: t("claimsDialog.references.optional"),
+          },
+        ];
 
   return (
     <section>
@@ -232,7 +302,7 @@ export default function StepDecode({
                     />
                     <p className="m-0 text-sm">
                       {(t as any).rich("notes.accessHeaderNonce", {
-                          code: renderCodeChunk,
+                        code: renderCodeChunk,
                       })}
                     </p>
                   </div>
@@ -290,13 +360,27 @@ export default function StepDecode({
                   id="accessPayload"
                   rows={rowsAccessPayload}
                   autoResize
-                  value={decodedAccessPayload}
+                  value={accessPayloadValue}
                   style={{
                     width: "100%",
                     whiteSpace: "pre-wrap",
                     resize: "vertical",
                   }}
                 />
+                {decodedAccessFormat === "jwe" && (
+                  <div className="mt-2 flex gap-3 align-items-start pl-2">
+                    <i
+                      className="pi pi-lock mr-2"
+                      style={{
+                        color: "var(--primary-color)",
+                        fontSize: "1.1rem",
+                        marginTop: "0.2rem",
+                      }}
+                      aria-hidden="true"
+                    />
+                    <p className="m-0 text-sm">{t("notes.encryptedToken")}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <div className="flex align-items-center gap-2 mb-2">
@@ -331,13 +415,27 @@ export default function StepDecode({
                   id="idPayload"
                   rows={rowsIdPayload}
                   autoResize
-                  value={decodedIdPayload}
+                  value={idPayloadValue}
                   style={{
                     width: "100%",
                     whiteSpace: "pre-wrap",
                     resize: "vertical",
                   }}
                 />
+                {decodedIdFormat === "jwe" && (
+                  <div className="mt-2 flex gap-3 align-items-start pl-2">
+                    <i
+                      className="pi pi-lock mr-2"
+                      style={{
+                        color: "var(--primary-color)",
+                        fontSize: "1.1rem",
+                        marginTop: "0.2rem",
+                      }}
+                      aria-hidden="true"
+                    />
+                    <p className="m-0 text-sm">{t("notes.encryptedToken")}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -420,15 +518,17 @@ export default function StepDecode({
                     {primaryDocLabel}
                   </a>
                 </li>
-                <li>
-                  <a
-                    href={OPTIONAL_CLAIMS_DOC}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {t("claimsDialog.references.optional")}
-                  </a>
-                </li>
+                {supplementalDocs.map((reference) => (
+                  <li key={reference.href}>
+                    <a
+                      href={reference.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {reference.label}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>

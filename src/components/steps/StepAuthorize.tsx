@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
@@ -22,6 +23,11 @@ type Props = {
   setLoginHint: (v: string) => void;
   authUrlPreview: string;
   onOpenPopup: () => void;
+  advancedAuthorizationOptions?: ReactNode;
+  authorizationLaunchError?: string;
+  launchDisabled?: boolean;
+  showResponseMode?: boolean;
+  includeSelectAccountPrompt?: boolean;
   hideAdvanced?: boolean;
 };
 
@@ -41,6 +47,11 @@ export default function StepAuthorize({
   setLoginHint,
   authUrlPreview,
   onOpenPopup,
+  advancedAuthorizationOptions,
+  authorizationLaunchError,
+  launchDisabled = false,
+  showResponseMode = true,
+  includeSelectAccountPrompt = true,
   hideAdvanced,
 }: Readonly<Props>) {
   const t = useTranslations("StepAuthorize");
@@ -51,9 +62,15 @@ export default function StepAuthorize({
   const promptOptions = [
     { label: t("options.prompt.login"), value: "login" },
     { label: t("options.prompt.consent"), value: "consent" },
-    { label: t("options.prompt.select_account"), value: "select_account" },
     { label: t("options.prompt.none"), value: "none" },
   ];
+
+  if (includeSelectAccountPrompt) {
+    promptOptions.splice(2, 0, {
+      label: t("options.prompt.select_account"),
+      value: "select_account",
+    });
+  }
   return (
     <>
       <p>{t("sections.authorize.description")}</p>
@@ -182,34 +199,36 @@ export default function StepAuthorize({
 
           {!hideAdvanced && (
             <>
-              <div className="col-12">
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "minmax(10rem, 14rem) 1fr",
-                    alignItems: "center",
-                    columnGap: "0.5rem",
-                  }}
-                >
-                  <div style={{ textAlign: "left" }}>
-                    <LabelWithHelp
-                      id="responseMode"
-                      text={t("labels.responseMode")}
-                      help={t("help.responseMode")}
-                    />
-                  </div>
-                  <div>
-                    <Dropdown
-                      id="responseMode"
-                      value={responseMode}
-                      onChange={(e) => setResponseMode(e.value)}
-                      options={responseModeOptions}
-                      placeholder={t("placeholders.selectMethod")}
-                      style={{ width: "100%" }}
-                    />
+              {showResponseMode && (
+                <div className="col-12">
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(10rem, 14rem) 1fr",
+                      alignItems: "center",
+                      columnGap: "0.5rem",
+                    }}
+                  >
+                    <div style={{ textAlign: "left" }}>
+                      <LabelWithHelp
+                        id="responseMode"
+                        text={t("labels.responseMode")}
+                        help={t("help.responseMode")}
+                      />
+                    </div>
+                    <div>
+                      <Dropdown
+                        id="responseMode"
+                        value={responseMode}
+                        onChange={(e) => setResponseMode(e.value)}
+                        options={responseModeOptions}
+                        placeholder={t("placeholders.selectMethod")}
+                        style={{ width: "100%" }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="col-12">
                 <div
@@ -267,6 +286,8 @@ export default function StepAuthorize({
                   </div>
                 </div>
               </div>
+
+              {advancedAuthorizationOptions}
             </>
           )}
         </div>
@@ -295,9 +316,14 @@ export default function StepAuthorize({
                 label={t("buttons.openPopup")}
                 icon="pi pi-external-link"
                 onClick={onOpenPopup}
-                disabled={!authUrlPreview}
+                disabled={!authUrlPreview || launchDisabled}
               />
             </div>
+            {authorizationLaunchError && (
+              <small className="p-error block mt-2">
+                {authorizationLaunchError}
+              </small>
+            )}
           </div>
         </div>
       </div>

@@ -26,7 +26,11 @@ export default function StepTokens({
   const toPretty = (v: unknown) => {
     if (v === null || v === undefined) return "";
     if (typeof v === "string") return v;
-    if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint")
+    if (
+      typeof v === "number" ||
+      typeof v === "boolean" ||
+      typeof v === "bigint"
+    )
       return String(v);
     try {
       return JSON.stringify(v, null, 2);
