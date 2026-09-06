@@ -12,19 +12,22 @@ export type ClientAssertionClaims = {
 
 /**
  * Builds the claims for a client assertion (for preview purposes).
+ *
+ * `audience` is provider-specific — see `getClientAssertionAudience` in
+ * identityProvider.ts. It is not always the token endpoint.
  */
 export function buildClientAssertionClaims(params: {
   clientId: string;
-  tokenEndpoint: string;
+  audience: string;
   lifetimeSec?: number;
 }): ClientAssertionClaims {
-  const { clientId, tokenEndpoint, lifetimeSec = 60 } = params;
+  const { clientId, audience, lifetimeSec = 60 } = params;
   const now = Math.floor(Date.now() / 1000);
 
   return {
     iss: clientId,
     sub: clientId,
-    aud: tokenEndpoint,
+    aud: audience,
     jti: randomGuidLike(),
     iat: now,
     exp: now + lifetimeSec,
@@ -34,14 +37,18 @@ export function buildClientAssertionClaims(params: {
 /**
  * Builds and signs a client assertion JWT for OAuth 2.0 private_key_jwt authentication.
  *
+ * @param params.audience - The `aud` claim, which is provider-specific: the token
+ *   endpoint for Entra, the tenant URL with a trailing slash for Auth0. Use
+ *   `getClientAssertionAudience` rather than passing an endpoint directly.
  * @param params.x5t - X.509 Certificate SHA-1 Thumbprint (base64url-encoded).
  *   - This is what Microsoft Entra ID uses to identify the certificate
  *   - Should be the base64url-encoded SHA-1 hash of the DER certificate
- * @param params.kid - Optional Key ID for backward compatibility (uses same value as x5t)
+ * @param params.kid - Key ID. Entra reuses the SHA-1 thumbprint; Auth0 generates
+ *   its own JWK thumbprint per credential and has no certificate involved.
  */
 export async function buildClientAssertion(params: {
   clientId: string;
-  tokenEndpoint: string;
+  audience: string;
   privateKeyPem: string;
   x5t?: string;
   kid?: string;
@@ -49,7 +56,7 @@ export async function buildClientAssertion(params: {
 }): Promise<string> {
   const {
     clientId,
-    tokenEndpoint,
+    audience,
     privateKeyPem,
     x5t,
     kid,
@@ -72,7 +79,7 @@ export async function buildClientAssertion(params: {
   const jwt = new SignJWT({
     iss: clientId,
     sub: clientId,
-    aud: tokenEndpoint,
+    aud: audience,
     jti: randomGuidLike(),
   })
     .setProtectedHeader(protectedHeader)

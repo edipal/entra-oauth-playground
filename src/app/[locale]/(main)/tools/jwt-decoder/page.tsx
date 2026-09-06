@@ -6,28 +6,46 @@ import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputTextarea } from "primereact/inputtextarea";
 import LabelWithHelp from "@/components/LabelWithHelp";
-import { decodeJwt } from "@/lib/jwtDecode";
+import { useActiveProvider } from "@/hooks/useActiveProvider";
+import { decodeJwt, type DecodedTokenFormat } from "@/lib/jwtDecode";
 import {
   ACCESS_CLAIMS_DOC,
+  AUTH0_TOKENS_DOC,
+  IANA_JWT_CLAIMS_DOC,
   ID_CLAIMS_DOC,
+  JWT_REGISTERED_CLAIMS_DOC,
   OPTIONAL_CLAIMS_DOC,
   parsePayloadToClaims,
+  resolveClaimDescriptions,
+  type ClaimDescriptionGroups,
 } from "@/lib/jwtClaims";
 
 export default function JwtDecoderToolPage() {
   const t = useTranslations("ToolsJwtDecoder");
   const tDecode = useTranslations("StepDecode");
+  const { activeProviderId } = useActiveProvider();
 
   const [jwt, setJwt] = useState("");
   const [decodedHeader, setDecodedHeader] = useState("");
   const [decodedPayload, setDecodedPayload] = useState("");
+  const [decodedFormat, setDecodedFormat] =
+    useState<DecodedTokenFormat>("invalid");
   const [showClaimsDialog, setShowClaimsDialog] = useState(false);
 
   const claimDescriptions = useMemo(
-    () => (tDecode.raw("claimDescriptions") as Record<string, string>) ?? {},
-    [tDecode],
+    () =>
+      resolveClaimDescriptions(
+        (tDecode.raw("claimDescriptions") as ClaimDescriptionGroups) ?? {},
+        activeProviderId,
+      ),
+    [tDecode, activeProviderId],
   );
-  const unknownClaimDescription = tDecode("claimsDialog.unknownClaimDescription");
+  const unknownClaimDescription = tDecode(
+    "claimsDialog.unknownClaimDescription",
+  );
+  const namespacedClaimDescription = tDecode(
+    "claimsDialog.namespacedClaimDescription",
+  );
 
   const claims = useMemo(
     () =>
@@ -35,8 +53,14 @@ export default function JwtDecoderToolPage() {
         decodedPayload,
         claimDescriptions,
         unknownClaimDescription,
+        namespacedClaimDescription,
       ),
-    [decodedPayload, claimDescriptions, unknownClaimDescription],
+    [
+      decodedPayload,
+      claimDescriptions,
+      unknownClaimDescription,
+      namespacedClaimDescription,
+    ],
   );
 
   const calcRows = (value: string, minRows: number) => {
@@ -49,13 +73,51 @@ export default function JwtDecoderToolPage() {
   };
 
   const rowsHeader = useMemo(() => calcRows(decodedHeader, 6), [decodedHeader]);
-  const rowsPayload = useMemo(() => calcRows(decodedPayload, 10), [decodedPayload]);
+  const payloadValue = useMemo(
+    () =>
+      decodedFormat === "jwe"
+        ? tDecode("notes.encryptedPayloadPlaceholder")
+        : decodedPayload,
+    [decodedFormat, decodedPayload, tDecode],
+  );
+  const rowsPayload = useMemo(() => calcRows(payloadValue, 10), [payloadValue]);
+  const claimReferences =
+    activeProviderId === "auth0"
+      ? [
+          {
+            href: AUTH0_TOKENS_DOC,
+            label: tDecode("claimsDialog.references.auth0"),
+          },
+          {
+            href: JWT_REGISTERED_CLAIMS_DOC,
+            label: tDecode("claimsDialog.references.registered"),
+          },
+          {
+            href: IANA_JWT_CLAIMS_DOC,
+            label: tDecode("claimsDialog.references.iana"),
+          },
+        ]
+      : [
+          {
+            href: ACCESS_CLAIMS_DOC,
+            label: tDecode("claimsDialog.references.access"),
+          },
+          {
+            href: ID_CLAIMS_DOC,
+            label: tDecode("claimsDialog.references.id"),
+          },
+          {
+            href: OPTIONAL_CLAIMS_DOC,
+            label: tDecode("claimsDialog.references.optional"),
+          },
+        ];
 
   const handleDecode = () => {
     const token = jwt.trim().replace(/^Bearer\s+/i, "");
     const decoded = decodeJwt(token);
     setDecodedHeader(decoded.header);
     setDecodedPayload(decoded.payload);
+    setDecodedFormat(decoded.format);
   };
 
   return (
@@ -78,7 +140,11 @@ export default function JwtDecoderToolPage() {
                 autoResize
                 value={jwt}
                 onChange={(e) => setJwt(e.target.value)}
-                style={{ width: "100%", whiteSpace: "pre-wrap", resize: "vertical" }}
+                style={{
+                  width: "100%",
+                  whiteSpace: "pre-wrap",
+                  resize: "vertical",
+                }}
               />
             </div>
 
@@ -104,7 +170,11 @@ export default function JwtDecoderToolPage() {
                 autoResize
                 value={decodedHeader}
                 readOnly
-                style={{ width: "100%", whiteSpace: "pre-wrap", resize: "vertical" }}
+                style={{
+                  width: "100%",
+                  whiteSpace: "pre-wrap",
+                  resize: "vertical",
+                }}
               />
             </div>
 
@@ -141,10 +211,30 @@ export default function JwtDecoderToolPage() {
                 id="jwtPayloadClaims"
                 rows={rowsPayload}
                 autoResize
-                value={decodedPayload}
+                value={payloadValue}
                 readOnly
-                style={{ width: "100%", whiteSpace: "pre-wrap", resize: "vertical" }}
+                style={{
+                  width: "100%",
+                  whiteSpace: "pre-wrap",
+                  resize: "vertical",
+                }}
               />
+              {decodedFormat === "jwe" && (
+                <div className="mt-2 flex gap-3 align-items-start pl-2">
+                  <i
+                    className="pi pi-lock mr-2"
+                    style={{
+                      color: "var(--primary-color)",
+                      fontSize: "1.1rem",
+                      marginTop: "0.2rem",
+                    }}
+                    aria-hidden="true"
+                  />
+                  <p className="m-0 text-sm">
+                    {tDecode("notes.encryptedToken")}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -179,10 +269,16 @@ export default function JwtDecoderToolPage() {
                   </thead>
                   <tbody>
                     {claims.map((claim) => (
-                      <tr key={claim.name} className="surface-border border-bottom-1">
+                      <tr
+                        key={claim.name}
+                        className="surface-border border-bottom-1"
+                      >
                         <td
                           className="p-2"
-                          style={{ verticalAlign: "top", wordBreak: "break-word" }}
+                          style={{
+                            verticalAlign: "top",
+                            wordBreak: "break-word",
+                          }}
                         >
                           {claim.name}
                         </td>
@@ -198,7 +294,10 @@ export default function JwtDecoderToolPage() {
                         </td>
                         <td
                           className="p-2"
-                          style={{ verticalAlign: "top", wordBreak: "break-word" }}
+                          style={{
+                            verticalAlign: "top",
+                            wordBreak: "break-word",
+                          }}
                         >
                           {claim.description}
                         </td>
@@ -212,21 +311,17 @@ export default function JwtDecoderToolPage() {
                     {tDecode("claimsDialog.references.title")}
                   </p>
                   <ul className="m-0 pl-3">
-                    <li>
-                      <a href={ACCESS_CLAIMS_DOC} target="_blank" rel="noopener noreferrer">
-                        {tDecode("claimsDialog.references.access")}
-                      </a>
-                    </li>
-                    <li>
-                      <a href={ID_CLAIMS_DOC} target="_blank" rel="noopener noreferrer">
-                        {tDecode("claimsDialog.references.id")}
-                      </a>
-                    </li>
-                    <li>
-                      <a href={OPTIONAL_CLAIMS_DOC} target="_blank" rel="noopener noreferrer">
-                        {tDecode("claimsDialog.references.optional")}
-                      </a>
-                    </li>
+                    {claimReferences.map((reference) => (
+                      <li key={reference.href}>
+                        <a
+                          href={reference.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {reference.label}
+                        </a>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </div>

@@ -1,11 +1,32 @@
 {
   "HomePage": {
-    "title": "Microsoft Entra OAuth Playground",
-    "description": "Entdecken Sie OAuth 2.0- und OpenID-Connect-Flows von Anfang bis Ende mit einer geführten Schritt-für-Schritt-Erfahrung. Konfigurieren Sie Ihre Microsoft-Entra-App-Einstellungen, erzeugen Sie Autorisierungs-URLs und gehen Sie PKCE, Callback und Token-Austausch durch. Sehen Sie an jeder Stelle die exakten Requests und Responses, dekodieren und validieren Sie Tokens und verstehen Sie wichtige Claims sowie Sicherheitsprüfungen."
+    "title": "OAuth- und OIDC-Playground",
+    "description": "Entdecken Sie OAuth 2.0- und OpenID-Connect-Flows von Anfang bis Ende mit einer geführten Schritt-für-Schritt-Erfahrung. Wählen Sie einen Entra- oder Auth0-Arbeitsbereich, konfigurieren Sie App-Einstellungen, erzeugen Sie Autorisierungs-URLs und gehen Sie PKCE, Callback und Token-Austausch durch. Sehen Sie an jeder Stelle die exakten Requests und Responses, dekodieren und validieren Sie Tokens und verstehen Sie wichtige Claims sowie Sicherheitsprüfungen.",
+    "workspace": {
+      "entra": {
+        "title": "Microsoft-Entra-ID-Arbeitsbereich",
+        "description": "Gehen Sie OAuth-2.0- und OpenID-Connect-Flows gegen einen Microsoft-Entra-ID-Mandanten durch. Die Einstellungen dieses Arbeitsbereichs sind mandantenzentriert und werden getrennt vom Auth0-Arbeitsbereich gespeichert."
+      },
+      "auth0": {
+        "title": "Auth0-Arbeitsbereich",
+        "description": "Gehen Sie OAuth-2.0- und OpenID-Connect-Flows gegen einen Auth0-Mandanten durch. Die Einstellungen dieses Arbeitsbereichs sind issuer- und audience-zentriert, und die Authorization-Code-Flows bieten zusätzlich Auth0-Optionen wie RAR, PAR und JAR."
+      }
+    },
+    "flowsTitle": "Flows in diesem Arbeitsbereich",
+    "toolsTitle": "Gemeinsame Tools"
+  },
+  "ProviderSelector": {
+    "label": "Identity-Provider-Arbeitsbereich",
+    "options": {
+      "Entra": "Microsoft Entra ID",
+      "Auth0": "Auth0"
+    }
   },
   "Menu": {
     "Home": "Startseite",
     "GettingStarted": "Erste Schritte",
+    "Entra": "Microsoft Entra ID",
+    "Auth0": "Auth0",
     "PublicClients": "Öffentliche Clients",
     "ConfidentialClients": "Vertrauliche Clients",
     "AuthorizationCodeFlow": "Authorization Code Flow",
@@ -15,16 +36,16 @@
   },
   "ToolsJwtDecoder": {
     "title": "JWT Decoder",
-    "description": "Fügen Sie ein JWT ein und dekodieren Sie Header- und Payload-Claims.",
+    "description": "Fügen Sie ein JWT oder ein kompaktes JWE ein und prüfen Sie den geschützten Header sowie lesbare Payload-Claims.",
     "labels": {
-      "jwt": "JWT",
+      "jwt": "JWT oder JWE",
       "headerClaims": "Header-Claims",
       "payloadClaims": "Payload-Claims"
     },
     "help": {
-      "jwt": "Fügen Sie ein vollständiges JWT aus einer anderen Quelle ein. Ein führendes 'Bearer '-Präfix wird ignoriert.",
-      "headerClaims": "Dekodierte JWT-Header-Claims.",
-      "payloadClaims": "Dekodierte JWT-Payload-Claims."
+      "jwt": "Fügen Sie ein vollständiges JWT oder ein kompaktes JWE aus einer anderen Quelle ein. Ein führendes 'Bearer '-Präfix wird ignoriert.",
+      "headerClaims": "Dekodierte Claims des geschützten JOSE-Headers.",
+      "payloadClaims": "Dekodierte JSON-Payload-Claims, sofern verfügbar. Verschlüsselte JWE-Payloads können clientseitig nicht dekodiert werden."
     },
     "buttons": {
       "decode": "Dekodieren",
@@ -37,11 +58,16 @@
   "StepAuthorize": {
     "sections": {
       "authorize": {
-        "description": "Wir erstellen die Autorisierungs-URL mit Ihrer client_id, redirect_uri, scopes, optionalem state und nonce sowie den PKCE-Parametern. Sie können response_mode, prompt und login_hint setzen, um zu steuern, wie der Identitätsanbieter Ergebnisse zurückliefert oder wie sich die Anmeldung verhält. Klicken Sie auf \"Popup öffnen\", um sich anzumelden und zuzustimmen. Nach Abschluss leitet das Popup zurück und Schritt 5 füllt den Code automatisch aus."
+        "description": "Wir erstellen die Autorisierungs-URL mit Ihrer client_id, redirect_uri, scopes, optionalem state und nonce sowie den PKCE-Parametern. Je nach Provider können Sie außerdem Prompt-Verhalten, Login-Hinweise, Antwortverarbeitung und weitere providerspezifische Autorisierungsparameter setzen, bevor Sie das Popup öffnen. Nach Abschluss der Anmeldung leitet das Popup zurück und der Callback-Schritt füllt die zurückgegebenen Werte automatisch aus."
       },
       "settings": {
-        "userProvidedTitle": "Vom Benutzer bereitgestellte Einstellungen",
-        "userProvidedDescription": "Diese Felder werden von Ihnen konfiguriert und für die Autorisierungsanfrage verwendet."
+        "userProvidedTitle": "Benutzerdefinierte Einstellungen",
+        "userProvidedDescription": "Diese Felder werden von Ihnen konfiguriert und zum Erstellen der Autorisierungsanforderung verwendet."
+      },
+      "par": {
+        "title": "Pushed Authorization Request (PAR - RFC 9126)",
+        "description": "Übermitteln Sie die Autorisierungsparameter vor dem Starten des Browsers über einen Backchannel-HTTP-POST. Auth0 gibt eine request_uri zurück, die anschließend am Autorisierungsendpunkt verwendet wird.",
+        "browserTitle": "Browser-Autorisierungsanfrage"
       }
     },
     "labels": {
@@ -50,17 +76,22 @@
       "nonce": "nonce",
       "responseMode": "response_mode",
       "prompt": "prompt",
-      "loginHint": "login_hint"
+      "loginHint": "login_hint",
+      "parEndpoint": "PAR-Endpunkt",
+      "parRequest": "PAR-Anfrage-Body",
+      "parResponse": "PAR-Antwort"
     },
     "placeholders": {
-      "state": "Optionaler state (empfohlen)",
-      "nonce": "Optionale nonce",
+      "state": "Optionaler State (empfohlen)",
+      "nonce": "Optionale Nonce",
       "selectMethod": "Methode auswählen",
       "loginHint": "user@domain.com"
     },
     "buttons": {
       "generate": "Generieren",
-      "openPopup": "Popup öffnen"
+      "openPopup": "Popup öffnen",
+      "pushPar": "An PAR senden",
+      "pushingPar": "Wird gesendet..."
     },
     "options": {
       "responseMode": {
@@ -75,13 +106,17 @@
       }
     },
     "help": {
-      "responseType": "OAuth-Parameter response_type; für PKCE ist er 'code'.",
-      "state": "Opaker Wert, um den Zustand zwischen Anfrage und Callback zu erhalten; hilft, CSRF zu verhindern.",
-      "nonce": "Zeichenfolge, um eine Client-Sitzung mit einem ID-Token zu verknüpfen; hilft, Replay-Angriffe zu mindern.",
-      "responseMode": "Wo die Antwort zurückgegeben werden soll (query oder form_post).",
-      "prompt": "Steuert das Verhalten: login, consent, select_account oder none.",
-      "loginHint": "Benutzernamen bzw. Sign-In-Hinweis vorausfüllen (z. B. E-Mail).",
-      "authUrlPreview": "Die vollständige Autorisierungs-URL, die im Popup geöffnet wird."
+      "responseType": "OAuth-Parameter response_type; für PKCE lautet dieser 'code'.",
+      "state": "Opaker Wert zur Zustandserhaltung zwischen Anfrage und Callback; schützt vor CSRF.",
+      "nonce": "Eine Zeichenfolge, um eine Client-Sitzung mit einem ID-Token zu verknüpfen; mindert Replay-Angriffe.",
+      "responseMode": "Wohin die Antwort zurückgegeben werden soll (query oder form_post).",
+      "prompt": "Steuert das interaktive Verhalten, z. B. login, consent, none oder anbieterspezifische Werte.",
+      "loginHint": "Benutzernamen oder Anmeldehinweis vorab ausfüllen (z. B. E-Mail).",
+      "authUrlPreview": "Die vollständige Autorisierungs-URL, die im Popup geöffnet wird.",
+      "parEndpoint": "Der Endpunkt, an den die Autorisierungsparameter per Backchannel-HTTP-POST übertragen werden.",
+      "parRequest": "Parameter, die an den PAR-Endpunkt gesendet werden, einschließlich Client-Anmeldeinformationen, Scopes und authorization_details.",
+      "parResponse": "Live-Antwort des PAR-Endpunkts mit request_uri und expires_in.",
+      "browserAuthUrl": "Die bereinigte Autorisierungs-URL mit request_uri, die im Browser-Popup geöffnet wird."
     }
   },
   "StepCallApi": {
@@ -96,13 +131,109 @@
       "apiResponse": "Antwortvorschau"
     },
     "help": {
-      "apiEndpoint": "HTTP-Endpunkt, der mit dem Access Token aufgerufen wird (z. B. Microsoft Graph).",
+      "apiEndpoint": "HTTP-Endpunkt, der mit dem Access Token aufgerufen wird (z. B. Microsoft Graph oder ein OIDC-userinfo-Endpunkt).",
       "apiHeaders": "HTTP-Header für den API-Aufruf (enthält Authorization).",
       "apiResponse": "Rohe Antwort des API-Aufrufs (formatiert, falls JSON)."
     },
     "buttons": {
       "sendGet": "GET senden",
       "sending": "Senden..."
+    }
+  },
+  "Auth0AuthorizationOptions": {
+    "methodOptions": {
+      "secret": "Client Secret",
+      "auth0PrivateKey": "Privater Schlüssel (private_key_jwt)"
+    },
+    "modeDescriptions": {
+      "url": "Senden Sie die Autorisierungsanfrage direkt über die Browser-URL.",
+      "par": "Übermitteln Sie dieselben Autorisierungsparameter zuerst per PAR an Auth0 und starten Sie den Browser anschließend mit einer request_uri.",
+      "jar": "Signieren Sie dieselben Autorisierungsparameter in ein Request Object und senden Sie dieses Objekt auf der Autorisierungs-URL. Dafür ist ein privater Laufzeitschlüssel erforderlich.",
+      "parJar": "Signieren Sie die Autorisierungsparameter in ein Request Object, senden Sie es per PAR an Auth0 und starten Sie anschließend mit einer request_uri. Dafür ist ein privater Laufzeitschlüssel erforderlich."
+    },
+    "labels": {
+      "mode": "Request-Modus",
+      "clientAuthMethod": "Client-Authentifizierung",
+      "connection": "connection",
+      "connectionScope": "connection_scope",
+      "organization": "organization",
+      "invitation": "invitation",
+      "screenHint": "screen_hint",
+      "maxAge": "max_age",
+      "uiLocales": "ui_locales",
+      "acrValues": "acr_values",
+      "claimsLocales": "claims_locales",
+      "idTokenHint": "id_token_hint",
+      "rarJson": "Autorisierungsdetails",
+      "clientSecret": "Client Secret",
+      "requestObjectKey": "Signaturschlüssel für das Request Object",
+      "requestObjectKid": "Key ID (kid) des Request Objects",
+      "privateKey": "Privater Schlüssel (PKCS#8 PEM)",
+      "clientAssertionKid": "Schlüssel-ID (kid)"
+    },
+    "help": {
+      "mode": "Auth0-Autorisierungsrequest-Transport: normale URL, Pushed Authorization Request (PAR), JWT-secured Authorization Request (JAR) oder PAR mit Request Object.",
+      "clientAuthMethod": "Wählen Sie, wie sich der vertrauliche Client bei der Übergabe der Autorisierungsanforderung an den PAR-Endpunkt von Auth0 authentifiziert.",
+      "connection": "Optionaler Auth0-Connection-Name, um einen bestimmten Identity Provider oder eine Datenbankverbindung vorab auszuwählen.",
+      "connectionScope": "Optionale connection-spezifische Scopes für unterstützte vorgelagerte Identity Provider.",
+      "organization": "Optionale Auth0-Organisations-ID oder -Name für organisationsbezogene Login-Flows.",
+      "invitation": "Optionale Einladungs-ID, die zusammen mit Organisationseinladungen verwendet wird.",
+      "screenHint": "Optionaler Hinweis für Universal Login, zum Beispiel um direkt auf der Registrierungsansicht zu starten.",
+      "maxAge": "Maximal zulässige Zeit in Sekunden seit der letzten Authentifizierung des Benutzers.",
+      "uiLocales": "Sortierte, leerzeichengetrennte Liste angeforderter UI-Gebietsschemata für die Login-Oberfläche.",
+      "acrValues": "Optionale, leerzeichengetrennte Authentication Context Class Reference-Werte.",
+      "claimsLocales": "Sortierte, leerzeichengetrennte Liste von Gebietsschemata für Claim-Werte.",
+      "idTokenHint": "Hinweis mit einem zuvor ausgegebenen ID-Token, wenn die Autorisierungsanfrage Endbenutzerkontext benötigt.",
+      "rarJson": "Optionales Rich-Authorization-Requests-JSON. Auth0 sendet es als authorization_details.",
+      "clientSecret": "Der Pushed Authorization Request ist selbst ein authentifizierter Aufruf an Auth0. Das Secret wird deshalb hier benötigt und nicht erst im späteren Schritt zur Client-Authentifizierung. Es ist derselbe Wert, den jener Schritt verwendet – eine einmalige Eingabe genügt.",
+      "requestObjectKey": "Privater Schlüssel im PKCS#8-PEM-Format zum Signieren des Request Objects. Er bleibt nur für diese Sitzung im Speicher und wird nicht persistiert. Derselbe Schlüssel wird wiederverwendet, wenn Sie später private_key_jwt als Client-Authentifizierung wählen.",
+      "requestObjectKid": "Gibt an, welcher registrierte Schlüssel das Request Object signiert hat. Bei Auth0 ist das die Key ID der Anmeldeinformation mit dem passenden öffentlichen Schlüssel.",
+      "privateKey": "Sicher aufbewahren! Privater Schlüssel im PKCS#8-PEM-Format zum Signieren der Client-Assertion für PAR. Er bleibt nur für diese Sitzung im Speicher und wird nicht persistiert.",
+      "clientAssertionKid": "Gibt an, welcher registrierte Schlüssel die Client-Assertion signiert hat. Bei Auth0 ist das die Key ID der Anmeldeinformation mit dem passenden öffentlichen Schlüssel."
+    },
+    "placeholders": {
+      "connection": "Username-Password-Authentication",
+      "connectionScope": "read:profile write:profile",
+      "organization": "org_1234567890",
+      "invitation": "inv_1234567890",
+      "screenHint": "Screen-Hinweis auswählen",
+      "maxAge": "3600",
+      "uiLocales": "en de",
+      "acrValues": "urn:mace:incommon:iap:silver",
+      "claimsLocales": "en de",
+      "idTokenHint": "eyJ...",
+      "rarJson": "['{'\"type\":\"payment_initiation\",\"locations\":[\"https://api.example.com\"]'}']",
+      "clientSecret": "Client Secret",
+      "requestObjectKey": "-----BEGIN PRIVATE KEY-----",
+      "requestObjectKid": "Key ID des registrierten Signaturschlüssels",
+      "privateKey": "-----BEGIN PRIVATE KEY-----",
+      "clientAssertionKid": "Key ID des registrierten Signaturschlüssels"
+    },
+    "options": {
+      "mode": {
+        "url": "URL",
+        "par": "PAR",
+        "jar": "JAR",
+        "parJar": "PAR + JAR"
+      },
+      "screenHint": {
+        "login": "login",
+        "signup": "signup"
+      }
+    },
+    "errors": {
+      "launchFailed": "Autorisierungsstart fehlgeschlagen.",
+      "parFailed": "PAR-Request fehlgeschlagen.",
+      "parMissingRequestUri": "PAR-Antwort enthielt keine request_uri.",
+      "requestObjectMissingPrivateKey": "JAR benötigt einen privaten Laufzeitschlüssel. Erzeugen oder fügen Sie vor dem Start einen Schlüssel ein.",
+      "requestObjectFailed": "Request-Object-Erstellung fehlgeschlagen.",
+      "requestObjectMissing": "Request-Object-Antwort enthielt keinen request-Wert.",
+      "rarInvalidJson": "Authorization Details müssen gültiges JSON sein.",
+      "rarNotArray": "Authorization Details müssen ein JSON-Array aus Objekten sein.",
+      "rarEmptyArray": "Authorization Details müssen mindestens einen Eintrag enthalten.",
+      "rarEntryNotObject": "Jeder Eintrag in den Authorization Details muss ein JSON-Objekt sein.",
+      "rarEntryMissingType": "Jeder Eintrag in den Authorization Details benötigt eine nicht leere \"type\"-Zeichenkette.",
+      "rarTooLarge": "Authorization Details dürfen höchstens {max} Zeichen lang sein."
     }
   },
   "StepCallback": {
@@ -161,6 +292,19 @@
     }
   },
   "StepTokens": {
+    "errors": {
+      "blocked": {
+        "providerConfig": "Der Provider ist noch nicht konfiguriert. Gehen Sie zu den Einstellungen und tragen Sie Tenant oder Issuer ein.",
+        "clientId": "Keine Client-ID. Gehen Sie zu den Einstellungen und tragen Sie die ID aus Ihrer Anwendungsregistrierung ein.",
+        "redirectUri": "Keine Redirect-URI. Gehen Sie zu den Einstellungen und tragen Sie die bei der Anwendung registrierte URI ein.",
+        "tokenEndpoint": "Der Token-Endpunkt konnte nicht ermittelt werden. Prüfen Sie den Issuer in den Einstellungen oder setzen Sie eine Endpunkt-Überschreibung.",
+        "grantParameters": "Dieser Grant benötigt eine API-Audience (Auth0) oder Scopes (Entra). Setzen Sie eines davon in den Einstellungen.",
+        "authCode": "Kein Autorisierungscode. Führen Sie zuerst den Authorize-Schritt samt Anmeldung aus.",
+        "codeVerifier": "Kein PKCE-Code-Verifier. Gehen Sie zum PKCE-Schritt und erzeugen Sie einen.",
+        "clientSecret": "Kein Client Secret. Gehen Sie zum Schritt Client-Authentifizierung und tragen Sie es ein.",
+        "privateKey": "Kein privater Schlüssel. Gehen Sie zum Schritt Client-Authentifizierung und hinterlegen Sie den Schlüssel, der die Client Assertion signiert."
+      }
+    },
     "sections": {
       "tokens": {
         "description": "Tauschen Sie den Autorisierungscode gegen Tokens und prüfen Sie Anfrage sowie Antwort.",
@@ -198,6 +342,12 @@
       "notVerified": "Nicht verifiziert",
       "skipped": "Übersprungen",
       "skippedAria": "übersprungen",
+      "informationalAria": "Information, keine Prüfung",
+      "encryptedAccessToken": "Dieses Access Token ist ein verschlüsseltes JWE. Hier ist nur der Protected Header lesbar; die Signaturvalidierung muss dort stattfinden, wo das Token entschlüsselt werden kann.",
+      "encryptedIdToken": "Dieses ID Token ist ein verschlüsseltes JWE. Hier ist nur der Protected Header lesbar; der Client mit dem Entschlüsselungsschlüssel prüft die Signatur nach dem Entschlüsseln.",
+      "opaqueAccessToken": "Dieses Access Token ist opak, kein JWT. Auth0 stellt ein opakes Token aus, wenn die Autorisierungsanfrage keine API-Audience nennt. Es ist ein Bearer-Credential, das der Autorisierungsserver selbst auflöst – es gibt also keine Signatur, die ein Client prüfen könnte.",
+      "opaqueClaimValidation": "Ein opakes Token enthält keine Claims. Der Autorisierungsserver löst es an seinem Userinfo- oder Introspection-Endpunkt auf; ein Client validiert lokal nichts.",
+      "encryptedClaimValidation": "Die Claim-Validierung wird übersprungen, weil die verschlüsselte Payload im Browser nicht verfügbar ist.",
       "steps": {
         "extractKid": "kid aus Token-Header auslesen",
         "extractAlg": "alg aus Token-Header auslesen",
@@ -216,17 +366,18 @@
       "claims": {
         "id": {
           "aud": "aud muss client_id entsprechen",
-          "iss": "iss muss zum Mandanten passen",
+          "iss": "iss muss zum Provider-Issuer passen",
           "exp": "exp muss in der Zukunft liegen",
           "nbfIat": "nbf/iat müssen <= jetzt sein (mit Puffer)",
           "nonce": "nonce muss übereinstimmen"
         },
         "access": {
           "aud": "aud vorhanden (API-Audience)",
-          "iss": "iss muss zum Mandanten passen",
+          "iss": "iss muss zum Provider-Issuer passen",
           "exp": "exp muss in der Zukunft liegen",
           "nbfIat": "nbf/iat müssen <= jetzt sein (mit Puffer)",
           "scp": "scp (delegierte Scopes)",
+          "scope": "scope (gewährte Scopes)",
           "roles": "roles (App-Berechtigungen)",
           "wids": "wids (App-Rollen)",
           "ver": "ver (Token-Version)",
@@ -238,79 +389,102 @@
   "StepSettings": {
     "sections": {
       "settings": {
-        "description": "Konfigurieren Sie Ihre Client-Einstellungen für den Authorization-Code-Flow.",
+        "description": "Konfigurieren Sie Provider- und Client-Einstellungen für diesen Flow.",
         "userProvidedTitle": "Vom Benutzer bereitgestellte Einstellungen",
         "userProvidedDescription": "Diese Felder werden von Ihnen konfiguriert und für den Autorisierungsantrag verwendet.",
         "localStorageNotice": "Diese Werte werden zur Vereinfachung im lokalen Speicher Ihres Browsers gespeichert.",
-        "resolvedTitle": "Abgeleitete (schreibgeschützte) Werte",
-        "resolvedDescription": "Diese Werte werden aus dem Mandanten und anderen Eingaben abgeleitet. Sie dienen nur zur Anzeige und können hier nicht geändert werden."
+        "resolvedTitle": "Abgeleitete Werte",
+        "resolvedDescription": "Diese Werte werden aus dem Provider und anderen Eingaben abgeleitet. Aktivieren Sie Endpunkt-Overrides, um sie zu bearbeiten."
       }
     },
     "labels": {
       "tenantId": "Entra-Mandanten-ID",
+      "issuerUrl": "Issuer-URL",
       "clientId": "Client-ID",
       "scopes": "Berechtigungen (leerzeichengetrennt)",
+      "audience": "Audience",
       "authEndpoint": "Autorisierungsendpunkt",
       "tokenEndpoint": "Token-Endpunkt",
       "redirectUri": "Umleitungs-URI",
       "streamlined": "Streamlined-Modus",
-      "pkceEnabled": "PKCE verwenden"
+      "pkceEnabled": "PKCE verwenden",
+      "endpointOverride": "Endpunkt-Overrides"
     },
     "placeholders": {
       "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "scopes": "openid profile offline_access api://.../scope.read"
+      "issuerUrl": {
+        "entra": "",
+        "auth0": "https://your-tenant.auth0.com"
+      },
+      "clientId": "Client-ID der Anwendung",
+      "scopes": "openid profile offline_access api://.../scope.read",
+      "audience": "https://api.example.com"
     },
     "toggles": {
       "streamlinedOn": "Aktiviert",
       "streamlinedOff": "Deaktiviert",
       "pkceEnabledOn": "Aktiviert",
-      "pkceEnabledOff": "Deaktiviert"
+      "pkceEnabledOff": "Deaktiviert",
+      "endpointOverrideOn": "Aktiviert",
+      "endpointOverrideOff": "Deaktiviert"
     },
     "help": {
       "tenantId": "Verzeichnis-(Mandanten-)GUID Ihrer Entra ID.",
-      "clientId": "Anwendungs-(Client-)ID Ihrer App-Registrierung.",
+      "issuerUrl": "HTTPS-Issuer-URL Ihres Auth0-Tenants. Discovery nutzt issuer/.well-known/openid-configuration.",
+      "clientId": "Client-ID aus der Anwendungsregistrierung Ihres Providers.",
       "scopes": "Durch Leerzeichen getrennte Berechtigungen (z. B. openid profile offline_access api://.../scope.read).",
-      "authEndpoint": "OAuth 2.0 v2 Autorisierungsendpunkt. Der Mandant wird in {tenant} eingesetzt.",
-      "tokenEndpoint": "OAuth 2.0 v2 Token-Endpunkt. Der Mandant wird in {tenant} eingesetzt.",
+      "audience": "Optionale API-Audience. Auth0 benötigt diese häufig für API-Zugriff und Client-Credentials-Tokens.",
+      "authEndpoint": "Autorisierungsendpunkt, der aus dem gewählten Provider oder OIDC-Discovery-Metadaten abgeleitet wird.",
+      "tokenEndpoint": "Token-Endpunkt, der aus dem gewählten Provider oder OIDC-Discovery-Metadaten abgeleitet wird.",
       "redirectUri": "Callback-URL dieser App. Muss in der App-Registrierung hinterlegt sein.",
       "streamlined": "Führt Schritte automatisch aus und blendet erweiterte Felder aus, um die Demo zu beschleunigen.",
-      "pkceEnabled": "PKCE ist für öffentliche Clients empfohlen und für vertrauliche optional."
+      "pkceEnabled": "PKCE ist für öffentliche Clients empfohlen und für vertrauliche optional.",
+      "endpointOverride": "Verwenden Sie eigene Autorisierungs- oder Token-Endpunkte statt Provider-Standards oder Discovery-Metadaten. Serverseitiger Token-Austausch validiert den Endpunkt weiterhin."
     },
     "errors": {
       "tenantIdInvalid": "Mandant ist erforderlich und muss eine GUID sein",
+      "issuerUrlInvalid": "Issuer-URL muss eine gültige HTTPS-Issuer-URL eines Auth0-Tenants sein",
+      "discoveryFailed": "OIDC-Discovery-Metadaten konnten nicht geladen werden: {error}",
       "clientIdRequired": "Client-ID ist erforderlich und muss eine GUID sein",
       "clientIdInvalid": "Client-ID muss eine GUID sein",
+      "clientIdRequiredGeneric": "Client-ID ist erforderlich",
       "redirectUriInvalid": "Umleitungs-URI muss eine gültige http(s)-URL sein"
+    },
+    "status": {
+      "discoveryLoading": "OIDC-Discovery-Metadaten werden geladen..."
     }
   },
   "StepDecode": {
     "sections": {
       "decode": {
-        "description": "Access- und ID-Tokens sind JWTs. Klicken Sie auf \"Dekodieren\", um Header und Payload in lesbarer Form zu sehen."
+        "description": "Access- und ID-Tokens sind oft JWTs, aber einige Anbieter geben verschlüsselte JWE-Tokens zurück. Klicken Sie auf \"Dekodieren\", um den geschützten Header und lesbare Payload-Claims anzuzeigen."
       }
     },
     "labels": {
-      "accessToken": "Access Token (JWT)",
-      "idToken": "ID-Token (JWT)",
+      "accessToken": "Access Token",
+      "idToken": "ID-Token",
       "accessHeader": "Access-Token-Header",
       "accessPayload": "Access-Token-Payload",
       "idHeader": "ID-Token-Header",
       "idPayload": "ID-Token-Payload"
     },
     "help": {
-      "accessToken": "Access Token zum Aufrufen von APIs. Wird als JWT-String angezeigt.",
-      "idToken": "ID-Token, das die Benutzeridentität repräsentiert. Wird als JWT-String angezeigt.",
-      "accessHeader": "Dekodierter JWT-Header des Access Tokens.",
-      "accessPayload": "Dekodierte JWT-Payload des Access Tokens.",
-      "idHeader": "Dekodierter JWT-Header des ID-Tokens.",
-      "idPayload": "Dekodierte JWT-Payload des ID-Tokens."
+      "accessToken": "Access Token zum Aufrufen von APIs. Je nach Anbieter kann es sich um ein signiertes JWT oder ein verschlüsseltes JWE handeln.",
+      "idToken": "ID-Token, das die Benutzeridentität repräsentiert. Typischerweise ein signiertes JWT.",
+      "accessHeader": "Dekodierter geschützter JOSE-Header des Access Tokens.",
+      "accessPayload": "Dekodierte JSON-Payload des Access Tokens, sofern verfügbar. Verschlüsselte JWE-Payloads sind clientseitig nicht lesbar.",
+      "idHeader": "Dekodierter geschützter JOSE-Header des ID-Tokens.",
+      "idPayload": "Dekodierte JSON-Payload des ID-Tokens, sofern verfügbar. Verschlüsselte JWE-Payloads sind clientseitig nicht lesbar."
     },
     "buttons": {
       "decode": "Dekodieren"
     },
     "notes": {
-      "accessHeaderNonce": "Dieser Access-Token-Header enthält ein <code>nonce</code>-Feld. Das ist ein anbieter­spezifischer JOSE-Header und nicht mit dem OIDC-<code>nonce</code>-Claim verwandt, der im ID-Token-Payload validiert wird."
+      "accessHeaderNonce": "Dieser Access-Token-Header enthält ein <code>nonce</code>-Feld. Das ist ein anbieter­spezifischer JOSE-Header und nicht mit dem OIDC-<code>nonce</code>-Claim verwandt, der im ID-Token-Payload validiert wird.",
+      "encryptedPayloadPlaceholder": "[Verschlüsselte JWE-Payload]",
+      "encryptedToken": "Dieses Token ist ein verschlüsseltes JWE. Der geschützte Header kann angezeigt werden, die Payload aber nicht im Browser ohne den Entschlüsselungsschlüssel dekodiert werden.",
+      "opaquePayloadPlaceholder": "[Opakes Token – nichts zu dekodieren]",
+      "opaqueToken": "Dieses Access Token ist opak und kein JWT – so antwortet Auth0, wenn die Autorisierungsanfrage keine API-Audience nennt. Es gibt nichts zu dekodieren: Das Token ist eine Referenz, die der Autorisierungsserver selbst auflöst. Setzen Sie in den Einstellungen eine API-Audience, um stattdessen ein JWT zu erhalten."
     },
     "claimsDialog": {
       "accessTitle": "Access-Token-Claims",
@@ -320,60 +494,83 @@
       "noClaims": "Keine Claims verfügbar. Dekodieren Sie zuerst die Token-Payload.",
       "unknownClaimDescription": "Wahrscheinlich ein benutzerdefinierter oder derzeit nicht dokumentierter Claim.",
       "references": {
-        "title": "Microsoft-Dokumentation",
+        "title": "Claim-Referenzen",
         "access": "Referenz für Access-Token-Claims",
         "id": "Referenz für ID-Token-Claims",
-        "optional": "Referenz für optionale Claims"
+        "optional": "Referenz für optionale Claims",
+        "auth0": "Auth0-Tokens",
+        "registered": "Registrierte JWT-Claim-Namen",
+        "iana": "IANA-JWT-Claim-Registry"
       },
       "columns": {
         "name": "Name",
         "value": "Wert",
         "description": "Beschreibung"
-      }
+      },
+      "namespacedClaimDescription": "Benutzerdefinierter Namespace-Claim, der vom Mandanten ergänzt wurde, zum Beispiel über eine Auth0 Action oder eine Entra-Claims-Mapping-Richtlinie. Namespace-Claims gehören nicht zum registrierten JWT-Claim-Satz."
     },
     "claimDescriptions": {
-      "aud": "Audience: definiert den beabsichtigten Empfänger des Tokens.",
-      "iss": "Issuer: Security Token Service, der das Token ausgestellt hat.",
-      "iat": "Issued at: Zeitpunkt der Ausstellung des Tokens.",
-      "nbf": "Not before: frühester Zeitpunkt, ab dem das Token gültig ist.",
-      "exp": "Expiration time: spätester Zeitpunkt, bis zu dem das Token gültig ist.",
-      "sub": "Subject: stabiler Bezeichner des authentifizierten Principals.",
-      "tid": "Tenant-ID: GUID des Microsoft-Entra-Mandanten.",
-      "ver": "Token-Version (z. B. 1.0 oder 2.0).",
-      "nonce": "Nonce aus der ursprünglichen Auth-Anfrage zur Replay-Abwehr bei ID-Tokens.",
-      "at_hash": "Hash des Access Tokens, der mit dem ID-Token verknüpft ist.",
-      "c_hash": "Hash des Authorization Codes, der mit dem ID-Token verknüpft ist.",
-      "aio": "Interner Claim der Microsoft-Identitätsplattform für Wiederverwendung/Telemetrie.",
-      "azp": "Authorized Party: Anwendung, die dieses Token verwenden darf.",
-      "azpacr": "Wie sich die Authorized Party authentifiziert hat (z. B. public/confidential).",
-      "appid": "Anwendungs-ID des Clients bzw. der aufrufenden App.",
-      "appidacr": "Authentifizierungskontextklasse der App-Identität.",
-      "idp": "Identitätsanbieter, der den Benutzer authentifiziert hat.",
-      "oid": "Objekt-ID des Benutzers oder Service Principals im Mandanten.",
-      "preferred_username": "Bevorzugter Benutzername, oft als Sign-In-Hinweis geeignet.",
-      "name": "Menschenlesbarer Anzeigename des Benutzers.",
-      "email": "E-Mail-Claim, wenn konfiguriert und verfügbar.",
-      "given_name": "Vorname des Benutzers.",
-      "family_name": "Nachname des Benutzers.",
-      "upn": "User Principal Name.",
-      "unique_name": "Legacy-Claim für eindeutigen Benutzernamen.",
-      "ipaddr": "IP-Adresse des Clients zum Zeitpunkt der Authentifizierung.",
-      "onprem_sid": "On-Premises-SID bei Synchronisierung aus Active Directory.",
-      "pwd_exp": "Zeitpunkt des Passwortablaufs (Legacy-/Sonderszenarien).",
-      "pwd_url": "URL zum Ändern bzw. Zurücksetzen des Passworts.",
-      "auth_time": "Zeitpunkt der Benutzer-Authentifizierung.",
-      "acr": "Authentication Context Class Reference.",
-      "amr": "Authentication Method References der Anmeldung.",
-      "sid": "Sitzungs-ID zur Nachverfolgung der Anmeldesitzung.",
-      "rh": "Hinweis zur Bindung von Refresh-Token/Sitzung in der Microsoft-Plattform.",
-      "scp": "Delegierte Scopes, die dem Client gewährt wurden.",
-      "roles": "App-Rollen bzw. Anwendungsberechtigungen im Token.",
-      "wids": "Rollen-Template-IDs mandantenweiter Verzeichnisrollen.",
-      "groups": "Gruppen-Claim (kann bei großer Mitgliedschaft ausgelassen/als Overage markiert sein).",
-      "hasgroups": "Kennzeichnet Group Overage, wenn keine vollständige Gruppenliste im Token enthalten ist.",
-      "uti": "Eindeutige Token-ID für interne Korrelation.",
-      "xms_cc": "Client-Capability-Claim für plattformspezifische Features.",
-      "xms_cae": "Claim-Metadaten im Zusammenhang mit Continuous Access Evaluation."
+      "common": {
+        "aud": "Audience: definiert den beabsichtigten Empfänger des Tokens.",
+        "iss": "Issuer: Security Token Service, der das Token ausgestellt hat.",
+        "iat": "Issued at: Zeitpunkt der Ausstellung des Tokens.",
+        "nbf": "Not before: frühester Zeitpunkt, ab dem das Token gültig ist.",
+        "exp": "Expiration time: spätester Zeitpunkt, bis zu dem das Token gültig ist.",
+        "sub": "Subject: stabiler Bezeichner des authentifizierten Principals.",
+        "jti": "JWT-ID: eindeutiger Bezeichner dieses Tokens, nutzbar zur Replay-Erkennung.",
+        "nonce": "Nonce aus der ursprünglichen Auth-Anfrage zur Replay-Abwehr bei ID-Tokens.",
+        "at_hash": "Hash des Access Tokens, der mit dem ID-Token verknüpft ist.",
+        "c_hash": "Hash des Authorization Codes, der mit dem ID-Token verknüpft ist.",
+        "azp": "Authorized Party: Anwendung, die dieses Token verwenden darf.",
+        "preferred_username": "Bevorzugter Benutzername, oft als Sign-In-Hinweis geeignet.",
+        "name": "Menschenlesbarer Anzeigename des Benutzers.",
+        "email": "E-Mail-Claim, wenn konfiguriert und verfügbar.",
+        "email_verified": "Gibt an, ob die E-Mail-Adresse vom Provider verifiziert wurde.",
+        "given_name": "Vorname des Benutzers.",
+        "family_name": "Nachname des Benutzers.",
+        "nickname": "Umgangssprachlicher Name des Benutzers, nicht zwingend eindeutig.",
+        "picture": "URL eines Profilbilds des Benutzers.",
+        "locale": "Bevorzugte Sprachumgebung des Benutzers, zum Beispiel en-US.",
+        "updated_at": "Zeitpunkt der letzten Aktualisierung des Benutzerprofils.",
+        "auth_time": "Zeitpunkt der Benutzer-Authentifizierung.",
+        "acr": "Authentication Context Class Reference.",
+        "amr": "Authentication Method References der Anmeldung.",
+        "sid": "Sitzungs-ID zur Nachverfolgung der Anmeldesitzung."
+      },
+      "entra": {
+        "tid": "Tenant-ID: GUID des Microsoft-Entra-Mandanten.",
+        "ver": "Token-Version (z. B. 1.0 oder 2.0).",
+        "aio": "Interner Claim der Microsoft-Identitätsplattform für Wiederverwendung/Telemetrie.",
+        "azpacr": "Wie sich die Authorized Party authentifiziert hat (z. B. public/confidential).",
+        "appid": "Anwendungs-ID des Clients bzw. der aufrufenden App.",
+        "appidacr": "Authentifizierungskontextklasse der App-Identität.",
+        "idp": "Identitätsanbieter, der den Benutzer authentifiziert hat.",
+        "oid": "Objekt-ID des Benutzers oder Service Principals im Mandanten.",
+        "upn": "User Principal Name.",
+        "unique_name": "Legacy-Claim für eindeutigen Benutzernamen.",
+        "ipaddr": "IP-Adresse des Clients zum Zeitpunkt der Authentifizierung.",
+        "onprem_sid": "On-Premises-SID bei Synchronisierung aus Active Directory.",
+        "pwd_exp": "Zeitpunkt des Passwortablaufs (Legacy-/Sonderszenarien).",
+        "pwd_url": "URL zum Ändern bzw. Zurücksetzen des Passworts.",
+        "rh": "Hinweis zur Bindung von Refresh-Token/Sitzung in der Microsoft-Plattform.",
+        "scp": "Delegierte Scopes, die dem Client gewährt wurden.",
+        "roles": "App-Rollen bzw. Anwendungsberechtigungen im Token.",
+        "wids": "Rollen-Template-IDs mandantenweiter Verzeichnisrollen.",
+        "groups": "Gruppen-Claim (kann bei großer Mitgliedschaft ausgelassen/als Overage markiert sein).",
+        "hasgroups": "Kennzeichnet Group Overage, wenn keine vollständige Gruppenliste im Token enthalten ist.",
+        "uti": "Eindeutige Token-ID für interne Korrelation.",
+        "xms_cc": "Client-Capability-Claim für plattformspezifische Features.",
+        "xms_cae": "Claim-Metadaten im Zusammenhang mit Continuous Access Evaluation."
+      },
+      "auth0": {
+        "scope": "Durch Leerzeichen getrennte Scopes, die dem Client für dieses Access Token gewährt wurden.",
+        "permissions": "Berechtigungen im Token; vorhanden, wenn die Auth0-API RBAC mit Berechtigungen im Access Token aktiviert hat.",
+        "gty": "Grant Type, mit dem dieses Token bezogen wurde, zum Beispiel client-credentials oder authorization_code.",
+        "client_id": "Client-ID, für die das Token ausgestellt wurde; üblicherweise bei Client-Credentials-Tokens vorhanden.",
+        "org_id": "Auth0-Organisations-ID, wenn sich der Benutzer über eine Organisation angemeldet hat.",
+        "org_name": "Auth0-Organisationsname, wenn sich der Benutzer über eine Organisation angemeldet hat.",
+        "azp": "Authorized Party: der Client, für den das Token ausgestellt wurde."
+      }
     }
   },
   "StepOverview": {
@@ -388,7 +585,8 @@
     "description": "Wählen Sie, wie sich der Client beim Token-Endpunkt authentifiziert, wenn der Autorisierungscode eingetauscht wird.",
     "methodOptions": {
       "secret": "Client-Geheimnis",
-      "certificate": "Zertifikat (private_key_jwt)"
+      "certificate": "Zertifikat (private_key_jwt)",
+      "auth0PrivateKey": "Privater Schlüssel (private_key_jwt)"
     },
     "labels": {
       "clientAuthMethod": "Client-Authentifizierung",
@@ -407,12 +605,13 @@
       "clientSecret": "Ihr vertrauliches Client-Geheimnis. Zu Demo-Zwecken bleibt dieser Wert nur im Speicher (nicht persistent).",
       "privateKeyPem": "Bewahren Sie ihn sicher auf! Dieser private Schlüssel wird zum Signieren des client_assertion JWT verwendet.",
       "publicKeyPem": "Der öffentliche Schlüssel, der zu Ihrem privaten Schlüssel gehört.",
-      "certificatePem": "Laden Sie dieses Zertifikat in Entra ID unter App-Registrierungen → Zertifikate und Geheimnisse hoch.",
-      "thumbprintSha1": "Verwenden Sie dies als Key ID (kid). Dies entspricht dem Wert im Entra ID-Portal.",
-      "clientAssertionKid": "Sollte dem \"Thumbprint\" in Entra ID → App-Registrierung → Zertifikate und Geheimnisse entsprechen.",
+      "certificatePem": "Laden Sie dieses Zertifikat oder das öffentliche Schlüsselmaterial in der Client-Credentials- oder Signing-Keys-Konfiguration Ihres Identity Providers hoch.",
+      "thumbprintSha1": "Verwenden Sie dies als Key ID (kid), wenn Ihr Provider hochgeladene Zertifikate per Thumbprint identifiziert.",
+      "clientAssertionKid": "Dies sollte dem Schlüsselbezeichner entsprechen, der beim Identity Provider für den Client-Signaturschlüssel konfiguriert ist.",
       "assertionClaims": "Vorschau der JWT-Ansprüche, die im Parameter client_assertion verwendet werden.",
       "testAssertion": "Ein Test-client_assertion JWT, das mit Ihrem privaten Schlüssel generiert wurde.",
-      "decodedAssertion": "Der dekodierte Header und Payload des Test-JWT zur Überprüfung."
+      "decodedAssertion": "Der dekodierte Header und Payload des Test-JWT zur Überprüfung.",
+      "auth0ClientAssertionKid": "Auth0 leitet diesen Wert beim Anlegen der Anmeldeinformation aus dem JWK-Thumbprint Ihres öffentlichen Schlüssels ab. Das Dashboard zeigt ihn nicht an — lesen Sie ihn aus der Antwort der Management-API für die Anmeldeinformation."
     },
     "placeholders": {
       "clientAuthMethod": "Methode auswählen",
@@ -424,7 +623,8 @@
       "clientAssertionKid": "Wird automatisch ausgefüllt, wenn das Zertifikat erzeugt wird",
       "assertionClaims": "Klicken Sie auf \"Ansprüche anzeigen\", um die JWT-Ansprüche zu sehen",
       "testAssertion": "Klicken Sie auf \"Test-Assertion erzeugen\", um ein Test-JWT zu erstellen",
-      "decodedAssertion": "Wird automatisch erzeugt, wenn die Test-Assertion erstellt wird"
+      "decodedAssertion": "Wird automatisch erzeugt, wenn die Test-Assertion erstellt wird",
+      "auth0ClientAssertionKid": "Von Auth0 für die Anmeldeinformation zurückgegebene Key ID"
     },
     "steps": {
       "generateKeyPair": {
@@ -433,11 +633,11 @@
       },
       "generateCertificate": {
         "title": "Schritt 2: Selbstsigniertes Zertifikat erstellen",
-        "description": "Erstellen Sie ein selbstsigniertes X.509-Zertifikat für den Upload nach Microsoft Entra ID. Der Thumbprint kann als kid verwendet werden."
+        "description": "Erstellen Sie ein selbstsigniertes X.509-Zertifikat für den Upload zu Ihrem Identity Provider. Der Thumbprint kann als kid verwendet werden."
       },
       "configureKid": {
         "title": "Schritt 3: Key ID (kid) - automatisch ausgefüllt",
-        "description": "Der Zertifikat-Thumbprint (SHA-1) wird automatisch als Key ID verwendet und entspricht dem Wert im Entra ID-Portal."
+        "description": "Der Zertifikat-Thumbprint (SHA-1) wird automatisch als Key ID verwendet. Manche Provider zeigen denselben Wert als Zertifikat-Thumbprint an."
       },
       "previewClaims": {
         "title": "Schritt 4: Client-Assertion-Ansprüche anzeigen",
@@ -446,6 +646,14 @@
       "testAssertion": {
         "title": "Schritt 5: Signierte Assertion testen",
         "description": "Erzeugen Sie ein client_assertion JWT zum Testen. Die eigentliche Assertion wird beim Aufruf des Token-Endpunkts erstellt."
+      },
+      "auth0RegisterPublicKey": {
+        "title": "Schritt 2: Öffentlichen Schlüssel bei Auth0 hinterlegen",
+        "description": "Kopieren Sie den öffentlichen Schlüssel oben in den Reiter Credentials Ihrer Anwendung, unter Private Key JWT, mit dem Signaturalgorithmus RS256. Auth0 speichert den öffentlichen Schlüssel selbst — es ist kein Zertifikat beteiligt, daher wird hier kein Thumbprint berechnet."
+      },
+      "auth0ConfigureKid": {
+        "title": "Schritt 3: Key ID (kid) - aus der Auth0-Anmeldeinformation",
+        "description": "Auth0 erzeugt die Key ID beim Speichern der Anmeldeinformation, sie lässt sich also nicht ableiten, sondern muss ausgelesen werden. Fügen Sie sie hier ein, damit erkennbar ist, welche Anmeldeinformation die Assertion signiert hat."
       }
     },
     "buttons": {
@@ -473,6 +681,7 @@
     "errors": {
       "generateKeyPair": "Fehler beim Erzeugen des Schlüsselpaares: {error}",
       "keyPairRequired": "Bitte erzeugen Sie zuerst ein Schlüsselpaar.",
+      "certificateUnreadable": "Dies ist kein lesbares Zertifikats-PEM, daher konnte kein Fingerabdruck ermittelt werden. Fügen Sie das Zertifikat selbst ein – den Block ab -----BEGIN CERTIFICATE----- – und nicht einen privaten Schlüssel oder eine abgeschnittene Kopie.",
       "generateCertificate": "Fehler beim Erzeugen des Zertifikats: {error}",
       "missingKid": "Bitte geben Sie zuerst eine Key-ID ein oder erzeugen Sie sie.",
       "missingClientConfig": "Bitte konfigurieren Sie zuerst Client-ID und Token-Endpunkt.",
@@ -552,8 +761,7 @@
         }
       }
     }
-  }
-  ,
+  },
   "ClientCredentials": {
     "Main": {
       "title": "Client Credentials",

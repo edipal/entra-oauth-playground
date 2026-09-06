@@ -7,7 +7,5 @@ export default function ThemeLink() {
   const { layoutConfig } = useContext(LayoutContext);
   const href = `/theme/theme-${layoutConfig.colorScheme}/${layoutConfig.theme}/theme.css`;
 
-  return (
-    <link id="theme-link" rel="stylesheet" href={href} />
-  );
+  return <link id="theme-link" rel="stylesheet" href={href} />;
 }

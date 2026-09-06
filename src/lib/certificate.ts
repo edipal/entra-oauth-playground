@@ -138,6 +138,51 @@ export async function createSelfSignedCertificate(params: {
  * Builds a TBSCertificate (To Be Signed Certificate) structure in DER format.
  * This is a simplified but valid X.509v3 certificate structure.
  */
+export type CertificateThumbprints = {
+  thumbprintSha1: string;
+  thumbprintSha256: string;
+  thumbprintSha1Base64Url: string;
+  thumbprintSha256Base64Url: string;
+};
+
+/**
+ * Derives the thumbprints of an existing certificate, so a certificate issued
+ * elsewhere can be used instead of one generated here. The values are hashes of
+ * the DER bytes, which is what Entra shows in the portal and what the `x5t`
+ * client-assertion header carries.
+ *
+ * Returns null when the input is not a parseable certificate PEM.
+ */
+export async function computeCertificateThumbprints(
+  certificatePem: string,
+): Promise<CertificateThumbprints | null> {
+  const trimmed = certificatePem?.trim();
+  if (!trimmed?.includes("-----BEGIN CERTIFICATE-----")) return null;
+
+  const subtle = (globalThis as any)?.crypto?.subtle as
+    | SubtleCrypto
+    | undefined;
+  if (!subtle) throw new Error("WebCrypto SubtleCrypto is not available");
+
+  let der: ArrayBuffer;
+  try {
+    der = pemToArrayBuffer(trimmed, "CERTIFICATE");
+  } catch {
+    return null;
+  }
+  if (der.byteLength === 0) return null;
+
+  const sha1Hash = await subtle.digest("SHA-1", der);
+  const sha256Hash = await subtle.digest("SHA-256", der);
+
+  return {
+    thumbprintSha1: arrayBufferToHex(sha1Hash),
+    thumbprintSha256: arrayBufferToHex(sha256Hash),
+    thumbprintSha1Base64Url: arrayBufferToBase64Url(sha1Hash),
+    thumbprintSha256Base64Url: arrayBufferToBase64Url(sha256Hash),
+  };
+}
+
 function buildTBSCertificate(params: {
   serialNumber: Uint8Array;
   subject: string;
@@ -348,15 +393,29 @@ function arrayBufferToPem(buffer: ArrayBuffer, label: string): string {
 
 /**
  * Converts PEM to ArrayBuffer.
+ *
+ * Takes the *first* block of the requested label and ignores anything after it.
+ * That is what a certificate chain needs: the leaf comes first, and the leaf is
+ * the certificate Entra thumbprints and `x5t` identifies. Stripping the
+ * delimiters with `String.replace` instead removed only the first BEGIN and the
+ * first END, leaving the second block's delimiters embedded in the base64 — which
+ * threw in `atob` and blanked the thumbprint with no explanation.
+ *
+ * Input with no delimiters at all is treated as bare base64, as before.
  */
 function pemToArrayBuffer(pem: string, label: string): ArrayBuffer {
   const pemHeader = `-----BEGIN ${label}-----`;
   const pemFooter = `-----END ${label}-----`;
-  const pemContents = pem
-    .replace(pemHeader, "")
-    .replace(pemFooter, "")
-    .replaceAll(/\s/g, "");
-  return base64ToArrayBuffer(pemContents);
+
+  const start = pem.indexOf(pemHeader);
+  if (start === -1) return base64ToArrayBuffer(pem.replaceAll(/\s/g, ""));
+
+  const bodyStart = start + pemHeader.length;
+  const end = pem.indexOf(pemFooter, bodyStart);
+  // A BEGIN with no matching END is truncated input, not a certificate.
+  if (end === -1) throw new Error(`Malformed PEM: no ${pemFooter}`);
+
+  return base64ToArrayBuffer(pem.slice(bodyStart, end).replaceAll(/\s/g, ""));
 }
 
 /**
@@ -379,10 +438,9 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
  */
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const hasWindow = globalThis.window !== undefined;
-  const binary =
-    hasWindow
-      ? globalThis.window.atob(base64)
-      : Buffer.from(base64, "base64").toString("binary");
+  const binary = hasWindow
+    ? globalThis.window.atob(base64)
+    : Buffer.from(base64, "base64").toString("binary");
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);

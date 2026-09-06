@@ -1,0 +1,22 @@
+# pnpm settings. Since pnpm 10 these live here rather than under a "pnpm" key in
+# package.json, which newer pnpm ignores outright — it warns and carries on, so
+# overrides left there silently stop being applied.
+
+# Security floors for transitive dependencies. Each entry rewrites only the
+# versions below it, so a dependency already asking for something newer is left
+# alone.
+overrides:
+  ajv@<6.14.0: 6.14.0
+  minimatch@<3.1.4: 3.1.4
+  minimatch@>=9.0.0 <9.0.7: 9.0.7
+  minimatch@>=10.0.0 <10.2.3: 10.2.3
+
+# Install scripts, which pnpm blocks until they are named here. All four ship
+# prebuilt native binaries as optional dependencies, so nothing needs to compile
+# locally — this repo has never run them, and lint, build, unit and e2e all pass
+# without them. Flip one to true only if its prebuild is ever missing.
+allowBuilds:
+  "@parcel/watcher": false
+  "@swc/core": false
+  sharp: false
+  unrs-resolver: false

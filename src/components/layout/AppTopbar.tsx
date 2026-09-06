@@ -2,10 +2,10 @@ import type { AppTopbarRef } from "@/types";
 import { forwardRef, useContext, useImperativeHandle, useRef } from "react";
 import AppBreadcrumb from "./AppBreadCrumb";
 import { LayoutContext } from "@/context/layoutcontext";
+import ProviderSelector from "./ProviderSelector";
 
 const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
-  const { onMenuToggle } =
-    useContext(LayoutContext);
+  const { onMenuToggle } = useContext(LayoutContext);
   const menubuttonRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
@@ -25,6 +25,12 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
         </button>
 
         <AppBreadcrumb className="topbar-breadcrumb"></AppBreadcrumb>
+      </div>
+
+      {/* The workspace switcher lives in the sidebar; this copy only appears in the
+          sidebar layouts that are too narrow to hold it. */}
+      <div className="topbar-end">
+        <ProviderSelector variant="topbar" inputId="providerSelectorTopbar" />
       </div>
     </div>
   );

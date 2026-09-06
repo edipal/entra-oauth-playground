@@ -4,10 +4,9 @@ export const base64UrlEncode = (input: ArrayBuffer) => {
   for (let i = 0; i < bytes.byteLength; i++)
     binary += String.fromCodePoint(bytes[i]);
   const hasWindow = globalThis.window !== undefined;
-  const b64 =
-    hasWindow
-      ? globalThis.window.btoa(binary)
-      : Buffer.from(binary, "binary").toString("base64");
+  const b64 = hasWindow
+    ? globalThis.window.btoa(binary)
+    : Buffer.from(binary, "binary").toString("base64");
   return b64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 };
 

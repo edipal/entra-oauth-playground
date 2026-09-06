@@ -17,9 +17,9 @@ export const useSubmenuOverlayPosition = ({
     if (!when) return;
 
     const target = targetRef.current;
-    const container = target?.closest(".layout-menu-container") as
-      | HTMLElement
-      | null;
+    const container = target?.closest(
+      ".layout-menu-container",
+    ) as HTMLElement | null;
     if (!container) return;
 
     const onScroll = () => {
@@ -44,9 +44,9 @@ export const useSubmenuOverlayPosition = ({
 
     const target = targetRef.current;
     const overlay = overlayRef.current;
-    const container = target?.closest(".layout-menu-container") as
-      | HTMLElement
-      | null;
+    const container = target?.closest(
+      ".layout-menu-container",
+    ) as HTMLElement | null;
     if (overlay && target) {
       const { left, top } = target.getBoundingClientRect();
       const { width: vWidth, height: vHeight } = DomHandler.getViewport();
@@ -70,5 +70,13 @@ export const useSubmenuOverlayPosition = ({
           vHeight < height ? `${top - (height - vHeight)}px` : `${top}px`;
       }
     }
-  }, [activeMenu, isHorizontal, isSlim, isSlimPlus, overlayRef, targetRef, when]);
+  }, [
+    activeMenu,
+    isHorizontal,
+    isSlim,
+    isSlimPlus,
+    overlayRef,
+    targetRef,
+    when,
+  ]);
 };
