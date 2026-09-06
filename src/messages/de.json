@@ -138,6 +138,17 @@
     "buttons": {
       "sendGet": "GET senden",
       "sending": "Senden..."
+    },
+    "dpop": {
+      "cardTitle": "API-DPoP-Proof (RFC 9449)",
+      "badge": "DPoP-gebunden",
+      "badgeHelp": "Ressourcen-Anfragen verwenden das 'DPoP'-Autorisierungsschema und enthalten ein DPoP-Proof-JWT mit einem 'ath' (Access Token Hash)-Claim.",
+      "rawProof": "DPoP-Proof-JWT",
+      "proofHelp": "RFC 9449 Proof, signiert mit dem ES256-Schlüssel des Clients, der HTTP-Methode (GET), URI und Access-Token-Hash (ath) bindet.",
+      "decodedHeader": "Dekodierter Header",
+      "decodedPayload": "Dekodierter Payload (mit ath)",
+      "proofPending": "Ein frischer DPoP-Proof mit 'ath' wird beim Senden der API-Anfrage generiert.",
+      "athHelp": "Der 'ath'-Claim ist base64url(SHA-256(access_token)) und bindet diesen Proof kryptografisch an das spezifische Access Token."
     }
   },
   "Auth0AuthorizationOptions": {

@@ -45,6 +45,7 @@ import {
   generateDPoPKeyPair,
   exportDPoPPublicJWK,
   calculateDPoPThumbprint,
+  calculateAccessTokenHash,
   createDPoPProof,
 } from "@/lib/dpop";
 
@@ -732,10 +733,56 @@ export default function AuthorizationCodePublicClientPage() {
     setCallingApi(true);
     setApiResponseText("");
     try {
-      const res = await fetch(apiEndpointUrl, {
+      const isDPoP = !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
+      let currentNonce = authCodePublicClientRuntime.serverDPoPNonce;
+      const headers: Record<string, string> = {};
+
+      if (isDPoP) {
+        const ath = await calculateAccessTokenHash(accessToken);
+        const proof = await createDPoPProof({
+          privateKey: dpopKeyPair.privateKey,
+          jwk: dpopPublicJwk,
+          htm: "GET",
+          htu: apiEndpointUrl,
+          ath,
+          nonce: currentNonce,
+        });
+        headers["Authorization"] = `DPoP ${accessToken}`;
+        headers["DPoP"] = proof;
+        setAuthCodePublicClientRuntime({ lastApiDPoPProof: proof });
+      } else {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      let res = await fetch(apiEndpointUrl, {
         method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers,
       });
+
+      const respNonce = res.headers.get("dpop-nonce");
+      if (respNonce && respNonce !== currentNonce) {
+        setAuthCodePublicClientRuntime({ serverDPoPNonce: respNonce });
+        currentNonce = respNonce;
+      }
+
+      if (isDPoP && res.status === 401 && respNonce) {
+        const ath = await calculateAccessTokenHash(accessToken);
+        const retryProof = await createDPoPProof({
+          privateKey: dpopKeyPair.privateKey,
+          jwk: dpopPublicJwk,
+          htm: "GET",
+          htu: apiEndpointUrl,
+          ath,
+          nonce: respNonce,
+        });
+        headers["DPoP"] = retryProof;
+        setAuthCodePublicClientRuntime({ lastApiDPoPProof: retryProof });
+        res = await fetch(apiEndpointUrl, {
+          method: "GET",
+          headers,
+        });
+      }
+
       const contentType = res.headers.get("content-type") || "";
       const txt = contentType.includes("application/json")
         ? JSON.stringify(await res.json(), null, 2)
@@ -1138,6 +1185,8 @@ export default function AuthorizationCodePublicClientPage() {
           apiResponseText={apiResponseText}
           callingApi={callingApi}
           onCallApi={handleCallProtectedApi}
+          dpopEnabled={!isEntra && dpopEnabled}
+          dpopProof={authCodePublicClientRuntime.lastApiDPoPProof}
         />
       )}
 

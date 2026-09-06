@@ -49,6 +49,7 @@ import {
   generateDPoPKeyPair,
   exportDPoPPublicJWK,
   calculateDPoPThumbprint,
+  calculateAccessTokenHash,
   createDPoPProof,
 } from "@/lib/dpop";
 
@@ -1171,10 +1172,56 @@ export default function AuthorizationCodeConfidentialClientPage() {
     setCallingApi(true);
     setApiResponseText("");
     try {
-      const res = await fetch(apiEndpointUrl, {
+      const isDPoP = !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
+      let currentNonce = authCodeConfidentialClientRuntime.serverDPoPNonce;
+      const headers: Record<string, string> = {};
+
+      if (isDPoP) {
+        const ath = await calculateAccessTokenHash(accessToken);
+        const proof = await createDPoPProof({
+          privateKey: dpopKeyPair.privateKey,
+          jwk: dpopPublicJwk,
+          htm: "GET",
+          htu: apiEndpointUrl,
+          ath,
+          nonce: currentNonce,
+        });
+        headers["Authorization"] = `DPoP ${accessToken}`;
+        headers["DPoP"] = proof;
+        setAuthCodeConfidentialClientRuntime({ lastApiDPoPProof: proof });
+      } else {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      let res = await fetch(apiEndpointUrl, {
         method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers,
       });
+
+      const respNonce = res.headers.get("dpop-nonce");
+      if (respNonce && respNonce !== currentNonce) {
+        setAuthCodeConfidentialClientRuntime({ serverDPoPNonce: respNonce });
+        currentNonce = respNonce;
+      }
+
+      if (isDPoP && res.status === 401 && respNonce) {
+        const ath = await calculateAccessTokenHash(accessToken);
+        const retryProof = await createDPoPProof({
+          privateKey: dpopKeyPair.privateKey,
+          jwk: dpopPublicJwk,
+          htm: "GET",
+          htu: apiEndpointUrl,
+          ath,
+          nonce: respNonce,
+        });
+        headers["DPoP"] = retryProof;
+        setAuthCodeConfidentialClientRuntime({ lastApiDPoPProof: retryProof });
+        res = await fetch(apiEndpointUrl, {
+          method: "GET",
+          headers,
+        });
+      }
+
       const contentType = res.headers.get("content-type") || "";
       const txt = contentType.includes("application/json")
         ? JSON.stringify(await res.json(), null, 2)
@@ -1666,6 +1713,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
           apiResponseText={apiResponseText}
           callingApi={callingApi}
           onCallApi={handleCallProtectedApi}
+          dpopEnabled={!isEntra && dpopEnabled}
+          dpopProof={authCodeConfidentialClientRuntime.lastApiDPoPProof}
         />
       )}
 
