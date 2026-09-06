@@ -394,7 +394,9 @@
           "roles": "roles (App-Berechtigungen)",
           "wids": "wids (App-Rollen)",
           "ver": "ver (Token-Version)",
-          "msGraph": "(Microsoft-Graph-Audience; nur Graph kann Signaturen verifizieren)"
+          "msGraph": "(Microsoft-Graph-Audience; nur Graph kann Signaturen verifizieren)",
+          "cnf": "cnf.jkt (DPoP-Schlüssel-Thumbprint-Bestätigung)",
+          "tokenType": "token_type muss DPoP sein"
         }
       }
     }
@@ -558,7 +560,9 @@
         "auth_time": "Zeitpunkt der Benutzer-Authentifizierung.",
         "acr": "Authentication Context Class Reference.",
         "amr": "Authentication Method References der Anmeldung.",
-        "sid": "Sitzungs-ID zur Nachverfolgung der Anmeldesitzung."
+        "sid": "Sitzungs-ID zur Nachverfolgung der Anmeldesitzung.",
+        "cnf": "Confirmation (Bestätigung) — identifiziert den an dieses Token gebundenen Proof-of-Possession-Schlüssel (RFC 7800 / RFC 9449).",
+        "cnf.jkt": "JWK-SHA-256-Thumbprint des an dieses Token gebundenen öffentlichen DPoP-Schlüssels."
       },
       "entra": {
         "tid": "Tenant-ID: GUID des Microsoft-Entra-Mandanten.",

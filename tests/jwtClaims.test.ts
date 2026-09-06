@@ -83,7 +83,17 @@ describe("message catalogue wiring", () => {
   ])("gives both providers the standard claims in %s", (_locale, messages) => {
     for (const provider of ["entra", "auth0"] as const) {
       const resolved = resolveClaimDescriptions(groups(messages), provider);
-      for (const claim of ["iss", "sub", "aud", "exp", "iat", "nbf", "jti"]) {
+      for (const claim of [
+        "iss",
+        "sub",
+        "aud",
+        "exp",
+        "iat",
+        "nbf",
+        "jti",
+        "cnf",
+        "cnf.jkt",
+      ]) {
         expect(resolved[claim]).toBeTruthy();
       }
     }

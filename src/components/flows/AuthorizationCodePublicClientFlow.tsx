@@ -1122,6 +1122,9 @@ export default function AuthorizationCodePublicClientPage() {
           decodedIdFormat={decodedIdFormat}
           accessToken={accessToken}
           idToken={idToken}
+          dpopEnabled={dpopEnabled}
+          dpopJkt={dpopJkt}
+          tokenResponseText={tokenResponseText}
         />
       )}
 

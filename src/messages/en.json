@@ -394,7 +394,9 @@
           "roles": "roles (app permissions)",
           "wids": "wids (app roles)",
           "ver": "ver (token version)",
-          "msGraph": "(Microsoft Graph audience; only Graph can verify signatures)"
+          "msGraph": "(Microsoft Graph audience; only Graph can verify signatures)",
+          "cnf": "cnf.jkt (DPoP key thumbprint confirmation)",
+          "tokenType": "token_type must be DPoP"
         }
       }
     }
@@ -558,7 +560,9 @@
         "auth_time": "Time when user authentication occurred.",
         "acr": "Authentication context class reference.",
         "amr": "Authentication method references used during sign-in.",
-        "sid": "Session identifier for sign-in session tracking."
+        "sid": "Session identifier for sign-in session tracking.",
+        "cnf": "Confirmation — identifies the proof-of-possession key bound to this token (RFC 7800 / RFC 9449).",
+        "cnf.jkt": "JWK SHA-256 Thumbprint of the DPoP public key bound to this token."
       },
       "entra": {
         "tid": "Tenant ID: Microsoft Entra tenant GUID.",

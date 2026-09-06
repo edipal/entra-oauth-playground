@@ -782,6 +782,9 @@ export default function ClientCredentialsPage() {
           decodedIdFormat={decodedIdFormat}
           accessToken={accessToken}
           idToken={idToken}
+          dpopEnabled={dpopEnabled}
+          dpopJkt={dpopJkt}
+          tokenResponseText={tokenResponseText}
         />
       )}
 

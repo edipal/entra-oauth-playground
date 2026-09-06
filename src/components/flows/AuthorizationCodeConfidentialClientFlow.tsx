@@ -1650,6 +1650,9 @@ export default function AuthorizationCodeConfidentialClientPage() {
           decodedIdFormat={decodedIdFormat}
           accessToken={accessToken}
           idToken={idToken}
+          dpopEnabled={dpopEnabled}
+          dpopJkt={dpopJkt}
+          tokenResponseText={tokenResponseText}
         />
       )}
 

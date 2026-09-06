@@ -31,6 +31,10 @@ type Props = {
   decodedIdFormat?: DecodedTokenFormat;
   accessToken?: string;
   idToken?: string;
+  dpopEnabled?: boolean;
+  dpopJkt?: string;
+  tokenResponseText?: string;
+  tokenType?: string;
 };
 
 type JwtHeader = {
@@ -55,6 +59,10 @@ type JwtPayload = {
   exp?: number;
   nbf?: number;
   iat?: number;
+  cnf?: {
+    jkt?: string;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 };
 
@@ -237,6 +245,10 @@ export default function StepValidate(props: Readonly<Props>) {
     decodedIdFormat,
     accessToken,
     idToken,
+    dpopEnabled,
+    dpopJkt,
+    tokenResponseText,
+    tokenType,
   } = props;
 
   const accessHeader = useMemo(
@@ -417,6 +429,21 @@ export default function StepValidate(props: Readonly<Props>) {
     skewSec,
   ]);
 
+  const isDPoPActive = !!dpopEnabled && !isEntraWorkspace;
+
+  const resolvedTokenType = useMemo(() => {
+    if (tokenType) return tokenType;
+    if (!tokenResponseText) return undefined;
+    try {
+      const parsed = JSON.parse(tokenResponseText);
+      return typeof parsed?.token_type === "string"
+        ? parsed.token_type
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [tokenType, tokenResponseText]);
+
   const accClaimOk = useMemo(
     () => ({
       audOk: expectedAudience
@@ -436,6 +463,13 @@ export default function StepValidate(props: Readonly<Props>) {
         typeof accessPayload.iat === "number"
           ? accessPayload.iat <= nowSec + skewSec
           : true,
+      tokenTypeOk: resolvedTokenType
+        ? resolvedTokenType.toLowerCase() === "dpop"
+        : false,
+      cnfOk:
+        typeof accessPayload.cnf?.jkt === "string" &&
+        !!dpopJkt &&
+        accessPayload.cnf.jkt === dpopJkt,
     }),
     [
       accIss,
@@ -446,6 +480,8 @@ export default function StepValidate(props: Readonly<Props>) {
       nowSec,
       providerId,
       skewSec,
+      resolvedTokenType,
+      dpopJkt,
     ],
   );
 
@@ -808,6 +844,27 @@ export default function StepValidate(props: Readonly<Props>) {
                 <StatusIcon ok={accClaimOk.nbfOk && accClaimOk.iatOk} />
               </span>
             </li>
+            {isDPoPActive && (
+              <>
+                {resolvedTokenType && (
+                  <li>
+                    {t("validateUi.claims.access.tokenType")}:{" "}
+                    <code>{resolvedTokenType}</code>{" "}
+                    <span className="ml-2">
+                      <StatusIcon ok={accClaimOk.tokenTypeOk} />
+                    </span>
+                  </li>
+                )}
+                <li>
+                  {t("validateUi.claims.access.cnf")}:{" "}
+                  <code>{accessPayload.cnf?.jkt || "—"}</code>{" "}
+                  {dpopJkt ? `(expected ${dpopJkt})` : ""}
+                  <span className="ml-2">
+                    <StatusIcon ok={accClaimOk.cnfOk} />
+                  </span>
+                </li>
+              </>
+            )}
             {/* Entra splits delegated (`scp`) from application (`roles`) grants, so
                 its client-credentials tokens have no scope row. Auth0 grants a
                 machine-to-machine client scopes like any other, so it keeps one. */}
