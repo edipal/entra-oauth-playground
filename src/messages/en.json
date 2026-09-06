@@ -63,6 +63,11 @@
       "settings": {
         "userProvidedTitle": "User-provided settings",
         "userProvidedDescription": "These fields are configured by you and are used to build the authorization request."
+      },
+      "par": {
+        "title": "Pushed Authorization Request (PAR - RFC 9126)",
+        "description": "Push authorization parameters over a backchannel HTTP POST before launching the browser. Auth0 returns a request_uri which is then used on the authorization endpoint.",
+        "browserTitle": "Browser Authorization Request"
       }
     },
     "labels": {
@@ -71,7 +76,10 @@
       "nonce": "nonce",
       "responseMode": "response_mode",
       "prompt": "prompt",
-      "loginHint": "login_hint"
+      "loginHint": "login_hint",
+      "parEndpoint": "PAR Endpoint",
+      "parRequest": "PAR Request Body",
+      "parResponse": "PAR Response"
     },
     "placeholders": {
       "state": "Optional state (recommended)",
@@ -81,7 +89,9 @@
     },
     "buttons": {
       "generate": "Generate",
-      "openPopup": "Open popup"
+      "openPopup": "Open popup",
+      "pushPar": "Push to PAR",
+      "pushingPar": "Pushing..."
     },
     "options": {
       "responseMode": {
@@ -102,7 +112,11 @@
       "responseMode": "Where the response should be returned (query or form_post).",
       "prompt": "Controls interactive behavior, for example login, consent, none, or provider-specific prompt values.",
       "loginHint": "Prefill the username or sign-in hint (e.g., email).",
-      "authUrlPreview": "The full authorization URL that will open in the popup."
+      "authUrlPreview": "The full authorization URL that will open in the popup.",
+      "parEndpoint": "The endpoint where authorization parameters are pushed via backchannel HTTP POST.",
+      "parRequest": "Parameters that are pushed to the PAR endpoint, including client credentials, scopes, and authorization_details.",
+      "parResponse": "Live response returned by the PAR endpoint containing the request_uri and expires_in.",
+      "browserAuthUrl": "The clean authorization URL referencing the request_uri, which opens in the browser popup."
     }
   },
   "StepCallApi": {
@@ -127,6 +141,10 @@
     }
   },
   "Auth0AuthorizationOptions": {
+    "methodOptions": {
+      "secret": "Client secret",
+      "auth0PrivateKey": "Private key (private_key_jwt)"
+    },
     "modeDescriptions": {
       "url": "Send the authorization request directly on the browser URL.",
       "par": "Push the same authorization parameters to Auth0 first, then launch the browser with a request_uri.",
@@ -135,6 +153,7 @@
     },
     "labels": {
       "mode": "Request mode",
+      "clientAuthMethod": "Client authentication",
       "connection": "connection",
       "connectionScope": "connection_scope",
       "organization": "organization",
@@ -146,11 +165,15 @@
       "claimsLocales": "claims_locales",
       "idTokenHint": "id_token_hint",
       "rarJson": "Authorization details",
+      "clientSecret": "Client secret",
       "requestObjectKey": "Request object signing key",
-      "requestObjectKid": "Request object key ID (kid)"
+      "requestObjectKid": "Request object key ID (kid)",
+      "privateKey": "Private Key (PKCS#8 PEM)",
+      "clientAssertionKid": "Key ID (kid)"
     },
     "help": {
       "mode": "Auth0 authorization request transport: plain URL, pushed authorization request (PAR), JWT-secured authorization request (JAR), or PAR with a request object.",
+      "clientAuthMethod": "Choose how the client authenticates when pushing the authorization request to Auth0's PAR endpoint.",
       "connection": "Optional Auth0 connection name to preselect a specific identity provider or database connection.",
       "connectionScope": "Optional connection-specific scopes for supported upstream identity providers.",
       "organization": "Optional Auth0 organization identifier or name for organization-aware login flows.",
@@ -162,8 +185,11 @@
       "claimsLocales": "Ordered space-separated list of locales for claim values.",
       "idTokenHint": "Previously issued ID token hint when the authorization request needs end-user context.",
       "rarJson": "Optional Rich Authorization Requests JSON. Auth0 sends this as authorization_details.",
+      "clientSecret": "The pushed authorization request is itself an authenticated call to Auth0, so the secret is needed here rather than at the later client authentication step. It is the same value that step uses, so entering it once is enough.",
       "requestObjectKey": "PKCS#8 PEM private key used to sign the request object. It stays in memory for this session and is never persisted. The same key is reused if you later choose private_key_jwt for client authentication.",
-      "requestObjectKid": "Identifies which registered key signed the request object. For Auth0 this is the key ID of the application credential holding the matching public key."
+      "requestObjectKid": "Identifies which registered key signed the request object. For Auth0 this is the key ID of the application credential holding the matching public key.",
+      "privateKey": "Keep this secure! PKCS#8 PEM private key used to sign the client assertion for PAR. It stays in memory for this session and is never persisted.",
+      "clientAssertionKid": "This should match the key identifier configured for the client signing key at Auth0."
     },
     "placeholders": {
       "connection": "Username-Password-Authentication",
@@ -177,8 +203,11 @@
       "claimsLocales": "en de",
       "idTokenHint": "eyJ...",
       "rarJson": "['{'\"type\":\"payment_initiation\",\"locations\":[\"https://api.example.com\"]'}']",
+      "clientSecret": "Client secret",
       "requestObjectKey": "-----BEGIN PRIVATE KEY-----",
-      "requestObjectKid": "Key ID of the registered signing key"
+      "requestObjectKid": "Key ID of the registered signing key",
+      "privateKey": "-----BEGIN PRIVATE KEY-----",
+      "clientAssertionKid": "Key ID of the registered signing key"
     },
     "options": {
       "mode": {
@@ -263,6 +292,19 @@
     }
   },
   "StepTokens": {
+    "errors": {
+      "blocked": {
+        "providerConfig": "The provider is not configured yet. Go back to Settings and fill in the tenant or issuer.",
+        "clientId": "No client ID. Go back to Settings and enter the one from your application registration.",
+        "redirectUri": "No redirect URI. Go back to Settings and set the one registered with the application.",
+        "tokenEndpoint": "The token endpoint could not be resolved. Check the issuer in Settings, or set an endpoint override.",
+        "grantParameters": "This grant needs an API audience (Auth0) or scopes (Entra). Go back to Settings and set one.",
+        "authCode": "No authorization code. Run the Authorize step and complete the sign-in first.",
+        "codeVerifier": "No PKCE code verifier. Go back to the PKCE step and generate one.",
+        "clientSecret": "No client secret. Go back to the Client authentication step and enter it.",
+        "privateKey": "No private key. Go back to the Client authentication step and supply the key that signs the client assertion."
+      }
+    },
     "sections": {
       "tokens": {
         "description": "Request tokens from the token endpoint and inspect both the request and response.",
@@ -300,7 +342,11 @@
       "notVerified": "Not verified",
       "skipped": "Skipped",
       "skippedAria": "skipped",
+      "informationalAria": "informational, not a validation",
       "encryptedAccessToken": "This access token is an encrypted JWE. Only the protected header is readable here; signature validation must happen wherever the token can be decrypted.",
+      "encryptedIdToken": "This ID token is an encrypted JWE. Only the protected header is readable here; the client that holds the decryption key verifies the signature after decrypting it.",
+      "opaqueAccessToken": "This access token is opaque, not a JWT. Auth0 issues an opaque token when the authorization request names no API audience. It is a bearer credential the authorization server looks up on its own, so there is no signature for a client to check.",
+      "opaqueClaimValidation": "An opaque token carries no claims. The authorization server resolves it at its userinfo or introspection endpoint; a client validates nothing locally.",
       "encryptedClaimValidation": "Claim validation is skipped because the encrypted payload is not available in the browser.",
       "steps": {
         "extractKid": "Extract kid from token header",
@@ -331,6 +377,7 @@
           "exp": "exp must be in the future",
           "nbfIat": "nbf/iat must be <= now (with small skew)",
           "scp": "scp (delegated scopes)",
+          "scope": "scope (granted scopes)",
           "roles": "roles (app permissions)",
           "wids": "wids (app roles)",
           "ver": "ver (token version)",
@@ -435,7 +482,9 @@
     "notes": {
       "accessHeaderNonce": "This access token header contains a <code>nonce</code> field. This is a provider-specific JOSE header and is unrelated to the OIDC <code>nonce</code> claim, which is validated in the ID token payload.",
       "encryptedPayloadPlaceholder": "[Encrypted JWE payload]",
-      "encryptedToken": "This token is an encrypted JWE. The protected header can be shown, but the payload cannot be decoded in the browser without the decryption key."
+      "encryptedToken": "This token is an encrypted JWE. The protected header can be shown, but the payload cannot be decoded in the browser without the decryption key.",
+      "opaquePayloadPlaceholder": "[Opaque token — nothing to decode]",
+      "opaqueToken": "This access token is opaque rather than a JWT, which is what Auth0 returns when the authorization request names no API audience. There is nothing inside to decode: the token is a reference the authorization server resolves itself. Set an API audience in Settings to receive a JWT instead."
     },
     "claimsDialog": {
       "accessTitle": "Access token claims",
@@ -632,6 +681,7 @@
     "errors": {
       "generateKeyPair": "Error generating key pair: {error}",
       "keyPairRequired": "Please generate a key pair first.",
+      "certificateUnreadable": "This does not read as a certificate PEM, so no thumbprint could be derived. Paste the certificate itself — the block beginning -----BEGIN CERTIFICATE----- — rather than a private key or a truncated copy.",
       "generateCertificate": "Error generating certificate: {error}",
       "missingKid": "Please enter or generate a Key ID first.",
       "missingClientConfig": "Please configure client ID and token endpoint first.",

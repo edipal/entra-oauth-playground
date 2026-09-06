@@ -61,8 +61,13 @@
         "description": "Wir erstellen die Autorisierungs-URL mit Ihrer client_id, redirect_uri, scopes, optionalem state und nonce sowie den PKCE-Parametern. Je nach Provider können Sie außerdem Prompt-Verhalten, Login-Hinweise, Antwortverarbeitung und weitere providerspezifische Autorisierungsparameter setzen, bevor Sie das Popup öffnen. Nach Abschluss der Anmeldung leitet das Popup zurück und der Callback-Schritt füllt die zurückgegebenen Werte automatisch aus."
       },
       "settings": {
-        "userProvidedTitle": "Vom Benutzer bereitgestellte Einstellungen",
-        "userProvidedDescription": "Diese Felder werden von Ihnen konfiguriert und für die Autorisierungsanfrage verwendet."
+        "userProvidedTitle": "Benutzerdefinierte Einstellungen",
+        "userProvidedDescription": "Diese Felder werden von Ihnen konfiguriert und zum Erstellen der Autorisierungsanforderung verwendet."
+      },
+      "par": {
+        "title": "Pushed Authorization Request (PAR - RFC 9126)",
+        "description": "Übermitteln Sie die Autorisierungsparameter vor dem Starten des Browsers über einen Backchannel-HTTP-POST. Auth0 gibt eine request_uri zurück, die anschließend am Autorisierungsendpunkt verwendet wird.",
+        "browserTitle": "Browser-Autorisierungsanfrage"
       }
     },
     "labels": {
@@ -71,17 +76,22 @@
       "nonce": "nonce",
       "responseMode": "response_mode",
       "prompt": "prompt",
-      "loginHint": "login_hint"
+      "loginHint": "login_hint",
+      "parEndpoint": "PAR-Endpunkt",
+      "parRequest": "PAR-Anfrage-Body",
+      "parResponse": "PAR-Antwort"
     },
     "placeholders": {
-      "state": "Optionaler state (empfohlen)",
-      "nonce": "Optionale nonce",
+      "state": "Optionaler State (empfohlen)",
+      "nonce": "Optionale Nonce",
       "selectMethod": "Methode auswählen",
       "loginHint": "user@domain.com"
     },
     "buttons": {
       "generate": "Generieren",
-      "openPopup": "Popup öffnen"
+      "openPopup": "Popup öffnen",
+      "pushPar": "An PAR senden",
+      "pushingPar": "Wird gesendet..."
     },
     "options": {
       "responseMode": {
@@ -96,13 +106,17 @@
       }
     },
     "help": {
-      "responseType": "OAuth-Parameter response_type; für PKCE ist er 'code'.",
-      "state": "Opaker Wert, um den Zustand zwischen Anfrage und Callback zu erhalten; hilft, CSRF zu verhindern.",
-      "nonce": "Zeichenfolge, um eine Client-Sitzung mit einem ID-Token zu verknüpfen; hilft, Replay-Angriffe zu mindern.",
-      "responseMode": "Wo die Antwort zurückgegeben werden soll (query oder form_post).",
-      "prompt": "Steuert das interaktive Verhalten, zum Beispiel login, consent, none oder providerspezifische Prompt-Werte.",
-      "loginHint": "Benutzernamen bzw. Sign-In-Hinweis vorausfüllen (z. B. E-Mail).",
-      "authUrlPreview": "Die vollständige Autorisierungs-URL, die im Popup geöffnet wird."
+      "responseType": "OAuth-Parameter response_type; für PKCE lautet dieser 'code'.",
+      "state": "Opaker Wert zur Zustandserhaltung zwischen Anfrage und Callback; schützt vor CSRF.",
+      "nonce": "Eine Zeichenfolge, um eine Client-Sitzung mit einem ID-Token zu verknüpfen; mindert Replay-Angriffe.",
+      "responseMode": "Wohin die Antwort zurückgegeben werden soll (query oder form_post).",
+      "prompt": "Steuert das interaktive Verhalten, z. B. login, consent, none oder anbieterspezifische Werte.",
+      "loginHint": "Benutzernamen oder Anmeldehinweis vorab ausfüllen (z. B. E-Mail).",
+      "authUrlPreview": "Die vollständige Autorisierungs-URL, die im Popup geöffnet wird.",
+      "parEndpoint": "Der Endpunkt, an den die Autorisierungsparameter per Backchannel-HTTP-POST übertragen werden.",
+      "parRequest": "Parameter, die an den PAR-Endpunkt gesendet werden, einschließlich Client-Anmeldeinformationen, Scopes und authorization_details.",
+      "parResponse": "Live-Antwort des PAR-Endpunkts mit request_uri und expires_in.",
+      "browserAuthUrl": "Die bereinigte Autorisierungs-URL mit request_uri, die im Browser-Popup geöffnet wird."
     }
   },
   "StepCallApi": {
@@ -127,6 +141,10 @@
     }
   },
   "Auth0AuthorizationOptions": {
+    "methodOptions": {
+      "secret": "Client Secret",
+      "auth0PrivateKey": "Privater Schlüssel (private_key_jwt)"
+    },
     "modeDescriptions": {
       "url": "Senden Sie die Autorisierungsanfrage direkt über die Browser-URL.",
       "par": "Übermitteln Sie dieselben Autorisierungsparameter zuerst per PAR an Auth0 und starten Sie den Browser anschließend mit einer request_uri.",
@@ -135,6 +153,7 @@
     },
     "labels": {
       "mode": "Request-Modus",
+      "clientAuthMethod": "Client-Authentifizierung",
       "connection": "connection",
       "connectionScope": "connection_scope",
       "organization": "organization",
@@ -146,11 +165,15 @@
       "claimsLocales": "claims_locales",
       "idTokenHint": "id_token_hint",
       "rarJson": "Autorisierungsdetails",
+      "clientSecret": "Client Secret",
       "requestObjectKey": "Signaturschlüssel für das Request Object",
-      "requestObjectKid": "Key ID (kid) des Request Objects"
+      "requestObjectKid": "Key ID (kid) des Request Objects",
+      "privateKey": "Privater Schlüssel (PKCS#8 PEM)",
+      "clientAssertionKid": "Schlüssel-ID (kid)"
     },
     "help": {
       "mode": "Auth0-Autorisierungsrequest-Transport: normale URL, Pushed Authorization Request (PAR), JWT-secured Authorization Request (JAR) oder PAR mit Request Object.",
+      "clientAuthMethod": "Wählen Sie, wie sich der vertrauliche Client bei der Übergabe der Autorisierungsanforderung an den PAR-Endpunkt von Auth0 authentifiziert.",
       "connection": "Optionaler Auth0-Connection-Name, um einen bestimmten Identity Provider oder eine Datenbankverbindung vorab auszuwählen.",
       "connectionScope": "Optionale connection-spezifische Scopes für unterstützte vorgelagerte Identity Provider.",
       "organization": "Optionale Auth0-Organisations-ID oder -Name für organisationsbezogene Login-Flows.",
@@ -162,8 +185,11 @@
       "claimsLocales": "Sortierte, leerzeichengetrennte Liste von Gebietsschemata für Claim-Werte.",
       "idTokenHint": "Hinweis mit einem zuvor ausgegebenen ID-Token, wenn die Autorisierungsanfrage Endbenutzerkontext benötigt.",
       "rarJson": "Optionales Rich-Authorization-Requests-JSON. Auth0 sendet es als authorization_details.",
+      "clientSecret": "Der Pushed Authorization Request ist selbst ein authentifizierter Aufruf an Auth0. Das Secret wird deshalb hier benötigt und nicht erst im späteren Schritt zur Client-Authentifizierung. Es ist derselbe Wert, den jener Schritt verwendet – eine einmalige Eingabe genügt.",
       "requestObjectKey": "Privater Schlüssel im PKCS#8-PEM-Format zum Signieren des Request Objects. Er bleibt nur für diese Sitzung im Speicher und wird nicht persistiert. Derselbe Schlüssel wird wiederverwendet, wenn Sie später private_key_jwt als Client-Authentifizierung wählen.",
-      "requestObjectKid": "Gibt an, welcher registrierte Schlüssel das Request Object signiert hat. Bei Auth0 ist das die Key ID der Anmeldeinformation mit dem passenden öffentlichen Schlüssel."
+      "requestObjectKid": "Gibt an, welcher registrierte Schlüssel das Request Object signiert hat. Bei Auth0 ist das die Key ID der Anmeldeinformation mit dem passenden öffentlichen Schlüssel.",
+      "privateKey": "Sicher aufbewahren! Privater Schlüssel im PKCS#8-PEM-Format zum Signieren der Client-Assertion für PAR. Er bleibt nur für diese Sitzung im Speicher und wird nicht persistiert.",
+      "clientAssertionKid": "Gibt an, welcher registrierte Schlüssel die Client-Assertion signiert hat. Bei Auth0 ist das die Key ID der Anmeldeinformation mit dem passenden öffentlichen Schlüssel."
     },
     "placeholders": {
       "connection": "Username-Password-Authentication",
@@ -177,8 +203,11 @@
       "claimsLocales": "en de",
       "idTokenHint": "eyJ...",
       "rarJson": "['{'\"type\":\"payment_initiation\",\"locations\":[\"https://api.example.com\"]'}']",
+      "clientSecret": "Client Secret",
       "requestObjectKey": "-----BEGIN PRIVATE KEY-----",
-      "requestObjectKid": "Key ID des registrierten Signaturschlüssels"
+      "requestObjectKid": "Key ID des registrierten Signaturschlüssels",
+      "privateKey": "-----BEGIN PRIVATE KEY-----",
+      "clientAssertionKid": "Key ID des registrierten Signaturschlüssels"
     },
     "options": {
       "mode": {
@@ -263,6 +292,19 @@
     }
   },
   "StepTokens": {
+    "errors": {
+      "blocked": {
+        "providerConfig": "Der Provider ist noch nicht konfiguriert. Gehen Sie zu den Einstellungen und tragen Sie Tenant oder Issuer ein.",
+        "clientId": "Keine Client-ID. Gehen Sie zu den Einstellungen und tragen Sie die ID aus Ihrer Anwendungsregistrierung ein.",
+        "redirectUri": "Keine Redirect-URI. Gehen Sie zu den Einstellungen und tragen Sie die bei der Anwendung registrierte URI ein.",
+        "tokenEndpoint": "Der Token-Endpunkt konnte nicht ermittelt werden. Prüfen Sie den Issuer in den Einstellungen oder setzen Sie eine Endpunkt-Überschreibung.",
+        "grantParameters": "Dieser Grant benötigt eine API-Audience (Auth0) oder Scopes (Entra). Setzen Sie eines davon in den Einstellungen.",
+        "authCode": "Kein Autorisierungscode. Führen Sie zuerst den Authorize-Schritt samt Anmeldung aus.",
+        "codeVerifier": "Kein PKCE-Code-Verifier. Gehen Sie zum PKCE-Schritt und erzeugen Sie einen.",
+        "clientSecret": "Kein Client Secret. Gehen Sie zum Schritt Client-Authentifizierung und tragen Sie es ein.",
+        "privateKey": "Kein privater Schlüssel. Gehen Sie zum Schritt Client-Authentifizierung und hinterlegen Sie den Schlüssel, der die Client Assertion signiert."
+      }
+    },
     "sections": {
       "tokens": {
         "description": "Tauschen Sie den Autorisierungscode gegen Tokens und prüfen Sie Anfrage sowie Antwort.",
@@ -300,7 +342,11 @@
       "notVerified": "Nicht verifiziert",
       "skipped": "Übersprungen",
       "skippedAria": "übersprungen",
+      "informationalAria": "Information, keine Prüfung",
       "encryptedAccessToken": "Dieses Access Token ist ein verschlüsseltes JWE. Hier ist nur der Protected Header lesbar; die Signaturvalidierung muss dort stattfinden, wo das Token entschlüsselt werden kann.",
+      "encryptedIdToken": "Dieses ID Token ist ein verschlüsseltes JWE. Hier ist nur der Protected Header lesbar; der Client mit dem Entschlüsselungsschlüssel prüft die Signatur nach dem Entschlüsseln.",
+      "opaqueAccessToken": "Dieses Access Token ist opak, kein JWT. Auth0 stellt ein opakes Token aus, wenn die Autorisierungsanfrage keine API-Audience nennt. Es ist ein Bearer-Credential, das der Autorisierungsserver selbst auflöst – es gibt also keine Signatur, die ein Client prüfen könnte.",
+      "opaqueClaimValidation": "Ein opakes Token enthält keine Claims. Der Autorisierungsserver löst es an seinem Userinfo- oder Introspection-Endpunkt auf; ein Client validiert lokal nichts.",
       "encryptedClaimValidation": "Die Claim-Validierung wird übersprungen, weil die verschlüsselte Payload im Browser nicht verfügbar ist.",
       "steps": {
         "extractKid": "kid aus Token-Header auslesen",
@@ -331,6 +377,7 @@
           "exp": "exp muss in der Zukunft liegen",
           "nbfIat": "nbf/iat müssen <= jetzt sein (mit Puffer)",
           "scp": "scp (delegierte Scopes)",
+          "scope": "scope (gewährte Scopes)",
           "roles": "roles (App-Berechtigungen)",
           "wids": "wids (App-Rollen)",
           "ver": "ver (Token-Version)",
@@ -435,7 +482,9 @@
     "notes": {
       "accessHeaderNonce": "Dieser Access-Token-Header enthält ein <code>nonce</code>-Feld. Das ist ein anbieter­spezifischer JOSE-Header und nicht mit dem OIDC-<code>nonce</code>-Claim verwandt, der im ID-Token-Payload validiert wird.",
       "encryptedPayloadPlaceholder": "[Verschlüsselte JWE-Payload]",
-      "encryptedToken": "Dieses Token ist ein verschlüsseltes JWE. Der geschützte Header kann angezeigt werden, die Payload aber nicht im Browser ohne den Entschlüsselungsschlüssel dekodiert werden."
+      "encryptedToken": "Dieses Token ist ein verschlüsseltes JWE. Der geschützte Header kann angezeigt werden, die Payload aber nicht im Browser ohne den Entschlüsselungsschlüssel dekodiert werden.",
+      "opaquePayloadPlaceholder": "[Opakes Token – nichts zu dekodieren]",
+      "opaqueToken": "Dieses Access Token ist opak und kein JWT – so antwortet Auth0, wenn die Autorisierungsanfrage keine API-Audience nennt. Es gibt nichts zu dekodieren: Das Token ist eine Referenz, die der Autorisierungsserver selbst auflöst. Setzen Sie in den Einstellungen eine API-Audience, um stattdessen ein JWT zu erhalten."
     },
     "claimsDialog": {
       "accessTitle": "Access-Token-Claims",
@@ -632,6 +681,7 @@
     "errors": {
       "generateKeyPair": "Fehler beim Erzeugen des Schlüsselpaares: {error}",
       "keyPairRequired": "Bitte erzeugen Sie zuerst ein Schlüsselpaar.",
+      "certificateUnreadable": "Dies ist kein lesbares Zertifikats-PEM, daher konnte kein Fingerabdruck ermittelt werden. Fügen Sie das Zertifikat selbst ein – den Block ab -----BEGIN CERTIFICATE----- – und nicht einen privaten Schlüssel oder eine abgeschnittene Kopie.",
       "generateCertificate": "Fehler beim Erzeugen des Zertifikats: {error}",
       "missingKid": "Bitte geben Sie zuerst eine Key-ID ein oder erzeugen Sie sie.",
       "missingClientConfig": "Bitte konfigurieren Sie zuerst Client-ID und Token-Endpunkt.",

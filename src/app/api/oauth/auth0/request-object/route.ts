@@ -18,6 +18,37 @@ function normalizeAuthorizationParams(value: unknown): Record<string, string> {
   );
 }
 
+/**
+ * Restores the JSON types the query string flattened away. The parameters arrive
+ * as the authorize URL's search params, where everything is a string — correct
+ * there, wrong in a JWT. RFC 9101 §4: "Parameter names and string values MUST be
+ * included as JSON strings... Numerical values MUST be included as JSON numbers."
+ *
+ * Only the two parameters that have a non-string type are converted; the rest are
+ * strings by definition and stay as they are.
+ */
+function applyJsonParameterTypes(
+  params: Record<string, string>,
+): Record<string, unknown> {
+  const claims: Record<string, unknown> = { ...params };
+
+  if (/^\d+$/.test(params.max_age ?? "")) {
+    claims.max_age = Number(params.max_age);
+  }
+
+  if (params.authorization_details) {
+    // Already validated as a well-formed array by normalizeAuthorizationDetailsParam,
+    // so this reinstates the array rather than trusting arbitrary input.
+    try {
+      claims.authorization_details = JSON.parse(params.authorization_details);
+    } catch {
+      // leave the string in place rather than dropping the parameter
+    }
+  }
+
+  return claims;
+}
+
 export async function POST(request: Request) {
   try {
     const json = await request.json();
@@ -54,7 +85,7 @@ export async function POST(request: Request) {
     }
 
     const claims: AuthorizationRequestObjectClaims = {
-      ...validatedParams,
+      ...applyJsonParameterTypes(validatedParams),
       client_id: String(clientId),
       redirect_uri: normalizedParams.redirect_uri,
       response_type: normalizedParams.response_type,

@@ -1,7 +1,13 @@
 import { SignJWT, importPKCS8 } from "jose";
 import { randomGuidLike } from "@/lib/random";
 
-export type AuthorizationRequestObjectClaims = Record<string, string> & {
+/**
+ * A request object is JSON, not a query string, so a claim keeps the type its
+ * parameter is defined with — RFC 9101 §4: "Parameter names and string values
+ * MUST be included as JSON strings... Numerical values MUST be included as JSON
+ * numbers." Hence `unknown` rather than `string` for the open set.
+ */
+export type AuthorizationRequestObjectClaims = Record<string, unknown> & {
   client_id: string;
   redirect_uri: string;
   response_type: string;

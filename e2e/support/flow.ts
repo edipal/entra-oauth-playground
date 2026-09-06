@@ -116,9 +116,21 @@ export class FlowPage {
     return this.page.locator(`#${id}`);
   }
 
+  /**
+   * The clickable root of a PrimeReact dropdown.
+   *
+   * The controls carry `inputId`, not `id`, so the label's `htmlFor` reaches a
+   * real focusable element. That puts the id on an `<input readonly>` sitting
+   * *under* the visible `.p-dropdown-label`, which intercepts the click — so a
+   * spec has to drive the wrapper, not the element carrying the id.
+   */
+  dropdown(id: string): Locator {
+    return this.page.locator(`.p-dropdown:has(#${id})`);
+  }
+
   /** PrimeReact dropdowns are not native selects: open, then pick by label. */
   async chooseDropdown(id: string, optionLabel: string) {
-    await this.page.locator(`#${id}`).click();
+    await this.dropdown(id).click();
     await this.page
       .locator(".p-dropdown-panel .p-dropdown-item", { hasText: optionLabel })
       .first()
@@ -127,17 +139,14 @@ export class FlowPage {
   }
 
   /**
-   * Some PrimeReact controls (Password) put the id on a wrapper element rather
-   * than on the field, so fall back to the first editable descendant.
+   * Fills by id directly. This used to fall back to the first editable
+   * descendant, because PrimeReact controls given `id` put it on a wrapper div —
+   * which also meant the label's `htmlFor` pointed at something unfocusable.
+   * Those controls carry `inputId` now, so every id here reaches a real field.
+   * The fallback is deliberately gone: if one is reintroduced, this fails with
+   * "Element is not an <input>" rather than quietly compensating for it.
    */
-  async fill(id: string, value: string) {
-    const root = this.page.locator(`#${id}`);
-    const tag = await root.evaluate((el) => el.tagName.toLowerCase());
-    const target =
-      tag === "input" || tag === "textarea"
-        ? root
-        : root.locator("input, textarea").first();
-
-    await target.fill(value);
+  fill(id: string, value: string) {
+    return this.page.locator(`#${id}`).fill(value);
   }
 }

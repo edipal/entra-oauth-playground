@@ -60,6 +60,28 @@ describe("computeCertificateThumbprints", () => {
     expect(result?.thumbprintSha1).toBe(SHA1_HEX);
   });
 
+  it("thumbprints the leaf when a chain is pasted", async () => {
+    // What a CA hands you and what `openssl` writes by default. The leaf comes
+    // first and is the certificate `x5t` identifies, so the answer must be the
+    // same as for the leaf alone — not null, which is what stripping delimiters
+    // by substring produced.
+    const chain = `${CERTIFICATE_PEM}\n${CERTIFICATE_PEM.replace(
+      "MIICwDCCAaig",
+      "MIICwDCCAaih",
+    )}`;
+
+    const result = await computeCertificateThumbprints(chain);
+
+    expect(result?.thumbprintSha1).toBe(SHA1_HEX);
+    expect(result?.thumbprintSha1Base64Url).toBe(SHA1_BASE64URL);
+  });
+
+  it("returns null for a certificate block that was cut off", async () => {
+    const truncated = CERTIFICATE_PEM.replace("-----END CERTIFICATE-----", "");
+
+    expect(await computeCertificateThumbprints(truncated)).toBeNull();
+  });
+
   it("returns null for anything that is not a certificate PEM", async () => {
     expect(await computeCertificateThumbprints("")).toBeNull();
     expect(await computeCertificateThumbprints("   ")).toBeNull();

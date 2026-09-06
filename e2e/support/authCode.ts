@@ -62,11 +62,35 @@ export async function validateAndCallApi(flow: FlowPage) {
 
   await flow.next();
   await flow.expectStep("Call API");
-  await flow.page
-    .getByRole("button", { name: "Send GET", exact: true })
-    .click();
 
+  const sendButton = flow.page.getByRole("button", {
+    name: "Send GET",
+    exact: true,
+  });
   const apiResponse = flow.page.locator("#apiResponse");
-  await expect(apiResponse).not.toHaveValue("", { timeout: 30_000 });
-  return apiResponse.inputValue();
+
+  let currentResponse = "";
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (attempt > 0) {
+      // Auth0 rate limits /userinfo burst requests across parallel workers.
+      await flow.page.waitForTimeout(4000 * attempt);
+    }
+    await expect(sendButton).toBeEnabled();
+    await sendButton.click();
+
+    // Wait for a fresh response to arrive (different from the prior response)
+    await expect
+      .poll(async () => await apiResponse.inputValue(), {
+        timeout: 30_000,
+        intervals: [200, 500, 1000],
+      })
+      .not.toBe(currentResponse);
+
+    currentResponse = await apiResponse.inputValue();
+    if (currentResponse && !currentResponse.includes("Too Many Requests")) {
+      return currentResponse;
+    }
+  }
+
+  return currentResponse;
 }

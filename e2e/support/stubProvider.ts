@@ -85,7 +85,15 @@ export type ProviderTraffic = {
 export async function stubAuth0Authorization(
   page: Page,
   mintTokens: MintTokens,
-  options: { authorizationCode?: string } = {},
+  options: {
+    authorizationCode?: string;
+    /**
+     * Returns the `state` to send back, given what the app sent. Defaults to
+     * echoing it. A spec overrides this to forge a mismatch, which is the case
+     * `state` exists to catch.
+     */
+    stateInResponse?: (sentState: string) => string;
+  } = {},
 ): Promise<ProviderTraffic> {
   const code = options.authorizationCode ?? "demo-authorization-code";
   const traffic: ProviderTraffic = { authorizations: [], tokenRequests: [] };
@@ -94,9 +102,13 @@ export async function stubAuth0Authorization(
     const params = new URL(route.request().url()).searchParams;
     traffic.authorizations.push(params);
 
+    const sentState = params.get("state") ?? "";
     const callback = new URL(params.get("redirect_uri") ?? "");
     callback.searchParams.set("code", code);
-    callback.searchParams.set("state", params.get("state") ?? "");
+    callback.searchParams.set(
+      "state",
+      options.stateInResponse ? options.stateInResponse(sentState) : sentState,
+    );
 
     return route.fulfill({
       status: 302,

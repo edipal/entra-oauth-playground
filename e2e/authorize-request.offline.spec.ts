@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/offlineTest";
 import { FlowPage } from "./support/flow";
 import { defaultsFor, seedSettings, DEMO } from "./support/settings";
 
@@ -138,7 +138,7 @@ test.describe("Auth0 authorization request", () => {
     await flow.goto();
     await flow.advanceTo("Authorize");
 
-    await page.locator("#prompt").click();
+    await flow.dropdown("prompt").click();
     const options = await page
       .locator(".p-dropdown-panel .p-dropdown-item")
       .allInnerTexts();

@@ -154,7 +154,7 @@ async function signInToAuth0(
     'input[name="username"], input[name="email"], input[type="email"]',
   );
   if (await username.isVisible().catch(() => false)) {
-    await username.fill(user.username);
+    await fillReliably(popup, username.first(), user.username, "username");
   }
 
   const password = popup.locator(
@@ -166,14 +166,10 @@ async function signInToAuth0(
       .getByRole("button", { name: /continue|next/i })
       .first()
       .click();
-    await expect(password).toBeVisible({ timeout: 30_000 });
+    await expect(password.first()).toBeVisible({ timeout: 30_000 });
   }
 
-  await password.fill(user.password);
-  expect(
-    await password.inputValue(),
-    "password field did not accept the value",
-  ).not.toBe("");
+  await fillReliably(popup, password.first(), user.password, "password");
 
   await popup
     .getByRole("button", { name: /continue|log in|sign in/i })

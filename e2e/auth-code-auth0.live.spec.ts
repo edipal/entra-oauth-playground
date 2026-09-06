@@ -35,6 +35,7 @@ async function decodeAndCallApi(
     clientId: string;
     nonce: string;
     tenant?: typeof auth0 | typeof auth0PkJwt;
+    expectedRarType?: string;
   },
 ) {
   const tenant = expected.tenant || auth0;
@@ -42,6 +43,12 @@ async function decodeAndCallApi(
 
   expect(access.iss).toBe(`${tenant.issuerUrl}/`);
   expect([].concat(access.aud)).toContain(tenant.audience);
+
+  if (expected.expectedRarType) {
+    expect(access.authorization_details).toEqual([
+      { type: expected.expectedRarType },
+    ]);
+  }
 
   expect(id.aud).toBe(expected.clientId);
   expect(id.nonce, "nonce must round-trip into the ID token").toBe(
@@ -118,6 +125,57 @@ test.describe("Auth0 authorization code (public client)", () => {
     });
   });
 
+  test("with RAR on plain URL, Auth0 refuses and directs to PAR", async ({
+    page,
+  }) => {
+    requiresInteractiveAuth0({
+      E2E_AUTH0_PUBLIC_CLIENT_ID: auth0.publicClientId,
+    });
+
+    const rarPayload = '[{"type":"payment_initiation"}]';
+
+    await seedSettings(page, "auth0", {
+      authCodePublicClient: {
+        providerId: "auth0",
+        issuerUrl: auth0.issuerUrl,
+        clientId: auth0.publicClientId,
+        audience: auth0.audience,
+        scopes: auth0.userScopes,
+        apiEndpointUrl: auth0.apiEndpoint,
+        pkceEnabled: true,
+        streamlined: false,
+        rarJson: rarPayload,
+      },
+    });
+
+    const flow = new FlowPage(
+      page,
+      "auth0",
+      "authorization-code/public-client",
+    );
+    await flow.goto();
+    await flow.advanceTo("Authorize");
+
+    const params = await prepareAuthorizeRequest(flow);
+    expect(params.authorization_details).toBe(rarPayload);
+
+    // Auth0 disallows authorization_details on the frontchannel GET /authorize URL,
+    // immediately redirecting back with error=invalid_request without showing login form.
+    await Promise.all([
+      page.waitForEvent("popup"),
+      page.getByRole("button", { name: "Open popup" }).click(),
+    ]);
+
+    await flow.expectStep("Callback");
+    await expect(flow.page.locator("#callbackError")).toHaveValue(
+      "invalid_request",
+      { timeout: 20_000 },
+    );
+    expect(
+      await flow.page.locator("#callbackErrorDescription").inputValue(),
+    ).toContain("please use it in PAR instead");
+  });
+
   test("without PKCE, the code still redeems", async ({ page }) => {
     requiresInteractiveAuth0({
       E2E_AUTH0_PUBLIC_CLIENT_ID: auth0.publicClientId,
@@ -174,6 +232,7 @@ async function authorizeConfidentialClient(
     clientId?: string;
     clientAssertionKid?: string;
     authRequestMode?: "url" | "par" | "jar" | "par-jar";
+    rarJson?: string;
     /** Runs on the Authorize step before the popup is opened. */
     beforeLaunch?: (flow: FlowPage) => Promise<void>;
   },
@@ -194,6 +253,7 @@ async function authorizeConfidentialClient(
       clientAuthMethod: options.clientAuthMethod || "secret",
       clientAssertionKid: options.clientAssertionKid,
       authRequestMode: options.authRequestMode,
+      rarJson: options.rarJson,
     },
   });
 
@@ -207,22 +267,46 @@ async function authorizeConfidentialClient(
 
   const params = await prepareAuthorizeRequest(flow);
   expect(params.client_id).toBe(clientId);
-  expect(params.audience).toBe(tenant.audience);
-  if (options.pkceEnabled) {
-    expect(params.code_challenge_method).toBe("S256");
+
+  const state =
+    params.state || (await flow.page.locator("#state").inputValue());
+  const nonce =
+    params.nonce || (await flow.page.locator("#nonce").inputValue());
+
+  if (!options.authRequestMode || options.authRequestMode === "url") {
+    expect(params.audience).toBe(tenant.audience);
+    if (options.pkceEnabled) {
+      expect(params.code_challenge_method).toBe("S256");
+    } else {
+      expect(params.code_challenge).toBe(undefined);
+    }
+    if (options.rarJson) {
+      expect(params.authorization_details).toBe(options.rarJson);
+    }
+  } else if (options.authRequestMode === "jar") {
+    expect(params.request).toBe("[signed_jwt_request_object]");
+    expect(params.audience).toBeUndefined();
   } else {
-    expect(params.code_challenge).toBe(undefined);
+    // par or par-jar. Nothing has been pushed yet — prepareAuthorizeRequest reads
+    // the preview, and in PAR mode that is the placeholder the step shows until a
+    // request_uri exists. Asserting the placeholder is what is actually knowable
+    // here; that a real one replaces it is proven by the sign-in below, which
+    // cannot succeed unless the push did.
+    expect(params.request_uri).toBe(
+      "urn:ietf:params:oauth:request_uri:[push_par_to_obtain_request_uri]",
+    );
+    expect(params.audience).toBeUndefined();
   }
 
   await options.beforeLaunch?.(flow);
 
   await authorizeThroughPopup(page, "auth0", tenant);
-  await expectCallbackFor(flow, params.state);
+  await expectCallbackFor(flow, state);
 
   await flow.next();
   await flow.expectStep("Authentication");
 
-  return { flow, params };
+  return { flow, params: { ...params, state, nonce } };
 }
 
 test.describe("Auth0 authorization code (confidential client)", () => {
@@ -345,7 +429,11 @@ test.describe("Auth0 authorization code (request modes)", () => {
     await flow.fill("auth0RequestObjectKid", auth0PkJwt.credentialKid);
   };
 
-  async function runMode(page: Page, mode: "par" | "jar" | "par-jar") {
+  async function runMode(
+    page: Page,
+    mode: "par" | "jar" | "par-jar",
+    options?: { rarJson?: string; expectedRarType?: string },
+  ) {
     const { flow, params } = await authorizeConfidentialClient(page, {
       pkceEnabled: true,
       tenant: auth0PkJwt,
@@ -353,6 +441,7 @@ test.describe("Auth0 authorization code (request modes)", () => {
       clientAuthMethod: "certificate",
       clientAssertionKid: auth0PkJwt.credentialKid,
       authRequestMode: mode,
+      rarJson: options?.rarJson,
       beforeLaunch: supplySigningKey,
     });
 
@@ -369,6 +458,7 @@ test.describe("Auth0 authorization code (request modes)", () => {
       clientId: auth0PkJwt.confidentialClientId,
       nonce: params.nonce,
       tenant: auth0PkJwt,
+      expectedRarType: options?.expectedRarType,
     });
   }
 
@@ -377,6 +467,26 @@ test.describe("Auth0 authorization code (request modes)", () => {
   }) => {
     requiresPkJwtTenant();
     await runMode(page, "par");
+  });
+
+  test("PAR with RAR pushes the request and returns authorization_details", async ({
+    page,
+  }) => {
+    requiresPkJwtTenant();
+    await runMode(page, "par", {
+      rarJson: '[{"type":"payment_initiation"}]',
+      expectedRarType: "payment_initiation",
+    });
+  });
+
+  test("PAR + JAR with RAR pushes the signed request object and returns authorization_details", async ({
+    page,
+  }) => {
+    requiresPkJwtTenant();
+    await runMode(page, "par-jar", {
+      rarJson: '[{"type":"payment_initiation"}]',
+      expectedRarType: "payment_initiation",
+    });
   });
 
   test("JAR launches with a signed request object", async ({ page }) => {

@@ -1,9 +1,14 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./support/offlineTest";
 import { FlowPage } from "./support/flow";
 import {
   DEMO,
   defaultsFor,
+  readRawKey,
+  readRawSettings,
   readSettings,
+  seedRawKey,
+  seedRawSettings,
   seedSettings,
   type ProviderId,
 } from "./support/settings";
@@ -188,6 +193,154 @@ test.describe("Workspace settings isolation", () => {
     );
     // and the two flows do not share a scope set either
     await expect(page.locator("#scopes")).toHaveValue("");
+  });
+
+  test("an unreadable workspace does not take the other one down with it", async ({
+    page,
+  }) => {
+    // Hydration used to read both keys inside one try/catch, so a single
+    // unparseable value skipped the state update entirely and left *both*
+    // workspaces at defaults — and the first edit in the healthy one wrote those
+    // defaults over its stored settings.
+    await stubAuth0Discovery(page);
+    await seedSettings(page, "entra", {
+      authCodePublicClient: defaultsFor("entra", {
+        clientId: "entra-survivor-client-id",
+        scopes: "openid profile User.Read",
+      }),
+    });
+    await seedRawSettings(page, "auth0", '{"authCodePublicClient":{"clie');
+
+    const flow = new FlowPage(page, "entra", PUBLIC_CLIENT);
+    await flow.goto();
+    await flow.expectStep("Settings");
+
+    // the healthy workspace still hydrates
+    await expect(page.locator("#clientId")).toHaveValue(
+      "entra-survivor-client-id",
+    );
+    await expect(page.locator("#scopes")).toHaveValue(
+      "openid profile User.Read",
+    );
+
+    // and an edit here persists on top of the seeded values rather than defaults
+    await page.locator("#scopes").fill("openid profile Mail.Read");
+    await expect
+      .poll(
+        async () =>
+          (await readSettings(page, "entra")).authCodePublicClient.clientId,
+      )
+      .toBe("entra-survivor-client-id");
+
+    // the value that could not be read is kept, not silently discarded
+    expect(await readRawSettings(page, "auth0", ":corrupt")).toBe(
+      '{"authCodePublicClient":{"clie',
+    );
+    expect(await readRawSettings(page, "auth0")).toBeNull();
+  });
+
+  test("settings from before the workspace split are carried over", async ({
+    page,
+  }) => {
+    // Everything persisted to one `app:settings` key until this branch, when
+    // Entra was the only provider. Reading only the new keys left an upgrading
+    // user at an empty Settings step with their configuration still in
+    // localStorage, unread and unreachable.
+    const legacy = JSON.stringify({
+      authCodePublicClient: {
+        tenantId: DEMO.entraTenant,
+        clientId: "legacy-entra-client-id",
+        scopes: "openid profile User.Read",
+      },
+    });
+    await seedRawKey(page, "app:settings", legacy);
+
+    const flow = new FlowPage(page, "entra", PUBLIC_CLIENT);
+    await flow.goto();
+    await flow.expectStep("Settings");
+
+    await expect(page.locator("#clientId")).toHaveValue(
+      "legacy-entra-client-id",
+    );
+    await expect(page.locator("#scopes")).toHaveValue(
+      "openid profile User.Read",
+    );
+
+    // renamed rather than deleted, and gone from the key that would migrate again
+    expect(await readRawKey(page, "app:settings:migrated")).toBe(legacy);
+    expect(await readRawKey(page, "app:settings")).toBeNull();
+
+    // the Auth0 workspace was never part of that data and stays at its defaults
+    await switchWorkspace(page, "auth0");
+    await expect(page.locator("#clientId")).toHaveValue("");
+    await expect(page.locator("#scopes")).toHaveValue(
+      AUTH0_DEFAULT_AUTH_CODE_SCOPES,
+    );
+  });
+
+  test("a configured workspace is never replaced by the legacy key", async ({
+    page,
+  }) => {
+    await seedRawKey(
+      page,
+      "app:settings",
+      JSON.stringify({
+        authCodePublicClient: { clientId: "legacy-entra-client-id" },
+      }),
+    );
+    await seedSettings(page, "entra", {
+      authCodePublicClient: defaultsFor("entra", {
+        clientId: "current-entra-client-id",
+      }),
+    });
+
+    const flow = new FlowPage(page, "entra", PUBLIC_CLIENT);
+    await flow.goto();
+    await flow.expectStep("Settings");
+
+    await expect(page.locator("#clientId")).toHaveValue(
+      "current-entra-client-id",
+    );
+  });
+
+  test("erasing a flow leaves nothing of the old configuration behind", async ({
+    page,
+  }) => {
+    // Erase used to hand the merging setter a hand-written list of fields, so
+    // whichever fields the list had not caught up with survived — `authRequestMode`
+    // and `rarJson` outlived an erase and left a stripped flow still set to
+    // PAR + JAR. Asserting equality with the defaults rather than field by field
+    // is deliberate: a per-field assertion would repeat the original mistake.
+    await stubAuth0Discovery(page);
+    await seedSettings(page, "auth0", {
+      authCodeConfidentialClient: defaultsFor("auth0", {
+        clientId: "auth0-confidential-client-id",
+        authRequestMode: "par-jar",
+        rarJson: '[{"type":"payment_initiation"}]',
+      }),
+    });
+
+    const flow = new FlowPage(
+      page,
+      "auth0",
+      "authorization-code/confidential-client",
+    );
+    await flow.goto();
+    await expect(page.locator("#clientId")).toHaveValue(
+      "auth0-confidential-client-id",
+    );
+
+    await page.getByRole("button", { name: "Erase settings" }).click();
+    await expect(page.locator("#clientId")).toHaveValue("");
+
+    const erased = (await readSettings(page, "auth0"))
+      .authCodeConfidentialClient;
+    expect(erased.authRequestMode).toBe("url");
+    expect(erased.rarJson).toBe("");
+
+    // and a second workspace's settings are untouched by an erase in this one
+    const untouched = await readSettings(page, "entra");
+    expect(untouched?.authCodeConfidentialClient?.clientId ?? "").toBe("");
   });
 
   test("provider defaults differ per flow before anything is configured", async ({

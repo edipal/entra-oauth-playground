@@ -47,12 +47,29 @@ describe("decodeJwt", () => {
     expect(decodeJwt(token).format).toBe("jwe");
   });
 
-  it("returns the invalid shape for junk input", () => {
+  it("calls a token that never claimed to be a JWT opaque, not invalid", () => {
+    // What Auth0 returns when the authorization request names no API audience.
+    // Reporting it as invalid stopped the wizard on a perfectly good token.
     expect(decodeJwt("not-a-token")).toEqual({
       header: "",
       payload: "",
-      format: "invalid",
+      format: "opaque",
     });
+    expect(decodeJwt("vjtOFdSTKp1RxLHhqBcMzYw8gN4uEa2i").format).toBe("opaque");
+  });
+
+  it("keeps invalid for something shaped like a JWT that will not decode", () => {
+    expect(decodeJwt("aaa.bbb.ccc").format).toBe("invalid");
     expect(decodeJwt("").format).toBe("invalid");
+  });
+
+  it("counts the segments exactly, since only three or five are a JWT", () => {
+    // Four segments is neither a compact JWS nor a compact JWE, so calling it a
+    // malformed JWT overstates what is known. A single `{2,4}` repetition range
+    // over the dots accepted it.
+    expect(decodeJwt("aaa.bbb.ccc.ddd").format).toBe("opaque");
+    expect(decodeJwt("aaa.bbb.ccc.ddd.eee").format).toBe("invalid");
+    // and a leading empty segment is not a header, whatever follows it
+    expect(decodeJwt(".bbb.ccc").format).toBe("opaque");
   });
 });

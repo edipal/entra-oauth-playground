@@ -393,15 +393,29 @@ function arrayBufferToPem(buffer: ArrayBuffer, label: string): string {
 
 /**
  * Converts PEM to ArrayBuffer.
+ *
+ * Takes the *first* block of the requested label and ignores anything after it.
+ * That is what a certificate chain needs: the leaf comes first, and the leaf is
+ * the certificate Entra thumbprints and `x5t` identifies. Stripping the
+ * delimiters with `String.replace` instead removed only the first BEGIN and the
+ * first END, leaving the second block's delimiters embedded in the base64 — which
+ * threw in `atob` and blanked the thumbprint with no explanation.
+ *
+ * Input with no delimiters at all is treated as bare base64, as before.
  */
 function pemToArrayBuffer(pem: string, label: string): ArrayBuffer {
   const pemHeader = `-----BEGIN ${label}-----`;
   const pemFooter = `-----END ${label}-----`;
-  const pemContents = pem
-    .replace(pemHeader, "")
-    .replace(pemFooter, "")
-    .replaceAll(/\s/g, "");
-  return base64ToArrayBuffer(pemContents);
+
+  const start = pem.indexOf(pemHeader);
+  if (start === -1) return base64ToArrayBuffer(pem.replaceAll(/\s/g, ""));
+
+  const bodyStart = start + pemHeader.length;
+  const end = pem.indexOf(pemFooter, bodyStart);
+  // A BEGIN with no matching END is truncated input, not a certificate.
+  if (end === -1) throw new Error(`Malformed PEM: no ${pemFooter}`);
+
+  return base64ToArrayBuffer(pem.slice(bodyStart, end).replaceAll(/\s/g, ""));
 }
 
 /**

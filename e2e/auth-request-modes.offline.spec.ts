@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./support/offlineTest";
 import { FlowPage } from "./support/flow";
 import { defaultsFor, seedSettings, DEMO } from "./support/settings";
 import { prepareAuthorizeRequest } from "./support/authCode";
@@ -48,10 +49,8 @@ async function stubAuth0(
     });
   });
 
-  // Stub only the authorize page the popup would land on. The tenant's discovery
-  // document must still be fetched for real, because the app resolves its
-  // authorization and token endpoints from it and will not leave Settings without
-  // them.
+  // Only the authorize page the popup would land on. Discovery is stubbed for
+  // every spec by the hermetic fixture in support/offlineTest.
   await page.context().route(`${DEMO.auth0Issuer}/authorize*`, (route) =>
     route.fulfill({
       status: 200,
@@ -95,9 +94,9 @@ async function openConfidentialAuthorize(page: Page, mode: string) {
 
 test.describe("Auth0 request modes", () => {
   test("the confidential client offers every mode", async ({ page }) => {
-    await openConfidentialAuthorize(page, "url");
+    const flow = await openConfidentialAuthorize(page, "url");
 
-    await page.locator("#auth0RequestMode").click();
+    await flow.dropdown("auth0RequestMode").click();
     const options = page.locator(".p-dropdown-panel .p-dropdown-item");
     await expect(options).toHaveText(["URL", "PAR", "JAR", "PAR + JAR"]);
   });
@@ -126,6 +125,150 @@ test.describe("Auth0 request modes", () => {
     >;
     expect(pushed.client_id).toBe(DEMO.auth0Client);
     expect(pushed.code_challenge_method).toBe("S256");
+  });
+
+  test("PAR asks for the client secret on the step that pushes", async ({
+    page,
+  }) => {
+    // The push is an authenticated call, and client authentication is two steps
+    // further on. Without the field here the default secret client cannot push
+    // at all, and there is nowhere to go back to.
+    const stubs = await stubAuth0(page);
+    await openConfidentialAuthorize(page, "par");
+
+    const secret = page.locator("#auth0ParClientSecret");
+    await expect(secret).toBeVisible();
+    await secret.fill("demo-client-secret");
+
+    await launchedUrl(page);
+
+    expect(stubs.parBodies[0].clientAuthMethod).toBe("secret");
+    expect(stubs.parBodies[0].clientSecret).toBe("demo-client-secret");
+  });
+
+  test("PAR allows choosing between client secret and private key on Authorize step", async ({
+    page,
+  }) => {
+    const stubs = await stubAuth0(page);
+    const flow = await openConfidentialAuthorize(page, "par");
+
+    // By default, client secret is selected and input is visible
+    await expect(page.locator("#auth0ClientAuthMethod")).toBeVisible();
+    await expect(page.locator("#auth0ParClientSecret")).toBeVisible();
+    await expect(page.locator("#auth0RequestObjectKey")).toHaveCount(0);
+
+    // Switch to private key
+    await flow.chooseDropdown(
+      "auth0ClientAuthMethod",
+      "Private key (private_key_jwt)",
+    );
+
+    // Client secret is now hidden, private key fields are visible
+    await expect(page.locator("#auth0ParClientSecret")).toHaveCount(0);
+    const key = page.locator("#auth0RequestObjectKey");
+    await expect(key).toBeVisible();
+    await key.fill(DEMO_KEY);
+    await page.locator("#auth0RequestObjectKid").fill("demo-kid");
+
+    await launchedUrl(page);
+
+    expect(stubs.parBodies[0].clientAuthMethod).toBe("certificate");
+    expect(stubs.parBodies[0].privateKeyPem).toBe(DEMO_KEY);
+    expect(stubs.parBodies[0].clientAssertionKid).toBe("demo-kid");
+  });
+
+  test("PAR supports explicit two-phase push and inspect before launch", async ({
+    page,
+  }) => {
+    const stubs = await stubAuth0(page);
+    await openConfidentialAuthorize(page, "par");
+
+    const secret = page.locator("#auth0ParClientSecret");
+    await secret.fill("demo-client-secret");
+
+    // Phase 1: PAR request preview is visible with endpoint and parameters.
+    // The endpoint shown must be the one the server route will post to — it pins
+    // the endpoint to the allowlisted issuer, so a preview taken from the
+    // discovery document could name somewhere the push never goes.
+    await expect(page.locator("#parEndpointPreview")).toHaveValue(
+      `${DEMO.auth0Issuer}/oauth/par`,
+    );
+    await expect(page.locator("#parRequestPreview")).toBeVisible();
+
+    // Click "Push to PAR"
+    const pushButton = page.getByRole("button", { name: "Push to PAR" });
+    await expect(pushButton).toBeVisible();
+    await pushButton.click();
+
+    // Response panel appears with status and JSON containing request_uri
+    await expect(page.locator("#parResponseText")).toBeVisible();
+    expect(await page.locator("#parResponseText").inputValue()).toContain(
+      "urn:ietf:params:oauth:request_uri:demo-request-uri",
+    );
+
+    // Phase 2: Authorization URL Preview now shows the clean request_uri URL
+    const previewUrl = await page.locator("#authUrlPreview").inputValue();
+    expect(previewUrl).toContain("request_uri=");
+    expect(previewUrl).not.toContain("authorization_details=");
+
+    // Launch popup
+    const url = await launchedUrl(page);
+    expect(url.searchParams.get("request_uri")).toBe(REQUEST_URI);
+    expect(url.searchParams.get("client_id")).toBe(DEMO.auth0Client);
+
+    // one push, and the launch used what it produced
+    expect(stubs.parBodies).toHaveLength(1);
+  });
+
+  test("a second launch pushes again rather than replaying the request_uri", async ({
+    page,
+  }) => {
+    // RFC 9126 2.2: a request_uri "MUST be used only once", and Auth0 expires it
+    // within about ninety seconds. Caching it across launches sent the second one
+    // to a value the authorization server had already consumed, which surfaced as
+    // an unexplained Auth0 error rather than as anything this app said.
+    const stubs = await stubAuth0(page);
+    await openConfidentialAuthorize(page, "par");
+    await page.locator("#auth0ParClientSecret").fill("demo-client-secret");
+
+    await page.getByRole("button", { name: "Push to PAR" }).click();
+    await expect(page.locator("#parResponseText")).toBeVisible();
+
+    const first = await launchedUrl(page);
+    expect(first.searchParams.get("request_uri")).toBe(REQUEST_URI);
+    expect(stubs.parBodies).toHaveLength(1);
+
+    // nothing about the request changed, and it still must not be replayed
+    const second = await launchedUrl(page);
+    expect(second.searchParams.get("request_uri")).toBe(REQUEST_URI);
+    expect(stubs.parBodies).toHaveLength(2);
+  });
+
+  test("a failed push is reported on the step that pushed", async ({
+    page,
+  }) => {
+    // The message used to be written to the launch error, which renders in the
+    // browser-authorization card further down — under a button that had not been
+    // pressed and had not failed.
+    await stubAuth0(page, { parStatus: 400 });
+    await openConfidentialAuthorize(page, "par");
+    await page.locator("#auth0ParClientSecret").fill("demo-client-secret");
+
+    await page.getByRole("button", { name: "Push to PAR" }).click();
+
+    const parCard = page.locator("#pushParButton").locator("..");
+    await expect(parCard.locator(".p-error")).toHaveText(/PAR/i);
+    // and the response body is still shown, so the status is readable
+    expect(await page.locator("#parResponseText").inputValue()).toContain(
+      "par_failed",
+    );
+  });
+
+  test("a plain URL request asks for no credential", async ({ page }) => {
+    await openConfidentialAuthorize(page, "url");
+
+    await expect(page.locator("#auth0ParClientSecret")).toHaveCount(0);
+    await expect(page.locator("#auth0RequestObjectKey")).toHaveCount(0);
   });
 
   test("JAR launches with a signed request object", async ({ page }) => {

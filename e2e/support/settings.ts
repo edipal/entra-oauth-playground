@@ -73,11 +73,54 @@ export async function seedSettings(
   );
 }
 
+/**
+ * Writes a workspace key verbatim, so a spec can put something there the app
+ * cannot parse — a half-written value from a closed tab, a hand edit.
+ */
+export async function seedRawSettings(
+  page: Page,
+  providerId: ProviderId,
+  raw: string,
+) {
+  await page.addInitScript(
+    ({ key, value }) => globalThis.localStorage.setItem(key, value),
+    { key: `${STORAGE_PREFIX}${providerId}`, value: raw },
+  );
+}
+
 /** Reads back what the app persisted, to assert workspace isolation. */
 export async function readSettings(page: Page, providerId: ProviderId) {
   return page.evaluate(
     (key) => JSON.parse(globalThis.localStorage.getItem(key) || "null"),
     `${STORAGE_PREFIX}${providerId}`,
+  );
+}
+
+/** The raw string under a workspace key, or null. */
+export async function readRawSettings(
+  page: Page,
+  providerId: ProviderId,
+  suffix = "",
+) {
+  return page.evaluate(
+    (key) => globalThis.localStorage.getItem(key),
+    `${STORAGE_PREFIX}${providerId}${suffix}`,
+  );
+}
+
+/** Any localStorage key verbatim — for the pre-workspace `app:settings`. */
+export async function seedRawKey(page: Page, key: string, raw: string) {
+  await page.addInitScript(
+    ({ storageKey, value }) =>
+      globalThis.localStorage.setItem(storageKey, value),
+    { storageKey: key, value: raw },
+  );
+}
+
+export async function readRawKey(page: Page, key: string) {
+  return page.evaluate(
+    (storageKey) => globalThis.localStorage.getItem(storageKey),
+    key,
   );
 }
 

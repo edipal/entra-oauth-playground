@@ -67,14 +67,27 @@ export const auth0PkJwt = {
 /**
  * Skips the current test unless every named value is configured, so the suite
  * stays green for anyone without tenant access.
+ *
+ * `E2E_REQUIRE_LIVE=1` turns that skip into a failure, naming the spec and the
+ * variable it wanted. A job that means to exercise a real tenant needs this:
+ * a live run where every spec skipped itself still exits 0.
+ *
+ * The check lives here, inside the test, rather than only in the summary
+ * reporter — a `--reporter=` argument replaces the whole reporter list from
+ * playwright.config.ts, which silently takes the reporter-based guard with it.
+ * That is exactly what a CI invocation tends to pass.
  */
 export function requires(values: Record<string, string>) {
   const missing = Object.entries(values)
     .filter(([, value]) => !value)
     .map(([name]) => name);
+  if (missing.length === 0) return;
 
-  test.skip(
-    missing.length > 0,
-    `missing credentials: ${missing.join(", ")} (see .env.e2e.example)`,
-  );
+  const reason = `missing credentials: ${missing.join(", ")} (see .env.e2e.example)`;
+
+  if (process.env.E2E_REQUIRE_LIVE === "1") {
+    throw new Error(`E2E_REQUIRE_LIVE=1 is set, but this spec has ${reason}`);
+  }
+
+  test.skip(true, reason);
 }

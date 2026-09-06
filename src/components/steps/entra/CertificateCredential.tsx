@@ -52,6 +52,7 @@ export default function CertificateCredential(props: Readonly<Props>) {
 
   const t = useTranslations("StepAuthentication");
   const [generatingCert, setGeneratingCert] = useState(false);
+  const [certificateError, setCertificateError] = useState("");
 
   /**
    * A certificate can also be pasted in rather than generated here — for example
@@ -68,9 +69,20 @@ export default function CertificateCredential(props: Readonly<Props>) {
       setThumbprintSha1("");
       setThumbprintSha256("");
       setThumbprintSha1Base64Url("");
+      // `kid` and `x5t` identify the certificate to Entra, so a certificate that
+      // could not be read must take them with it. Leaving the previous paste's
+      // values behind signed the next assertion against a key the request no
+      // longer carried, and Entra reported that as an assertion error.
+      setClientAssertionKid("");
+      setClientAssertionX5t("");
+      setKidConfirmed(false);
+      setCertificateError(
+        value.trim() ? t("errors.certificateUnreadable") : "",
+      );
       return;
     }
 
+    setCertificateError("");
     setThumbprintSha1(thumbprints.thumbprintSha1);
     setThumbprintSha256(thumbprints.thumbprintSha256);
     setThumbprintSha1Base64Url(thumbprints.thumbprintSha1Base64Url);
@@ -167,12 +179,22 @@ export default function CertificateCredential(props: Readonly<Props>) {
               value={certificatePem}
               onChange={(e) => handleCertificatePemChange(e.target.value)}
               placeholder={t("placeholders.certificatePem")}
+              className={certificateError ? "p-invalid" : undefined}
+              aria-invalid={certificateError ? true : undefined}
+              aria-describedby={
+                certificateError ? "certificatePemError" : undefined
+              }
               style={{
                 width: "100%",
                 whiteSpace: "pre-wrap",
                 resize: "vertical",
               }}
             />
+            {certificateError && (
+              <small id="certificatePemError" className="p-error block mt-1">
+                {certificateError}
+              </small>
+            )}
           </div>
         </div>
       </div>

@@ -42,6 +42,60 @@ describe("resolveAndValidateTokenEndpoint - Entra", () => {
       ),
     ).toBeNull();
   });
+
+  it("refuses an endpoint for a different tenant", () => {
+    // The host check only proves the endpoint is Microsoft's. Without a tenant
+    // check the client secret or signed assertion for one tenant was posted to
+    // another — measured against the real endpoint, which answered invalid_grant.
+    expect(
+      resolveAndValidateTokenEndpoint(
+        "https://login.microsoftonline.com/99999999-8888-4777-8666-555555555555/oauth2/v2.0/token",
+        TENANT,
+        { providerId: "entra" },
+      ),
+    ).toBeNull();
+  });
+
+  it("refuses an endpoint with no tenant segment at all", () => {
+    expect(
+      resolveAndValidateTokenEndpoint(
+        "https://login.microsoftonline.com/oauth2/v2.0/token",
+        TENANT,
+        { providerId: "entra" },
+      ),
+    ).toBeNull();
+    expect(
+      resolveAndValidateTokenEndpoint(
+        "https://login.microsoftonline.com/",
+        TENANT,
+        { providerId: "entra" },
+      ),
+    ).toBeNull();
+  });
+
+  it("still accepts the v1.0 shape, which the endpoint override exists for", () => {
+    // The path is deliberately not pinned the way Auth0's is: an override should
+    // still be able to reach /oauth2/token on the configured tenant.
+    expect(
+      resolveAndValidateTokenEndpoint(
+        `https://login.microsoftonline.com/${TENANT}/oauth2/token`,
+        TENANT,
+        { providerId: "entra" },
+      ),
+    ).toBe(`https://login.microsoftonline.com/${TENANT}/oauth2/token`);
+  });
+
+  it("compares the tenant case-insensitively, as a GUID should be", () => {
+    expect(
+      resolveAndValidateTokenEndpoint(
+        `https://login.microsoftonline.com/${TENANT.toUpperCase()}/oauth2/v2.0/token`,
+        TENANT,
+        { providerId: "entra" },
+      ),
+    ).toBe(
+      `https://login.microsoftonline.com/${TENANT.toUpperCase()}/oauth2/v2.0/token`,
+    );
+  });
 });
 
 describe("resolveAndValidateTokenEndpoint - Auth0", () => {

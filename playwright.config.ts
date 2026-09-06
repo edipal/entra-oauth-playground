@@ -25,7 +25,13 @@ export default defineConfig({
   fullyParallel: true,
   workers: process.env.CI ? 2 : 4,
   retries: process.env.CI ? 1 : 0,
-  reporter: [["list"], ["html", { open: "never", outputFolder: "e2e-report" }]],
+  reporter: [
+    ["list"],
+    ["html", { open: "never", outputFolder: "e2e-report" }],
+    // Says how much of the live suite skipped itself for want of credentials —
+    // otherwise a run that contacted no provider at all still exits 0.
+    ["./e2e/support/liveSummaryReporter.ts"],
+  ],
 
   use: {
     baseURL: BASE_URL,
@@ -61,6 +67,7 @@ export default defineConfig({
       name: "live",
       testMatch: /.*\.live\.spec\.ts/,
       dependencies: ["warmup"],
+      retries: 1,
       use: { ...devices["Desktop Chrome"] },
     },
     {

@@ -17,6 +17,10 @@ import Auth0AuthorizationRequestOptions from "@/components/steps/auth0/StepAutho
 import { randomCodeVerifier, computeS256Challenge } from "@/lib/pkce";
 import { randomUrlSafeString } from "@/lib/random";
 import { decodeJwt, type DecodedTokenFormat } from "@/lib/jwtDecode";
+import {
+  findTokenExchangeBlocker,
+  type TokenExchangeBlocker,
+} from "@/lib/tokenExchangeReadiness";
 import { TranslationUtils } from "@/lib/translation";
 import { useSettings } from "@/components/SettingsContext";
 import { useProviderMetadata } from "@/hooks/useProviderMetadata";
@@ -69,6 +73,7 @@ export default function AuthorizationCodePublicClientPage() {
     authCodePublicClientRuntime,
     setAuthCodePublicClientRuntime,
     resetAuthCodePublicClientRuntime,
+    resetAuthCodePublicClientConfig,
     hydrated,
   } = useSettings();
   const providerId =
@@ -139,6 +144,8 @@ export default function AuthorizationCodePublicClientPage() {
 
   // Token exchange
   const [exchanging, setExchanging] = useState(false);
+  const [exchangeBlockedReason, setExchangeBlockedReason] =
+    useState<TokenExchangeBlocker | null>(null);
   const [tokenResponseText, setTokenResponseText] = useState("");
   const accessToken = authCodePublicClientRuntime.accessToken!;
   const idToken = authCodePublicClientRuntime.idToken!;
@@ -322,13 +329,35 @@ export default function AuthorizationCodePublicClientPage() {
 
       // Mark callback as validated if state matches (or no state was set)
       const ok = !!code && (!stateParam || stateParam === st);
-      setAuthCodePublicClientRuntime((prev) => ({
+      // A new authorization response makes everything downstream stale. Without
+      // this the second round trip walks forward showing the first run's tokens
+      // and its decoded claims, which look like the new ones — and in streamlined
+      // mode the auto-exchange refs below never fire again, so the new code is
+      // never redeemed at all.
+      setAuthCodePublicClientRuntime({
         callbackUrl: urlStr,
         callbackBody: bodyStr,
         authCode: code,
         extractedState: st,
-        callbackValidated: prev.callbackValidated || ok,
-      }));
+        // Each callback stands on its own state comparison — see the confidential
+        // flow for why the previous `prev.callbackValidated || ok` latch meant a
+        // later state mismatch advanced the wizard just as a match would.
+        callbackValidated: ok,
+        accessToken: "",
+        idToken: "",
+      });
+      setTokenResponseText("");
+      setDecodedAccessHeader("");
+      setDecodedAccessPayload("");
+      setDecodedAccessFormat("invalid");
+      setDecodedIdHeader("");
+      setDecodedIdPayload("");
+      setDecodedIdFormat("invalid");
+      setApiResponseText("");
+      autoExchangedRef.current = false;
+      autoDecodedRef.current = false;
+      autoAdvancedFromTokensRef.current = false;
+      autoAdvancedFromDecodeRef.current = false;
 
       // After receiving a code
       if (streamlined && ok) {
@@ -517,15 +546,20 @@ export default function AuthorizationCodePublicClientPage() {
   ]);
 
   async function handleExchangeTokens() {
-    if (
-      !authCode ||
-      !clientId ||
-      !redirectUri ||
-      (pkceEnabled && !codeVerifier) ||
-      !tokenEndpoint ||
-      !providerConfigValid
-    )
-      return;
+    // Say which precondition is unmet rather than returning silently while the
+    // Send button stays enabled — see findTokenExchangeBlocker.
+    const blocker = findTokenExchangeBlocker({
+      providerConfigValid,
+      clientId,
+      redirectUri,
+      tokenEndpoint,
+      authCode,
+      pkceEnabled,
+      codeVerifier,
+    });
+    setExchangeBlockedReason(blocker);
+    if (blocker) return;
+
     setExchanging(true);
     setTokenResponseText("");
     setAuthCodePublicClientRuntime({ accessToken: "", idToken: "" });
@@ -630,6 +664,7 @@ export default function AuthorizationCodePublicClientPage() {
     setAuth0AuthorizationParameters({
       ...DEFAULT_AUTH0_AUTHORIZATION_PARAMETERS,
     });
+    setExchangeBlockedReason(null);
     setTokenResponseText("");
     setDecodedAccessHeader("");
     setDecodedAccessPayload("");
@@ -656,22 +691,10 @@ export default function AuthorizationCodePublicClientPage() {
 
   // Start a new flow AND erase persisted settings for this flow (localStorage)
   const handleEraseAll = () => {
-    // Reset persisted config to defaults (this writes to localStorage)
-    setAuthCodePublicClientConfig({
-      providerId,
-      tenantId: "",
-      issuerUrl: "",
-      clientId: "",
-      redirectUri: "",
-      scopes: getProviderDefaultScopes(providerId, "authCode"),
-      audience: "",
-      apiEndpointUrl: getProviderDefaultApiEndpoint(providerId, "authCode"),
-      endpointOverrideEnabled: false,
-      authEndpointOverride: "",
-      tokenEndpointOverride: "",
-      streamlined: false,
-      pkceEnabled: true,
-    });
+    // Replaces the persisted config with the provider defaults, so a field added
+    // later cannot survive the erase — see the confidential flow for the two that
+    // did.
+    resetAuthCodePublicClientConfig();
     // Then do a normal flow reset
     handleResetFlow();
   };
@@ -954,6 +977,7 @@ export default function AuthorizationCodePublicClientPage() {
           tokenResponseText={tokenResponseText}
           exchanging={exchanging}
           onExchangeTokens={handleExchangeTokens}
+          blockedReason={exchangeBlockedReason}
         />
       )}
 

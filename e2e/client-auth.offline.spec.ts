@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/offlineTest";
 import { FlowPage } from "./support/flow";
 import { defaultsFor, seedSettings } from "./support/settings";
 
@@ -43,6 +43,48 @@ test.describe("Auth0 client authentication", () => {
 
     await flow.fill("clientAssertionKid", "gsQ2Ny1demoCredentialKid7pLzR");
     await expect(flow.nextButton()).toBeEnabled();
+  });
+});
+
+test.describe("Sending a token request that cannot be sent", () => {
+  test("says which credential is missing instead of doing nothing", async ({
+    page,
+  }) => {
+    // The Send button is enabled whenever a request preview exists, and the
+    // preview is built with an empty client_secret. Pressing it used to hit a
+    // bare `return`: no spinner, no error, no response, and no clue which of
+    // seven preconditions stopped it.
+    //
+    // Next will not carry you past Authentication without a secret, so the way
+    // in is to reach Tokens with one and then clear it — the step headers stay
+    // clickable once a step has been completed.
+    await seedSettings(page, "auth0", {
+      clientCredentials: defaultsFor("auth0"),
+    });
+
+    const flow = new FlowPage(page, "auth0", "client-credentials");
+    await flow.goto();
+    await flow.advanceTo("Authentication");
+    await flow.fill("clientSecret", "demo-client-secret");
+    await flow.next();
+    await flow.expectStep("Tokens");
+
+    await flow.previous();
+    await flow.expectStep("Authentication");
+    await flow.fill("clientSecret", "");
+    await expect(flow.nextButton()).toBeDisabled();
+
+    await page.locator(".p-steps-item", { hasText: "Tokens" }).first().click();
+    await flow.expectStep("Tokens");
+
+    const send = page.getByRole("button", { name: "Send", exact: true });
+    await expect(send).toBeEnabled();
+    await send.click();
+
+    await expect(page.getByTestId("tokenExchangeBlocked")).toHaveText(
+      /client secret/i,
+    );
+    await expect(page.locator("#tokenResponse")).toHaveValue("");
   });
 });
 

@@ -12,6 +12,10 @@ import StepDecode from "@/components/steps/StepDecode";
 import StepValidate from "@/components/steps/StepValidate";
 import StepCallApi from "@/components/steps/StepCallApi";
 import { decodeJwt, type DecodedTokenFormat } from "@/lib/jwtDecode";
+import {
+  findTokenExchangeBlocker,
+  type TokenExchangeBlocker,
+} from "@/lib/tokenExchangeReadiness";
 import { TranslationUtils } from "@/lib/translation";
 import { useSettings } from "@/components/SettingsContext";
 import { useProviderMetadata } from "@/hooks/useProviderMetadata";
@@ -52,6 +56,7 @@ export default function ClientCredentialsPage() {
     clientCredentialsRuntime,
     setClientCredentialsRuntime,
     resetClientCredentialsRuntime,
+    resetClientCredentialsConfig,
   } = useSettings();
 
   const providerId = clientCredentialsConfig.providerId || DEFAULT_PROVIDER_ID;
@@ -99,6 +104,8 @@ export default function ClientCredentialsPage() {
 
   // Token exchange
   const [exchanging, setExchanging] = useState(false);
+  const [exchangeBlockedReason, setExchangeBlockedReason] =
+    useState<TokenExchangeBlocker | null>(null);
   const [tokenResponseText, setTokenResponseText] = useState("");
   const accessToken = clientCredentialsRuntime.accessToken || "";
   const idToken = clientCredentialsRuntime.idToken || "";
@@ -246,15 +253,20 @@ export default function ClientCredentialsPage() {
   ]);
 
   async function handleExchangeTokens() {
-    if (
-      !clientId ||
-      !providerConfigValid ||
-      !tokenGrantParametersValid ||
-      !tokenEndpoint
-    )
-      return;
-    if (clientAuthMethod === "secret" && !clientSecret) return;
-    if (clientAuthMethod === "certificate" && !privateKeyPem) return;
+    // Say which precondition is unmet rather than returning silently while the
+    // Send button stays enabled — see findTokenExchangeBlocker.
+    const blocker = findTokenExchangeBlocker({
+      providerConfigValid,
+      clientId,
+      tokenEndpoint,
+      grantParametersValid: tokenGrantParametersValid,
+      clientAuthMethod,
+      clientSecret,
+      privateKeyPem,
+    });
+    setExchangeBlockedReason(blocker);
+    if (blocker) return;
+
     setExchanging(true);
     setTokenResponseText("");
     setClientCredentialsRuntime({ accessToken: "", idToken: "" });
@@ -351,6 +363,7 @@ export default function ClientCredentialsPage() {
     resetClientCredentialsRuntime();
     setCurrentStep(StepIndex.Settings);
     setMaxCompletedStep(StepIndex.Overview);
+    setExchangeBlockedReason(null);
     setTokenResponseText("");
     setDecodedAccessHeader("");
     setDecodedAccessPayload("");
@@ -371,25 +384,9 @@ export default function ClientCredentialsPage() {
 
   // Start a new flow AND erase persisted settings for this flow (localStorage)
   const handleEraseAll = () => {
-    setClientCredentialsConfig({
-      providerId,
-      tenantId: "",
-      issuerUrl: "",
-      clientId: "",
-      scopes: getProviderDefaultScopes(providerId, "clientCredentials"),
-      audience: "",
-      apiEndpointUrl: getProviderDefaultApiEndpoint(
-        providerId,
-        "clientCredentials",
-      ),
-      endpointOverrideEnabled: false,
-      tokenEndpointOverride: "",
-      streamlined: false,
-      clientAuthMethod: "secret",
-      clientAssertionKid: "",
-      clientAssertionX5t: "",
-      pkceEnabled: false,
-    });
+    // This flow's field list happened to still be complete, but it is kept off
+    // the same footing as the other two rather than left to drift in turn.
+    resetClientCredentialsConfig();
     handleResetFlow();
   };
 
@@ -634,6 +631,7 @@ export default function ClientCredentialsPage() {
           tokenResponseText={tokenResponseText}
           exchanging={exchanging}
           onExchangeTokens={handleExchangeTokens}
+          blockedReason={exchangeBlockedReason}
         />
       )}
 

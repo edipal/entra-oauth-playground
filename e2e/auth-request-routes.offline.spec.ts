@@ -190,6 +190,42 @@ test.describe("Auth0 request-object route, valid input", () => {
     expect(payload.redirect_uri).toBe(REDIRECT_URI);
     expect(payload.state).toBe("state-value");
   });
+
+  test("gives each parameter the JSON type its specification defines", async ({
+    request,
+  }) => {
+    // The parameters arrive as the authorize URL's search params, where
+    // everything is a string. RFC 9101 §4: "Parameter names and string values
+    // MUST be included as JSON strings... Numerical values MUST be included as
+    // JSON numbers." Signing `"3600"` and a JSON-in-a-string teaches the opposite.
+    const response = await request.post(REQUEST_OBJECT_ROUTE, {
+      data: {
+        issuerUrl: ISSUER,
+        clientId: CLIENT_ID,
+        privateKeyPem: await generateKeyPem(),
+        authorizationParams: {
+          client_id: CLIENT_ID,
+          redirect_uri: REDIRECT_URI,
+          response_type: "code",
+          scope: "openid",
+          max_age: "3600",
+          authorization_details:
+            '[{"type":"payment_initiation","actions":["read"]}]',
+        },
+      },
+    });
+
+    expect(response.status()).toBe(200);
+    const payload = decodeJwt((await response.json()).request);
+
+    expect(payload.max_age).toBe(3600);
+    expect(payload.authorization_details).toEqual([
+      { type: "payment_initiation", actions: ["read"] },
+    ]);
+    // and the parameters that really are strings stay strings
+    expect(payload.scope).toBe("openid");
+    expect(payload.response_type).toBe("code");
+  });
 });
 
 /** PKCS#8 PEM for a fresh RSA-2048 key, via Node's WebCrypto. */

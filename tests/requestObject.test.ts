@@ -95,9 +95,9 @@ describe("buildAuthorizationRequestObject", () => {
   });
 
   it("carries the authorization parameters, including rich authorization details", async () => {
-    const authorizationDetails = JSON.stringify([
+    const authorizationDetails = [
       { type: "payment_initiation", locations: ["https://api.example.com"] },
-    ]);
+    ];
 
     const jwt = await buildAuthorizationRequestObject({
       audience: AUDIENCE,
@@ -112,7 +112,23 @@ describe("buildAuthorizationRequestObject", () => {
     expect(payload.scope).toBe("openid profile");
     expect(payload.state).toBe("state-value");
     expect(payload.nonce).toBe("nonce-value");
-    expect(payload.authorization_details).toBe(authorizationDetails);
+    expect(payload.authorization_details).toEqual(authorizationDetails);
+  });
+
+  it("signs non-string claims with their own JSON type", async () => {
+    // RFC 9101 §4: "Parameter names and string values MUST be included as JSON
+    // strings... Numerical values MUST be included as JSON numbers." The signer
+    // must not flatten what the route typed.
+    const jwt = await buildAuthorizationRequestObject({
+      audience: AUDIENCE,
+      clientId: CLIENT_ID,
+      privateKeyPem: PRIVATE_KEY_PEM,
+      claims: { ...baseClaims, max_age: 3600 },
+    });
+
+    const payload = decodeJwt(jwt);
+    expect(payload.max_age).toBe(3600);
+    expect(typeof payload.max_age).toBe("number");
   });
 
   it("gives each object a distinct jti", async () => {

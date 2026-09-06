@@ -211,7 +211,7 @@ export default function StepAuthentication(props: Readonly<Props>) {
               </div>
               <div>
                 <Dropdown
-                  id="clientAuthMethod"
+                  inputId="clientAuthMethod"
                   value={clientAuthMethod}
                   onChange={(e) =>
                     setClientAuthMethod(e.value as ClientAuthMethod)
@@ -245,7 +245,7 @@ export default function StepAuthentication(props: Readonly<Props>) {
                 </div>
                 <div>
                   <Password
-                    id="clientSecret"
+                    inputId="clientSecret"
                     value={clientSecret}
                     onChange={(e) => setClientSecret(e.target.value)}
                     placeholder={t("placeholders.clientSecret")}

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
+import { Password } from "primereact/password";
 import { useTranslations } from "next-intl";
 import LabelWithHelp from "@/components/LabelWithHelp";
 import type { AuthRequestMode } from "@/components/SettingsContext";
@@ -30,6 +31,13 @@ type Props = {
    * `certificate` needs the signing key on this step too, not only the JAR modes.
    */
   clientAuthMethod?: "secret" | "certificate";
+  setClientAuthMethod?: (value: "secret" | "certificate") => void;
+  /**
+   * Same runtime secret the client-authentication step edits, not a copy — a PAR
+   * push made here has to send it before that step is reachable.
+   */
+  clientSecret?: string;
+  setClientSecret?: (value: string) => void;
   /** Runtime-only signing key for the request object or the PAR push. */
   requestObjectKeyPem?: string;
   setRequestObjectKeyPem?: (value: string) => void;
@@ -54,6 +62,9 @@ export default function Auth0AuthorizationRequestOptions({
   setRarJson,
   rarError,
   clientAuthMethod = "secret",
+  setClientAuthMethod,
+  clientSecret = "",
+  setClientSecret,
   requestObjectKeyPem = "",
   setRequestObjectKeyPem,
   requestObjectKid = "",
@@ -70,6 +81,10 @@ export default function Auth0AuthorizationRequestOptions({
     label: t(MODE_LABEL_KEYS[mode]),
     value: mode,
   }));
+  const authMethodOptions = [
+    { label: t("methodOptions.secret"), value: "secret" },
+    { label: t("methodOptions.auth0PrivateKey"), value: "certificate" },
+  ];
   // A persisted mode this client type cannot use — left behind by a settings edit
   // or an older build — falls back to the plain URL request rather than silently
   // launching something else.
@@ -87,6 +102,27 @@ export default function Auth0AuthorizationRequestOptions({
   // key. Both need it before the client-authentication step is reached.
   const needsSigningKey =
     signsRequestObject || (pushesRequest && clientAuthMethod === "certificate");
+  // The other half of the same rule: a push authenticated with a client secret
+  // needs that secret here too, for exactly the same reason.
+  const needsClientSecret = pushesRequest && clientAuthMethod === "secret";
+  const signingKeyLabel = signsRequestObject
+    ? t("labels.requestObjectKey")
+    : t("labels.privateKey");
+  const signingKeyHelp = signsRequestObject
+    ? t("help.requestObjectKey")
+    : t("help.privateKey");
+  const signingKidLabel = signsRequestObject
+    ? t("labels.requestObjectKid")
+    : t("labels.clientAssertionKid");
+  const signingKidHelp = signsRequestObject
+    ? t("help.requestObjectKid")
+    : t("help.clientAssertionKid");
+  const signingKeyPlaceholder = signsRequestObject
+    ? t("placeholders.requestObjectKey")
+    : t("placeholders.privateKey");
+  const signingKidPlaceholder = signsRequestObject
+    ? t("placeholders.requestObjectKid")
+    : t("placeholders.clientAssertionKid");
   const hasConnection = !!parameters.connection.trim();
   const hasOrganization = !!parameters.organization.trim();
   const modeDescriptionKeyByMode: Record<
@@ -127,7 +163,7 @@ export default function Auth0AuthorizationRequestOptions({
               </div>
               <div>
                 <Dropdown
-                  id="auth0RequestMode"
+                  inputId="auth0RequestMode"
                   value={effectiveAuthRequestMode}
                   onChange={(event) => setAuthRequestMode(event.value)}
                   options={modeOptions}
@@ -149,6 +185,59 @@ export default function Auth0AuthorizationRequestOptions({
         </>
       )}
 
+      {pushesRequest && setClientAuthMethod && (
+        <div className="col-12">
+          <div style={rowStyle}>
+            <div style={{ textAlign: "left" }}>
+              <LabelWithHelp
+                id="auth0ClientAuthMethod"
+                text={t("labels.clientAuthMethod")}
+                help={t("help.clientAuthMethod")}
+              />
+            </div>
+            <div>
+              <Dropdown
+                inputId="auth0ClientAuthMethod"
+                value={clientAuthMethod}
+                onChange={(event) =>
+                  setClientAuthMethod(event.value as "secret" | "certificate")
+                }
+                options={authMethodOptions}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {needsClientSecret && (
+        <div className="col-12">
+          <div style={rowStyle}>
+            <div style={{ textAlign: "left" }}>
+              <LabelWithHelp
+                id="auth0ParClientSecret"
+                text={t("labels.clientSecret")}
+                help={t("help.clientSecret")}
+              />
+            </div>
+            <div>
+              <Password
+                // `inputId`, not `id` — PrimeReact puts `id` on the wrapper div,
+                // which would leave the label pointing at something unfocusable.
+                inputId="auth0ParClientSecret"
+                value={clientSecret}
+                onChange={(event) => setClientSecret?.(event.target.value)}
+                placeholder={t("placeholders.clientSecret")}
+                variant="outlined"
+                className="client-secret-password"
+                toggleMask
+                feedback={false}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Signed here, at the step that sends it — the client-authentication step
           comes later in the wizard, so a key entered there would arrive too late
           for a request object or an authenticated push. */}
@@ -166,8 +255,8 @@ export default function Auth0AuthorizationRequestOptions({
               <div style={{ textAlign: "left" }}>
                 <LabelWithHelp
                   id="auth0RequestObjectKey"
-                  text={t("labels.requestObjectKey")}
-                  help={t("help.requestObjectKey")}
+                  text={signingKeyLabel}
+                  help={signingKeyHelp}
                 />
               </div>
               <div>
@@ -179,7 +268,7 @@ export default function Auth0AuthorizationRequestOptions({
                   onChange={(event) =>
                     setRequestObjectKeyPem?.(event.target.value)
                   }
-                  placeholder={t("placeholders.requestObjectKey")}
+                  placeholder={signingKeyPlaceholder}
                   style={{
                     width: "100%",
                     whiteSpace: "pre-wrap",
@@ -195,8 +284,8 @@ export default function Auth0AuthorizationRequestOptions({
               <div style={{ textAlign: "left" }}>
                 <LabelWithHelp
                   id="auth0RequestObjectKid"
-                  text={t("labels.requestObjectKid")}
-                  help={t("help.requestObjectKid")}
+                  text={signingKidLabel}
+                  help={signingKidHelp}
                 />
               </div>
               <div>
@@ -206,7 +295,7 @@ export default function Auth0AuthorizationRequestOptions({
                   onChange={(event) =>
                     setRequestObjectKid?.(event.target.value)
                   }
-                  placeholder={t("placeholders.requestObjectKid")}
+                  placeholder={signingKidPlaceholder}
                   style={{ fontFamily: "monospace", width: "100%" }}
                 />
               </div>
@@ -322,7 +411,7 @@ export default function Auth0AuthorizationRequestOptions({
           </div>
           <div>
             <Dropdown
-              id="auth0ScreenHint"
+              inputId="auth0ScreenHint"
               value={parameters.screenHint}
               onChange={(event) => setParameter("screenHint", event.value)}
               options={[

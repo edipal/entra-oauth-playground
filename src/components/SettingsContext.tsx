@@ -3,6 +3,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
   useMemo,
@@ -233,6 +234,13 @@ type SettingsContextValue = {
       | ((prev: ClientCredentialsRuntime) => Partial<ClientCredentialsRuntime>),
   ) => void;
   resetClientCredentialsRuntime: () => void;
+
+  // "Erase everything": replaces a flow's persisted config with the provider
+  // defaults. A replacement rather than a merge, so a field added later cannot
+  // quietly survive the erase the way `authRequestMode` and `rarJson` did.
+  resetAuthCodePublicClientConfig: () => void;
+  resetAuthCodeConfidentialClientConfig: () => void;
+  resetClientCredentialsConfig: () => void;
 };
 
 const defaultEntraAuthCodePublicClientConfig: AuthCodePublicClientConfig = {
@@ -391,6 +399,40 @@ const mergeProviderSettings = (
 const storageKeyForProvider = (providerId: ProviderAppId) =>
   `${SETTINGS_STORAGE_PREFIX}${providerId}`;
 
+/**
+ * Where settings lived before the workspace split, when Entra was the only
+ * provider. Its shape is this same `Settings` object with the same three flow
+ * keys — the workspace fields were added, none were renamed — so it migrates
+ * into the Entra workspace through `mergeProviderSettings` unchanged.
+ */
+const LEGACY_SETTINGS_KEY = "app:settings";
+const MIGRATED_SETTINGS_KEY = "app:settings:migrated";
+
+/**
+ * Moves a pre-workspace `app:settings` value onto the Entra workspace key, so
+ * anyone upgrading from an earlier build does not arrive at an empty Settings
+ * step with their configuration still in localStorage, unread.
+ *
+ * Runs before hydration reads the workspace keys, and only when the Entra key is
+ * absent — a configured workspace always wins. The old value is renamed rather
+ * than deleted, and renaming is also what stops this running twice.
+ */
+const migrateLegacySettings = () => {
+  try {
+    const legacy = localStorage.getItem(LEGACY_SETTINGS_KEY);
+    if (!legacy) return;
+
+    const entraKey = storageKeyForProvider("entra");
+    if (localStorage.getItem(entraKey) === null) {
+      localStorage.setItem(entraKey, legacy);
+    }
+    localStorage.setItem(MIGRATED_SETTINGS_KEY, legacy);
+    localStorage.removeItem(LEGACY_SETTINGS_KEY);
+  } catch {
+    // Storage unavailable, or full: hydration carries on with what it can read.
+  }
+};
+
 const defaultAuthCodePublicClientRuntime: AuthCodePublicClientRuntime = {
   codeVerifier: "",
   codeChallenge: "",
@@ -472,26 +514,62 @@ export function SettingsProvider({
   const [hydrated, setHydrated] = useState(false);
 
   // After mount, read persisted provider-scoped settings (if any) and merge with defaults.
+  //
+  // Each workspace is read on its own. With a single try/catch around the whole
+  // loop, one unparseable key — a half-written value from a closed tab, a manual
+  // edit — skipped `setSettingsState` entirely, so *both* workspaces stayed at
+  // defaults in memory. The other workspace's stored settings were then
+  // overwritten by those defaults the first time anything in it was edited.
   useEffect(() => {
     if (globalThis.window === undefined) return;
-    try {
-      const next = { ...defaultSettingsByProvider };
 
-      for (const providerId of ["entra", "auth0"] as const) {
-        const raw = localStorage.getItem(storageKeyForProvider(providerId));
-        if (!raw) continue;
+    const next = { ...defaultSettingsByProvider };
+    migrateLegacySettings();
+
+    for (const providerId of ["entra", "auth0"] as const) {
+      const key = storageKeyForProvider(providerId);
+      let raw: string | null = null;
+
+      try {
+        raw = localStorage.getItem(key);
+      } catch {
+        // Storage unavailable (private mode, blocked cookies): defaults stand.
+        continue;
+      }
+      if (!raw) continue;
+
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new TypeError("settings must be an object");
+        }
         next[providerId] = mergeProviderSettings(
           providerId,
-          JSON.parse(raw) as Partial<Settings>,
+          parsed as Partial<Settings>,
         );
+      } catch {
+        // Keep the unreadable value rather than letting the next edit in this
+        // workspace overwrite it, and carry on with defaults for this provider
+        // alone. Quarantine once: the original is removed so a later mount does
+        // not overwrite the copy.
+        //
+        // An existing quarantine is never replaced. A workspace can go unreadable
+        // a second time, and by then the surviving copy is the one worth keeping —
+        // overwriting it would discard the only readable settings left.
+        try {
+          const quarantineKey = `${key}:corrupt`;
+          if (localStorage.getItem(quarantineKey) === null) {
+            localStorage.setItem(quarantineKey, raw);
+          }
+          localStorage.removeItem(key);
+        } catch {
+          // nothing further to do — defaults are already in place
+        }
       }
-
-      setSettingsState(next);
-    } catch {
-      // ignore
-    } finally {
-      setHydrated(true);
     }
+
+    setSettingsState(next);
+    setHydrated(true);
   }, []);
 
   // In-memory runtime for the current flow (not persisted)
@@ -514,13 +592,27 @@ export function SettingsProvider({
     useState<ClientCredentialsRuntime>(defaultClientCredentialsRuntime);
   const clientCredentialsRuntime = clientCredentialsRuntimeState;
 
+  // Switching workspace must not carry one provider's in-flight run into the
+  // other, so the runtime is cleared on a real provider change.
+  //
+  // Keyed on the provider the *route* names, not on `activeProviderId`. Routes
+  // outside a workspace — /tools/jwt-decoder — name none, and the fallback to the
+  // default made them read as a switch to Entra: opening the decoder to inspect a
+  // token discarded the Auth0 run that produced it, silently.
+  const lastRouteProviderRef = useRef<ProviderAppId | null>(null);
   useEffect(() => {
+    if (!routeProvider) return;
+
+    const previous = lastRouteProviderRef.current;
+    lastRouteProviderRef.current = routeProvider;
+    if (previous === null || previous === routeProvider) return;
+
     setAuthCodePublicClientRuntimeState(defaultAuthCodePublicClientRuntime);
     setAuthCodeConfidentialClientRuntimeState(
       defaultAuthCodeConfidentialClientRuntime,
     );
     setClientCredentialsRuntimeState(defaultClientCredentialsRuntime);
-  }, [activeProviderId]);
+  }, [routeProvider]);
 
   const persist = useCallback((providerId: ProviderAppId, next: Settings) => {
     try {
@@ -681,6 +773,45 @@ export function SettingsProvider({
     settings.clientCredentials ||
     getDefaultSettingsForProvider(activeProviderId).clientCredentials!;
 
+  /**
+   * Puts one flow's persisted config back to the provider defaults, replacing it
+   * rather than merging into it.
+   *
+   * "Erase everything" used to hand the merging setter an object listing every
+   * field it meant to clear. Any field missing from that list survived — which is
+   * what happened to `authRequestMode` and `rarJson`, leaving an erased flow still
+   * set to PAR + JAR with rich authorization details attached. Reading the
+   * defaults instead means a field added later is covered without anyone
+   * remembering to extend a list.
+   */
+  const resetFlowConfig = useCallback(
+    (flowKey: keyof Settings) => {
+      setSettingsState((prev) => {
+        const defaults = getDefaultSettingsForProvider(activeProviderId);
+        const nextProviderSettings: Settings = {
+          ...prev[activeProviderId],
+          [flowKey]: { ...defaults[flowKey], providerId: activeProviderId },
+        };
+        persist(activeProviderId, nextProviderSettings);
+        return { ...prev, [activeProviderId]: nextProviderSettings };
+      });
+    },
+    [activeProviderId, persist],
+  );
+
+  const resetAuthCodePublicClientConfig = useCallback(
+    () => resetFlowConfig("authCodePublicClient"),
+    [resetFlowConfig],
+  );
+  const resetAuthCodeConfidentialClientConfig = useCallback(
+    () => resetFlowConfig("authCodeConfidentialClient"),
+    [resetFlowConfig],
+  );
+  const resetClientCredentialsConfig = useCallback(
+    () => resetFlowConfig("clientCredentials"),
+    [resetFlowConfig],
+  );
+
   const value: SettingsContextValue = useMemo(
     () => ({
       settings,
@@ -701,6 +832,9 @@ export function SettingsProvider({
       clientCredentialsRuntime,
       setClientCredentialsRuntime,
       resetClientCredentialsRuntime,
+      resetAuthCodePublicClientConfig,
+      resetAuthCodeConfidentialClientConfig,
+      resetClientCredentialsConfig,
     }),
     [
       settings,
@@ -721,6 +855,9 @@ export function SettingsProvider({
       clientCredentialsRuntime,
       setClientCredentialsRuntime,
       resetClientCredentialsRuntime,
+      resetAuthCodePublicClientConfig,
+      resetAuthCodeConfidentialClientConfig,
+      resetClientCredentialsConfig,
     ],
   );
 

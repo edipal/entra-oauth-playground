@@ -18,6 +18,10 @@ import Auth0AuthorizationRequestOptions from "@/components/steps/auth0/StepAutho
 import { randomCodeVerifier, computeS256Challenge } from "@/lib/pkce";
 import { randomUrlSafeString } from "@/lib/random";
 import { decodeJwt, type DecodedTokenFormat } from "@/lib/jwtDecode";
+import {
+  findTokenExchangeBlocker,
+  type TokenExchangeBlocker,
+} from "@/lib/tokenExchangeReadiness";
 import { TranslationUtils } from "@/lib/translation";
 import { useSettings } from "@/components/SettingsContext";
 import { useProviderMetadata } from "@/hooks/useProviderMetadata";
@@ -27,6 +31,7 @@ import {
   getClientAssertionAudience,
   getProviderDefaultApiEndpoint,
   getProviderDefaultScopes,
+  getProviderExpectedParEndpoint,
   isClientIdValidForProvider,
   isEntraProvider,
   isProviderConfigValid,
@@ -78,6 +83,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     authCodeConfidentialClientRuntime,
     setAuthCodeConfidentialClientRuntime,
     resetAuthCodeConfidentialClientRuntime,
+    resetAuthCodeConfidentialClientConfig,
     hydrated,
   } = useSettings();
 
@@ -141,6 +147,15 @@ export default function AuthorizationCodeConfidentialClientPage() {
       ...DEFAULT_AUTH0_AUTHORIZATION_PARAMETERS,
     });
 
+  // PAR Phase 1 / Phase 2 state
+  const [parStatus, setParStatus] = useState<number | null>(null);
+  const [parResponseText, setParResponseText] = useState("");
+  const [pushedRequestUri, setPushedRequestUri] = useState("");
+  const [pushingPar, setPushingPar] = useState(false);
+  // Reported on the PAR card, next to the button that failed. The launch error
+  // below belongs to what happens once a request_uri exists.
+  const [parError, setParError] = useState("");
+
   // Client authentication runtime
   const clientSecret = authCodeConfidentialClientRuntime.clientSecret || "";
   const privateKeyPem = authCodeConfidentialClientRuntime.privateKeyPem || "";
@@ -165,6 +180,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
   // Token exchange
   const [exchanging, setExchanging] = useState(false);
+  const [exchangeBlockedReason, setExchangeBlockedReason] =
+    useState<TokenExchangeBlocker | null>(null);
   const [tokenResponseText, setTokenResponseText] = useState("");
   const accessToken = authCodeConfidentialClientRuntime.accessToken || "";
   const idToken = authCodeConfidentialClientRuntime.idToken || "";
@@ -273,7 +290,74 @@ export default function AuthorizationCodeConfidentialClientPage() {
         })
       : "";
 
-  // Build authorization URL
+  const isParMode =
+    !isEntra && (authRequestMode === "par" || authRequestMode === "par-jar");
+
+  // The same value /api/oauth/auth0/par will post to. Reading the discovery
+  // document here instead would let the preview name an endpoint the push never
+  // uses: the route pins the endpoint to the allowlisted issuer and ignores what
+  // discovery advertises, which is what keeps a caller from redirecting it.
+  const parEndpoint = useMemo(
+    () => getProviderExpectedParEndpoint(providerId, issuerUrl),
+    [providerId, issuerUrl],
+  );
+
+  const rawAuthorizationParams = useMemo(() => {
+    if (!clientIdValid || !providerConfigValid) return {};
+
+    const params: Record<string, string> = {
+      client_id: clientId,
+      response_type: responseType,
+      redirect_uri: redirectUri,
+    };
+    if (scopes.trim()) params.scope = scopes.trim();
+    if (stateParam) params.state = stateParam;
+    if (nonce) params.nonce = nonce;
+    if (audience.trim()) params.audience = audience.trim();
+    if (!isEntra && rarValidation.status === "valid") {
+      params.authorization_details = rarValidation.value;
+    }
+    if (prompt) params.prompt = prompt;
+    if (loginHint) params.login_hint = loginHint;
+    if (isEntra && responseMode) {
+      params.response_mode = responseMode;
+    }
+    if (!isEntra) {
+      const searchParams = new URLSearchParams();
+      appendAuth0AuthorizationParameters(
+        searchParams,
+        auth0AuthorizationParameters,
+      );
+      for (const [k, v] of searchParams.entries()) {
+        params[k] = v;
+      }
+    }
+    if (pkceEnabled && codeChallenge) {
+      params.code_challenge = codeChallenge;
+      params.code_challenge_method = "S256";
+    }
+    return params;
+  }, [
+    clientIdValid,
+    providerConfigValid,
+    clientId,
+    responseType,
+    redirectUri,
+    scopes,
+    stateParam,
+    nonce,
+    audience,
+    isEntra,
+    rarValidation,
+    prompt,
+    loginHint,
+    responseMode,
+    auth0AuthorizationParameters,
+    pkceEnabled,
+    codeChallenge,
+  ]);
+
+  // Build authorization URL preview
   const authUrlPreview = useMemo(() => {
     if (!clientIdValid || !providerConfigValid || !authEndpoint) return "";
 
@@ -284,51 +368,224 @@ export default function AuthorizationCodeConfidentialClientPage() {
       return "";
     }
 
-    url.searchParams.set("client_id", clientId);
-    url.searchParams.set("response_type", responseType);
-    url.searchParams.set("redirect_uri", redirectUri);
-    if (scopes.trim()) url.searchParams.set("scope", scopes.trim());
-    if (stateParam) url.searchParams.set("state", stateParam);
-    if (nonce) url.searchParams.set("nonce", nonce);
-    if (audience.trim()) url.searchParams.set("audience", audience.trim());
-    if (!isEntra && rarValidation.status === "valid") {
-      url.searchParams.set("authorization_details", rarValidation.value);
+    if (isParMode) {
+      url.searchParams.set("client_id", clientId);
+      if (pushedRequestUri) {
+        url.searchParams.set("request_uri", pushedRequestUri);
+      } else {
+        url.searchParams.set(
+          "request_uri",
+          "urn:ietf:params:oauth:request_uri:[push_par_to_obtain_request_uri]",
+        );
+      }
+      return url.toString();
     }
-    if (prompt) url.searchParams.set("prompt", prompt);
-    if (loginHint) url.searchParams.set("login_hint", loginHint);
-    if (isEntra && responseMode) {
-      url.searchParams.set("response_mode", responseMode);
+
+    if (!isEntra && authRequestMode === "jar") {
+      url.searchParams.set("client_id", clientId);
+      url.searchParams.set("request", "[signed_jwt_request_object]");
+      return url.toString();
     }
-    if (!isEntra) {
-      appendAuth0AuthorizationParameters(
-        url.searchParams,
-        auth0AuthorizationParameters,
-      );
-    }
-    if (pkceEnabled && codeChallenge) {
-      url.searchParams.set("code_challenge", codeChallenge);
-      url.searchParams.set("code_challenge_method", "S256");
+
+    for (const [key, value] of Object.entries(rawAuthorizationParams)) {
+      url.searchParams.set(key, value);
     }
     return url.toString();
   }, [
-    authEndpoint,
-    audience,
-    clientId,
     clientIdValid,
-    codeChallenge,
-    auth0AuthorizationParameters,
-    isEntra,
-    nonce,
-    rarValidation,
-    redirectUri,
-    responseMode,
-    prompt,
-    loginHint,
-    responseType,
-    scopes,
-    stateParam,
     providerConfigValid,
-    pkceEnabled,
+    authEndpoint,
+    isParMode,
+    isEntra,
+    authRequestMode,
+    clientId,
+    pushedRequestUri,
+    rawAuthorizationParams,
+  ]);
+
+  const parRequestPreview = useMemo(() => {
+    const authMethodDesc =
+      clientAuthMethod === "secret"
+        ? {
+            client_auth_method: "client_secret_post (or basic)",
+            client_secret: clientSecret ? "••••••••" : "[empty]",
+          }
+        : {
+            client_auth_method: "private_key_jwt",
+            client_assertion_type:
+              "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            client_assertion: "[Signed JWT assertion using private key]",
+          };
+
+    if (authRequestMode === "par-jar") {
+      return JSON.stringify(
+        {
+          endpoint: parEndpoint,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: {
+            client_id: clientId,
+            request: "[Signed JAR request object JWT]",
+            ...authMethodDesc,
+          },
+        },
+        null,
+        2,
+      );
+    }
+
+    return JSON.stringify(
+      {
+        endpoint: parEndpoint,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: {
+          ...rawAuthorizationParams,
+          ...authMethodDesc,
+        },
+      },
+      null,
+      2,
+    );
+  }, [
+    clientAuthMethod,
+    clientSecret,
+    authRequestMode,
+    parEndpoint,
+    clientId,
+    rawAuthorizationParams,
+  ]);
+
+  // Invalidate pushed PAR result whenever request parameters or credentials change
+  useEffect(() => {
+    setPushedRequestUri("");
+    setParStatus(null);
+    setParResponseText("");
+    setParError("");
+  }, [
+    rawAuthorizationParams,
+    authRequestMode,
+    clientAuthMethod,
+    clientSecret,
+    privateKeyPem,
+    clientAssertionKid,
+    clientAssertionX5t,
+  ]);
+
+  // Execute PAR push call
+  const executeParPush = useCallback(async (): Promise<string> => {
+    setParError("");
+    if (rarInvalid) {
+      setParError(rarError);
+      return "";
+    }
+
+    setPushingPar(true);
+    try {
+      let authorizationParams = { ...rawAuthorizationParams };
+
+      if (authRequestMode === "par-jar") {
+        if (!privateKeyPem) {
+          throw new Error(
+            tAuth0Options("errors.requestObjectMissingPrivateKey"),
+          );
+        }
+
+        const requestObjectResponse = await fetch(
+          "/api/oauth/auth0/request-object",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              issuerUrl,
+              clientId,
+              authorizationParams,
+              privateKeyPem,
+              kid: clientAssertionKid,
+            }),
+            cache: "no-store",
+          },
+        );
+        if (!requestObjectResponse.ok) {
+          throw new Error(tAuth0Options("errors.requestObjectFailed"));
+        }
+        const requestObjectJson = await requestObjectResponse.json();
+        if (!requestObjectJson?.request) {
+          throw new Error(tAuth0Options("errors.requestObjectMissing"));
+        }
+
+        authorizationParams = {
+          client_id: clientId,
+          request: String(requestObjectJson.request),
+        };
+      }
+
+      const response = await fetch("/api/oauth/auth0/par", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          issuerUrl,
+          authorizationParams,
+          clientAuthMethod,
+          clientSecret,
+          privateKeyPem,
+          clientAssertionKid,
+          clientAssertionX5t,
+        }),
+        cache: "no-store",
+      });
+
+      setParStatus(response.status);
+      const text = await response.text();
+      let json: any = null;
+      try {
+        json = JSON.parse(text);
+        setParResponseText(JSON.stringify(json, null, 2));
+      } catch {
+        setParResponseText(text);
+      }
+
+      if (!response.ok) {
+        setPushedRequestUri("");
+        throw new Error(tAuth0Options("errors.parFailed"));
+      }
+
+      if (!json?.request_uri) {
+        setPushedRequestUri("");
+        throw new Error(tAuth0Options("errors.parMissingRequestUri"));
+      }
+
+      const requestUri = String(json.request_uri);
+      setPushedRequestUri(requestUri);
+      return requestUri;
+    } catch (error) {
+      setPushedRequestUri("");
+      setParError(
+        error instanceof Error
+          ? error.message
+          : tAuth0Options("errors.parFailed"),
+      );
+      return "";
+    } finally {
+      setPushingPar(false);
+    }
+  }, [
+    rarInvalid,
+    rarError,
+    rawAuthorizationParams,
+    authRequestMode,
+    privateKeyPem,
+    tAuth0Options,
+    issuerUrl,
+    clientId,
+    clientAssertionKid,
+    clientAuthMethod,
+    clientSecret,
+    clientAssertionX5t,
   ]);
 
   // Listen for postMessage from callback window
@@ -358,13 +615,38 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
       const ok = !!code && (!stateParam || stateParam === st);
 
-      setAuthCodeConfidentialClientRuntime((prev) => ({
+      // A new authorization response makes everything downstream stale. Without
+      // this the second round trip walks forward showing the first run's tokens
+      // and its decoded claims, which look like the new ones — and in streamlined
+      // mode the auto-exchange refs below never fire again, so the new code is
+      // never redeemed at all.
+      setAuthCodeConfidentialClientRuntime({
         callbackUrl: urlStr,
         callbackBody: bodyStr,
         authCode: code,
         extractedState: st,
-        callbackValidated: prev.callbackValidated || ok,
-      }));
+        // Each callback stands on its own state comparison. This was
+        // `prev.callbackValidated || ok`, a latch that never went false again —
+        // and since both step validators lead with `callbackValidated ||`, the
+        // state check was only ever consulted before the first successful round
+        // trip. A later mismatch, which is the CSRF case `state` exists to catch,
+        // then advanced the wizard exactly as a match would.
+        callbackValidated: ok,
+        accessToken: "",
+        idToken: "",
+      });
+      setTokenResponseText("");
+      setDecodedAccessHeader("");
+      setDecodedAccessPayload("");
+      setDecodedAccessFormat("invalid");
+      setDecodedIdHeader("");
+      setDecodedIdPayload("");
+      setDecodedIdFormat("invalid");
+      setApiResponseText("");
+      autoExchangedRef.current = false;
+      autoDecodedRef.current = false;
+      autoAdvancedFromTokensRef.current = false;
+      autoAdvancedFromDecodeRef.current = false;
 
       const stepIndex =
         streamlined && ok ? StepIndex.Authentication : StepIndex.Callback;
@@ -410,12 +692,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     }
 
     try {
-      const previewUrl = new URL(authUrlPreview);
-      let authorizationParams = Object.fromEntries(
-        previewUrl.searchParams.entries(),
-      );
-
-      if (authRequestMode === "jar" || authRequestMode === "par-jar") {
+      if (authRequestMode === "jar") {
         if (!privateKeyPem) {
           throw new Error(
             tAuth0Options("errors.requestObjectMissingPrivateKey"),
@@ -430,7 +707,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
             body: JSON.stringify({
               issuerUrl,
               clientId,
-              authorizationParams,
+              authorizationParams: rawAuthorizationParams,
               privateKeyPem,
               kid: clientAssertionKid,
             }),
@@ -445,42 +722,28 @@ export default function AuthorizationCodeConfidentialClientPage() {
           throw new Error(tAuth0Options("errors.requestObjectMissing"));
         }
 
-        if (authRequestMode === "jar") {
-          const url = new URL(authEndpoint);
-          url.searchParams.set("client_id", clientId);
-          url.searchParams.set("request", String(requestObjectJson.request));
-          return url.toString();
-        }
-
-        authorizationParams = {
-          client_id: clientId,
-          request: String(requestObjectJson.request),
-        };
+        const url = new URL(authEndpoint);
+        url.searchParams.set("client_id", clientId);
+        url.searchParams.set("request", String(requestObjectJson.request));
+        return url.toString();
       }
 
-      const response = await fetch("/api/oauth/auth0/par", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          issuerUrl,
-          authorizationParams,
-          clientAuthMethod,
-          clientSecret,
-          privateKeyPem,
-          clientAssertionKid,
-          clientAssertionX5t,
-        }),
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error(tAuth0Options("errors.parFailed"));
-      const json = await response.json();
-      if (!json?.request_uri) {
-        throw new Error(tAuth0Options("errors.parMissingRequestUri"));
+      // A request_uri is single-use — RFC 9126 2.2 — and Auth0 expires it within
+      // about ninety seconds. So the one an explicit push produced is spent here
+      // and then dropped: a second launch pushes again rather than replaying a
+      // value the authorization server has already consumed.
+      let reqUri = pushedRequestUri;
+      if (!reqUri) {
+        reqUri = await executeParPush();
       }
+      if (!reqUri) {
+        return "";
+      }
+      setPushedRequestUri("");
 
       const url = new URL(authEndpoint);
       url.searchParams.set("client_id", clientId);
-      url.searchParams.set("request_uri", String(json.request_uri));
+      url.searchParams.set("request_uri", reqUri);
       return url.toString();
     } catch (error) {
       setAuthorizationLaunchError(
@@ -633,17 +896,23 @@ export default function AuthorizationCodeConfidentialClientPage() {
   ]);
 
   async function handleExchangeTokens() {
-    if (
-      !authCode ||
-      !clientId ||
-      !redirectUri ||
-      !tokenEndpoint ||
-      !providerConfigValid
-    )
-      return;
-    if (pkceEnabled && !codeVerifier) return;
-    if (clientAuthMethod === "secret" && !clientSecret) return;
-    if (clientAuthMethod === "certificate" && !privateKeyPem) return;
+    // Say which precondition is unmet. These were bare `return`s while the Send
+    // button stayed enabled, so a missing client secret produced nothing at all.
+    const blocker = findTokenExchangeBlocker({
+      providerConfigValid,
+      clientId,
+      redirectUri,
+      tokenEndpoint,
+      authCode,
+      pkceEnabled,
+      codeVerifier,
+      clientAuthMethod,
+      clientSecret,
+      privateKeyPem,
+    });
+    setExchangeBlockedReason(blocker);
+    if (blocker) return;
+
     setExchanging(true);
     setTokenResponseText("");
     setAuthCodeConfidentialClientRuntime({ accessToken: "", idToken: "" });
@@ -755,6 +1024,14 @@ export default function AuthorizationCodeConfidentialClientPage() {
     setAuth0AuthorizationParameters({
       ...DEFAULT_AUTH0_AUTHORIZATION_PARAMETERS,
     });
+    // The invalidation effect above clears these too, but only when a request
+    // parameter actually changes — which it does not for a flow that was reset
+    // before anything was generated.
+    setPushedRequestUri("");
+    setParStatus(null);
+    setParResponseText("");
+    setParError("");
+    setExchangeBlockedReason(null);
     setTokenResponseText("");
     setDecodedAccessHeader("");
     setDecodedAccessPayload("");
@@ -780,25 +1057,10 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
   // Start a new flow AND erase persisted settings for this flow (localStorage)
   const handleEraseAll = () => {
-    // Reset persisted config to defaults (this writes to localStorage)
-    setAuthCodeConfidentialClientConfig({
-      providerId,
-      tenantId: "",
-      issuerUrl: "",
-      clientId: "",
-      redirectUri: "",
-      scopes: getProviderDefaultScopes(providerId, "authCode"),
-      audience: "",
-      apiEndpointUrl: getProviderDefaultApiEndpoint(providerId, "authCode"),
-      endpointOverrideEnabled: false,
-      authEndpointOverride: "",
-      tokenEndpointOverride: "",
-      streamlined: false,
-      pkceEnabled: true,
-      clientAuthMethod: "secret",
-      clientAssertionKid: "",
-      clientAssertionX5t: "",
-    });
+    // Replaces the persisted config with the provider defaults. Listing the
+    // fields here instead left behind whichever ones the list had not caught up
+    // with — `authRequestMode` and `rarJson` survived an erase that way.
+    resetAuthCodeConfidentialClientConfig();
     // Then do a normal flow reset
     handleResetFlow();
   };
@@ -1032,6 +1294,20 @@ export default function AuthorizationCodeConfidentialClientPage() {
           launchDisabled={rarInvalid}
           showResponseMode={isEntra}
           includeSelectAccountPrompt={isEntra}
+          parConfig={
+            isParMode
+              ? {
+                  parEndpoint,
+                  parRequestPreview,
+                  parStatus,
+                  parResponseText,
+                  pushingPar,
+                  onPushPar: executeParPush,
+                  pushedRequestUri,
+                  parError,
+                }
+              : undefined
+          }
           advancedAuthorizationOptions={
             !isEntra ? (
               <Auth0AuthorizationRequestOptions
@@ -1050,6 +1326,15 @@ export default function AuthorizationCodeConfidentialClientPage() {
                 rarError={rarError}
                 supportedModes={["url", "par", "jar", "par-jar"]}
                 clientAuthMethod={clientAuthMethod}
+                setClientAuthMethod={(value) =>
+                  setAuthCodeConfidentialClientConfig({
+                    clientAuthMethod: value,
+                  })
+                }
+                clientSecret={clientSecret}
+                setClientSecret={(value) =>
+                  setAuthCodeConfidentialClientRuntime({ clientSecret: value })
+                }
                 requestObjectKeyPem={privateKeyPem}
                 setRequestObjectKeyPem={(value) =>
                   setAuthCodeConfidentialClientRuntime({ privateKeyPem: value })
@@ -1141,6 +1426,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
           tokenResponseText={tokenResponseText}
           exchanging={exchanging}
           onExchangeTokens={handleExchangeTokens}
+          blockedReason={exchangeBlockedReason}
         />
       )}
 

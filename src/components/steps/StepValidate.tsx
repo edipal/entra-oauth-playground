@@ -44,8 +44,11 @@ type JwtPayload = {
   iss?: string;
   aud?: string | string[];
   tid?: string;
+  /** Entra's token version. Auth0 issues no such claim. */
   ver?: string;
+  /** Entra's delegated scopes. Auth0 uses `scope`. */
   scp?: string;
+  scope?: string;
   roles?: string[];
   wids?: string[];
   nonce?: string;
@@ -221,6 +224,7 @@ export default function StepValidate(props: Readonly<Props>) {
     decodedIdHeader,
     decodedIdPayload,
     decodedAccessFormat,
+    decodedIdFormat,
     accessToken,
     idToken,
   } = props;
@@ -258,10 +262,30 @@ export default function StepValidate(props: Readonly<Props>) {
       ? `(tenant ${expectedIssuer})`
       : `(issuer ${expectedIssuer})`
     : "";
+  // Several rows below describe claims only Entra issues — a token version, `scp`,
+  // `roles`, `wids`. Showing them for Auth0 describes its tokens with the wrong
+  // model, so each is gated on the workspace rather than rendered unconditionally.
+  const isEntraWorkspace = providerId === "entra";
+  // For rows that report something rather than check it. A green tick here reads
+  // as "this passed" when nothing was validated at all.
+  const informational = (
+    <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
+      <span
+        className="pi pi-info-circle"
+        aria-label={t("validateUi.informationalAria")}
+      />
+    </span>
+  );
 
   const [idSig, setIdSig] = useState<SigStatus>({});
   const [accSig, setAccSig] = useState<SigStatus>({});
   const [nowSec, setNowSec] = useState(0);
+
+  // What verifyJwtSignature will actually accept. Matching on a "RS" prefix let a
+  // JWE's key-management `alg` — RSA-OAEP-256, RSA1_5 — tick green as though it
+  // were a signature algorithm.
+  const isAcceptedSignatureAlg = (alg?: string) =>
+    !!alg && ["RS256", "RS384", "RS512"].includes(alg);
 
   const graphAud = "00000003-0000-0000-c000-000000000000";
   const graphAudUrl = "https://graph.microsoft.com";
@@ -275,11 +299,30 @@ export default function StepValidate(props: Readonly<Props>) {
       .replace(/\/$/, "");
     return normalized === graphAud || normalized === graphAudUrl;
   });
+  // The ID token needs the same guard as the access token below. Without it an
+  // encrypted ID token falls through to the signature block, which reads its JWE
+  // key-management `alg` as if it were a signature algorithm.
+  const idTokenEncrypted =
+    decodedIdFormat === "jwe" || typeof idHeader.enc === "string";
   const accessTokenEncrypted =
     decodedAccessFormat === "jwe" || typeof accessHeader.enc === "string";
+  // Auth0 issues an opaque access token when the request names no API audience.
+  // There is no header, no payload and no signature — nothing to validate, and
+  // nothing wrong either.
+  const accessTokenOpaque = decodedAccessFormat === "opaque";
+  // Both cases reach the same place: the step reports why it is not validating
+  // rather than reporting a failure.
+  const accessTokenUnreadable = accessTokenEncrypted || accessTokenOpaque;
 
   useEffect(() => {
     let active = true;
+
+    // Nothing to verify: a JWE carries no signature this client can check.
+    if (idTokenEncrypted) {
+      return () => {
+        active = false;
+      };
+    }
 
     verifyTokenSignatureStatus({
       token: idToken,
@@ -293,12 +336,12 @@ export default function StepValidate(props: Readonly<Props>) {
     return () => {
       active = false;
     };
-  }, [idHeader, idPayload, idToken, providerId]);
+  }, [idHeader, idPayload, idToken, idTokenEncrypted, providerId]);
 
   useEffect(() => {
     let active = true;
 
-    if (isGraphAccessToken || accessTokenEncrypted) {
+    if (isGraphAccessToken || accessTokenUnreadable) {
       return () => {
         active = false;
       };
@@ -320,7 +363,7 @@ export default function StepValidate(props: Readonly<Props>) {
     accessHeader,
     accessPayload,
     accessToken,
-    accessTokenEncrypted,
+    accessTokenUnreadable,
     isGraphAccessToken,
     providerId,
   ]);
@@ -426,80 +469,97 @@ export default function StepValidate(props: Readonly<Props>) {
           <h4 className="mt-3">{t("validateUi.idTokenTitle")}</h4>
           <h5 className="mt-2">
             {t("validateUi.signatureValidation")}{" "}
-            {typeof idSig.verified === "boolean" && (
-              <span className="ml-2">
-                <StatusIcon
-                  ok={!!idSig.verified}
-                  label={
-                    idSig.verified
-                      ? t("validateUi.verified")
-                      : t("validateUi.notVerified")
-                  }
+            {idTokenEncrypted ? (
+              <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
+                <span
+                  className="pi pi-forward mr-2"
+                  aria-label={t("validateUi.skippedAria")}
                 />
+                {t("validateUi.skipped")}
               </span>
+            ) : (
+              typeof idSig.verified === "boolean" && (
+                <span className="ml-2">
+                  <StatusIcon
+                    ok={!!idSig.verified}
+                    label={
+                      idSig.verified
+                        ? t("validateUi.verified")
+                        : t("validateUi.notVerified")
+                    }
+                  />
+                </span>
+              )
             )}
           </h5>
-          <ol>
-            <li>
-              {t("validateUi.steps.extractKid")}{" "}
-              <code>{idHeader.kid || "—"}</code>{" "}
-              <span className="ml-2">
-                <StatusIcon ok={!!idHeader.kid} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.steps.extractAlg")}{" "}
-              <code>{idHeader.alg || "—"}</code>{" "}
-              <span className="ml-2">
-                <StatusIcon
-                  ok={!!idHeader.alg && idHeader.alg.startsWith("RS")}
-                />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.steps.extractVersion")}{" "}
-              <code>
-                {idPayload.ver ||
-                  (idIss?.includes("/v2.0") ? "2.0 (from iss)" : "1.0?")}
-              </code>{" "}
-              <span className="ml-2">
-                <StatusIcon ok={true} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.steps.extractIssuer")} <code>{idIss || "—"}</code>{" "}
-              <span className="ml-2">
-                <StatusIcon ok={!!idIss} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.steps.buildMetadata")} <code>{idMeta || "—"}</code>{" "}
-              <span className="ml-2">
-                <StatusIcon ok={!!idMeta} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.steps.resolveJwks")}{" "}
-              <code>{idSig.jwksUrl || idJwks || "—"}</code>{" "}
-              <span className="ml-2">
-                <StatusIcon ok={!!(idSig.jwksUrl || idJwks)} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.steps.fetchJwksFindKey")}{" "}
-              <code>{idHeader.kid || "—"}</code>{" "}
-              <span className="ml-2">
-                <StatusIcon ok={idSig.keyFound} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.steps.verifySignature")}{" "}
-              <code>{idHeader.alg || "—"}</code>{" "}
-              <span className="ml-2">
-                <StatusIcon ok={idSig.verified} />
-              </span>
-            </li>
-          </ol>
+          {idTokenEncrypted && (
+            <p className="mt-2 text-sm opacity-75">
+              {t("validateUi.encryptedIdToken")}
+            </p>
+          )}
+          {!idTokenEncrypted && (
+            <ol>
+              <li>
+                {t("validateUi.steps.extractKid")}{" "}
+                <code>{idHeader.kid || "—"}</code>{" "}
+                <span className="ml-2">
+                  <StatusIcon ok={!!idHeader.kid} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.steps.extractAlg")}{" "}
+                <code>{idHeader.alg || "—"}</code>{" "}
+                <span className="ml-2">
+                  <StatusIcon ok={isAcceptedSignatureAlg(idHeader.alg)} />
+                </span>
+              </li>
+              {isEntraWorkspace && (
+                <li>
+                  {t("validateUi.steps.extractVersion")}{" "}
+                  <code>
+                    {idPayload.ver ||
+                      (idIss?.includes("/v2.0") ? "2.0 (from iss)" : "1.0?")}
+                  </code>{" "}
+                  {informational}
+                </li>
+              )}
+              <li>
+                {t("validateUi.steps.extractIssuer")}{" "}
+                <code>{idIss || "—"}</code>{" "}
+                <span className="ml-2">
+                  <StatusIcon ok={!!idIss} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.steps.buildMetadata")}{" "}
+                <code>{idMeta || "—"}</code>{" "}
+                <span className="ml-2">
+                  <StatusIcon ok={!!idMeta} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.steps.resolveJwks")}{" "}
+                <code>{idSig.jwksUrl || idJwks || "—"}</code>{" "}
+                <span className="ml-2">
+                  <StatusIcon ok={!!(idSig.jwksUrl || idJwks)} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.steps.fetchJwksFindKey")}{" "}
+                <code>{idHeader.kid || "—"}</code>{" "}
+                <span className="ml-2">
+                  <StatusIcon ok={idSig.keyFound} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.steps.verifySignature")}{" "}
+                <code>{idHeader.alg || "—"}</code>{" "}
+                <span className="ml-2">
+                  <StatusIcon ok={idSig.verified} />
+                </span>
+              </li>
+            </ol>
+          )}
           {idSig.reason && (
             <p
               className="mt-2"
@@ -520,46 +580,52 @@ export default function StepValidate(props: Readonly<Props>) {
             </details>
           )}
           <h5 className="mt-3">{t("validateUi.claimValidations")}</h5>
-          <ul>
-            <li>
-              {t("validateUi.claims.id.aud")}{" "}
-              <code>{String(idPayload.aud)}</code>{" "}
-              {clientId ? `(expected ${clientId})` : ""}
-              <span className="ml-2">
-                <StatusIcon ok={idClaimOk.audOk} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.claims.id.iss")}{" "}
-              <code>{idPayload.iss || "—"}</code> {issuerExpectationLabel}
-              <span className="ml-2">
-                <StatusIcon ok={idClaimOk.issOk} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.claims.id.exp")}{" "}
-              <code>{fmtEpoch(idPayload.exp)}</code>
-              <span className="ml-2">
-                <StatusIcon ok={idClaimOk.expOk} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.claims.id.nbfIat")}: nbf{" "}
-              <code>{fmtEpoch(idPayload.nbf)}</code>, iat{" "}
-              <code>{fmtEpoch(idPayload.iat)}</code>
-              <span className="ml-2">
-                <StatusIcon ok={idClaimOk.nbfOk && idClaimOk.iatOk} />
-              </span>
-            </li>
-            <li>
-              {t("validateUi.claims.id.nonce")}{" "}
-              <code>{idPayload.nonce || "—"}</code>{" "}
-              {expectedNonce ? `(expected ${expectedNonce})` : ""}
-              <span className="ml-2">
-                <StatusIcon ok={idClaimOk.nonceOk} />
-              </span>
-            </li>
-          </ul>
+          {idTokenEncrypted ? (
+            <p className="mt-2 text-sm opacity-75">
+              {t("validateUi.encryptedClaimValidation")}
+            </p>
+          ) : (
+            <ul>
+              <li>
+                {t("validateUi.claims.id.aud")}{" "}
+                <code>{String(idPayload.aud)}</code>{" "}
+                {clientId ? `(expected ${clientId})` : ""}
+                <span className="ml-2">
+                  <StatusIcon ok={idClaimOk.audOk} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.claims.id.iss")}{" "}
+                <code>{idPayload.iss || "—"}</code> {issuerExpectationLabel}
+                <span className="ml-2">
+                  <StatusIcon ok={idClaimOk.issOk} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.claims.id.exp")}{" "}
+                <code>{fmtEpoch(idPayload.exp)}</code>
+                <span className="ml-2">
+                  <StatusIcon ok={idClaimOk.expOk} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.claims.id.nbfIat")}: nbf{" "}
+                <code>{fmtEpoch(idPayload.nbf)}</code>, iat{" "}
+                <code>{fmtEpoch(idPayload.iat)}</code>
+                <span className="ml-2">
+                  <StatusIcon ok={idClaimOk.nbfOk && idClaimOk.iatOk} />
+                </span>
+              </li>
+              <li>
+                {t("validateUi.claims.id.nonce")}{" "}
+                <code>{idPayload.nonce || "—"}</code>{" "}
+                {expectedNonce ? `(expected ${expectedNonce})` : ""}
+                <span className="ml-2">
+                  <StatusIcon ok={idClaimOk.nonceOk} />
+                </span>
+              </li>
+            </ul>
+          )}
           {/* Diagnostics UI removed */}
         </div>
       )}
@@ -568,7 +634,7 @@ export default function StepValidate(props: Readonly<Props>) {
         <h4 className="mt-3">{t("validateUi.accessTokenTitle")}</h4>
         <h5 className="mt-2">
           {t("validateUi.signatureValidation")}{" "}
-          {isGraphAccessToken || accessTokenEncrypted ? (
+          {isGraphAccessToken || accessTokenUnreadable ? (
             <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
               <span
                 className="pi pi-forward mr-2"
@@ -596,7 +662,12 @@ export default function StepValidate(props: Readonly<Props>) {
             {t("validateUi.encryptedAccessToken")}
           </p>
         )}
-        {!isGraphAccessToken && !accessTokenEncrypted && (
+        {accessTokenOpaque && (
+          <p className="mt-2 text-sm opacity-75">
+            {t("validateUi.opaqueAccessToken")}
+          </p>
+        )}
+        {!isGraphAccessToken && !accessTokenUnreadable && (
           <ol>
             <li>
               {t("validateUi.steps.extractKid")}{" "}
@@ -609,18 +680,16 @@ export default function StepValidate(props: Readonly<Props>) {
               {t("validateUi.steps.extractAlg")}{" "}
               <code>{accessHeader.alg || "—"}</code>{" "}
               <span className="ml-2">
-                <StatusIcon
-                  ok={!!accessHeader.alg && accessHeader.alg.startsWith("RS")}
-                />
+                <StatusIcon ok={isAcceptedSignatureAlg(accessHeader.alg)} />
               </span>
             </li>
-            <li>
-              {t("validateUi.steps.extractVersion")}{" "}
-              <code>{accessPayload.ver || "—"}</code>
-              <span className="ml-2">
-                <StatusIcon ok={true} />
-              </span>
-            </li>
+            {isEntraWorkspace && (
+              <li>
+                {t("validateUi.steps.extractVersion")}{" "}
+                <code>{accessPayload.ver || "—"}</code>
+                {informational}
+              </li>
+            )}
             <li>
               {t("validateUi.steps.extractIssuer")} <code>{accIss || "—"}</code>{" "}
               <span className="ml-2">
@@ -657,7 +726,7 @@ export default function StepValidate(props: Readonly<Props>) {
             </li>
           </ol>
         )}
-        {!isGraphAccessToken && !accessTokenEncrypted && accSig.reason && (
+        {!isGraphAccessToken && !accessTokenUnreadable && accSig.reason && (
           <p
             className="mt-2"
             style={{ color: accSig.verified ? "#16a34a" : "#dc2626" }}
@@ -665,13 +734,13 @@ export default function StepValidate(props: Readonly<Props>) {
             {t("validateUi.reason")} {accSig.reason}
           </p>
         )}
-        {!isGraphAccessToken && !accessTokenEncrypted && accSig.error && (
+        {!isGraphAccessToken && !accessTokenUnreadable && accSig.error && (
           <p style={{ color: "#dc2626" }}>
             {t("validateUi.error")} {accSig.error}
           </p>
         )}
         {!isGraphAccessToken &&
-          !accessTokenEncrypted &&
+          !accessTokenUnreadable &&
           accSig.publicKeyPem && (
             <details className="mt-2">
               <summary>{t("validateUi.publicKeyPem")}</summary>
@@ -681,9 +750,11 @@ export default function StepValidate(props: Readonly<Props>) {
             </details>
           )}
         <h5 className="mt-3">{t("validateUi.claimValidations")}</h5>
-        {accessTokenEncrypted ? (
+        {accessTokenUnreadable ? (
           <p className="mt-2 text-sm opacity-75">
-            {t("validateUi.encryptedClaimValidation")}
+            {accessTokenOpaque
+              ? t("validateUi.opaqueClaimValidation")
+              : t("validateUi.encryptedClaimValidation")}
           </p>
         ) : (
           <ul>
@@ -728,10 +799,19 @@ export default function StepValidate(props: Readonly<Props>) {
                 <StatusIcon ok={accClaimOk.nbfOk && accClaimOk.iatOk} />
               </span>
             </li>
-            {!isClientCredentials && (
+            {/* Entra splits delegated (`scp`) from application (`roles`) grants, so
+                its client-credentials tokens have no scope row. Auth0 grants a
+                machine-to-machine client scopes like any other, so it keeps one. */}
+            {(!isClientCredentials || !isEntraWorkspace) && (
               <li>
-                {t("validateUi.claims.access.scp")}{" "}
-                <code>{accessPayload.scp || "—"}</code>
+                {isEntraWorkspace
+                  ? t("validateUi.claims.access.scp")
+                  : t("validateUi.claims.access.scope")}{" "}
+                <code>
+                  {(isEntraWorkspace
+                    ? accessPayload.scp
+                    : accessPayload.scope) || "—"}
+                </code>
                 <span className="ml-2" style={{ color: "var(--yellow-500)" }}>
                   <span
                     className="pi pi-forward mr-2"
@@ -741,7 +821,10 @@ export default function StepValidate(props: Readonly<Props>) {
                 </span>
               </li>
             )}
-            {isClientCredentials && (
+            {/* `roles` and `wids` are Entra's application-permission model. Auth0
+                grants a machine-to-machine client scopes, which the row above
+                already shows, so there is nothing to list here. */}
+            {isClientCredentials && isEntraWorkspace && (
               <>
                 <li>
                   {t("validateUi.claims.access.roles")}{" "}

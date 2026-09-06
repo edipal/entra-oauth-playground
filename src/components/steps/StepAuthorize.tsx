@@ -7,6 +7,22 @@ import { Dropdown } from "primereact/dropdown";
 import { useTranslations } from "next-intl";
 import LabelWithHelp from "@/components/LabelWithHelp";
 
+export type ParConfig = {
+  parEndpoint: string;
+  parRequestPreview: string;
+  parStatus: number | null;
+  parResponseText: string;
+  pushingPar: boolean;
+  /** The result is ignored here; the caller keeps the request_uri it returns. */
+  onPushPar: () => unknown;
+  pushedRequestUri?: string;
+  /**
+   * Why the push failed. It belongs to this card rather than to the launch error
+   * below, which reports what happened after a request_uri was obtained.
+   */
+  parError?: string;
+};
+
 type Props = {
   responseType: string;
   stateParam: string;
@@ -29,6 +45,7 @@ type Props = {
   showResponseMode?: boolean;
   includeSelectAccountPrompt?: boolean;
   hideAdvanced?: boolean;
+  parConfig?: ParConfig;
 };
 
 export default function StepAuthorize({
@@ -53,6 +70,7 @@ export default function StepAuthorize({
   showResponseMode = true,
   includeSelectAccountPrompt = true,
   hideAdvanced,
+  parConfig,
 }: Readonly<Props>) {
   const t = useTranslations("StepAuthorize");
   const responseModeOptions = [
@@ -218,7 +236,7 @@ export default function StepAuthorize({
                     </div>
                     <div>
                       <Dropdown
-                        id="responseMode"
+                        inputId="responseMode"
                         value={responseMode}
                         onChange={(e) => setResponseMode(e.value)}
                         options={responseModeOptions}
@@ -248,7 +266,7 @@ export default function StepAuthorize({
                   </div>
                   <div>
                     <Dropdown
-                      id="prompt"
+                      inputId="prompt"
                       value={prompt}
                       onChange={(e) => setPrompt(e.value)}
                       options={promptOptions}
@@ -294,39 +312,208 @@ export default function StepAuthorize({
       </div>
 
       {/* Read-only resolved values */}
-      <div className="surface-0 py-3 px-0 border-round mt-5">
-        <h5>{t("help.authUrlPreview")}</h5>
+      {parConfig ? (
+        <>
+          {/* Phase 1: Pushed Authorization Request (PAR) */}
+          <div className="surface-0 py-3 px-0 border-round mt-5">
+            <h4 className="mt-0 mb-2">{t("sections.par.title")}</h4>
+            <p className="text-sm opacity-75 mt-0 mb-3">
+              {t("sections.par.description")}
+            </p>
 
-        <div className="grid formgrid p-fluid gap-3">
-          <div className="col-12">
-            <InputTextarea
-              id="authUrlPreview"
-              rows={6}
-              autoResize
-              value={authUrlPreview}
-              readOnly
-            />
+            <div className="grid formgrid p-fluid gap-3">
+              <div className="col-12">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(10rem, 14rem) 1fr",
+                    alignItems: "center",
+                    columnGap: "0.5rem",
+                  }}
+                >
+                  <div style={{ textAlign: "left" }}>
+                    <LabelWithHelp
+                      id="parEndpointPreview"
+                      text={t("labels.parEndpoint")}
+                      help={t("help.parEndpoint")}
+                    />
+                  </div>
+                  <div>
+                    <InputTextarea
+                      id="parEndpointPreview"
+                      rows={1}
+                      autoResize
+                      value={parConfig.parEndpoint}
+                      readOnly
+                      style={{ width: "100%", fontFamily: "monospace" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-12">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(10rem, 14rem) 1fr",
+                    alignItems: "start",
+                    columnGap: "0.5rem",
+                  }}
+                >
+                  <div style={{ textAlign: "left" }}>
+                    <LabelWithHelp
+                      id="parRequestPreview"
+                      text={t("labels.parRequest")}
+                      help={t("help.parRequest")}
+                    />
+                  </div>
+                  <div>
+                    <InputTextarea
+                      id="parRequestPreview"
+                      rows={6}
+                      autoResize
+                      value={parConfig.parRequestPreview}
+                      readOnly
+                      style={{ width: "100%", fontFamily: "monospace" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-12">
+                <Button
+                  type="button"
+                  id="pushParButton"
+                  className="w-full"
+                  label={
+                    parConfig.pushingPar
+                      ? t("buttons.pushingPar")
+                      : t("buttons.pushPar")
+                  }
+                  icon={
+                    parConfig.pushingPar
+                      ? "pi pi-spin pi-spinner"
+                      : "pi pi-send"
+                  }
+                  onClick={() => parConfig.onPushPar()}
+                  disabled={parConfig.pushingPar || launchDisabled}
+                />
+                {parConfig.parError && (
+                  <small className="p-error block mt-2">
+                    {parConfig.parError}
+                  </small>
+                )}
+              </div>
+
+              {parConfig.parResponseText && (
+                <div className="col-12 mt-2">
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(10rem, 14rem) 1fr",
+                      alignItems: "start",
+                      columnGap: "0.5rem",
+                    }}
+                  >
+                    <div style={{ textAlign: "left" }}>
+                      <LabelWithHelp
+                        id="parResponseText"
+                        text={
+                          parConfig.parStatus
+                            ? `${t("labels.parResponse")} (${parConfig.parStatus})`
+                            : t("labels.parResponse")
+                        }
+                        help={t("help.parResponse")}
+                      />
+                    </div>
+                    <div>
+                      <InputTextarea
+                        id="parResponseText"
+                        rows={5}
+                        autoResize
+                        value={parConfig.parResponseText}
+                        readOnly
+                        style={{ width: "100%", fontFamily: "monospace" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="col-12">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                className="w-full"
-                label={t("buttons.openPopup")}
-                icon="pi pi-external-link"
-                onClick={onOpenPopup}
-                disabled={!authUrlPreview || launchDisabled}
+          {/* Phase 2: Browser Authorization */}
+          <div className="surface-0 py-3 px-0 border-round mt-4">
+            <h4 className="mt-0 mb-2">{t("sections.par.browserTitle")}</h4>
+            <h5>{t("help.browserAuthUrl")}</h5>
+
+            <div className="grid formgrid p-fluid gap-3">
+              <div className="col-12">
+                <InputTextarea
+                  id="authUrlPreview"
+                  rows={4}
+                  autoResize
+                  value={authUrlPreview}
+                  readOnly
+                  style={{ fontFamily: "monospace" }}
+                />
+              </div>
+
+              <div className="col-12">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    className="w-full"
+                    label={t("buttons.openPopup")}
+                    icon="pi pi-external-link"
+                    onClick={onOpenPopup}
+                    disabled={!authUrlPreview || launchDisabled}
+                  />
+                </div>
+                {authorizationLaunchError && (
+                  <small className="p-error block mt-2">
+                    {authorizationLaunchError}
+                  </small>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="surface-0 py-3 px-0 border-round mt-5">
+          <h5>{t("help.authUrlPreview")}</h5>
+
+          <div className="grid formgrid p-fluid gap-3">
+            <div className="col-12">
+              <InputTextarea
+                id="authUrlPreview"
+                rows={6}
+                autoResize
+                value={authUrlPreview}
+                readOnly
               />
             </div>
-            {authorizationLaunchError && (
-              <small className="p-error block mt-2">
-                {authorizationLaunchError}
-              </small>
-            )}
+
+            <div className="col-12">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  className="w-full"
+                  label={t("buttons.openPopup")}
+                  icon="pi pi-external-link"
+                  onClick={onOpenPopup}
+                  disabled={!authUrlPreview || launchDisabled}
+                />
+              </div>
+              {authorizationLaunchError && (
+                <small className="p-error block mt-2">
+                  {authorizationLaunchError}
+                </small>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

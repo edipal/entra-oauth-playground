@@ -88,5 +88,19 @@ export function resolveAndValidateTokenEndpoint(
     return null;
   }
 
+  // Bind the endpoint to the tenant the request is configured for. The host check
+  // above only proves the endpoint is Microsoft's — it says nothing about *which*
+  // tenant, so a request configured for one tenant could be posted to another,
+  // carrying the client secret or the signed assertion with it.
+  //
+  // The whole URL is not pinned the way the Auth0 branch pins it, because the
+  // endpoint override exists so a user can reach the v1.0 shape (/oauth2/token)
+  // as well as v2.0. Fixing the tenant segment allows that while refusing another
+  // tenant. The tenant is always a GUID here — see isProviderConfigValid.
+  const [tenantSegment] = url.pathname.split("/").filter(Boolean);
+  if (tenantSegment?.toLowerCase() !== tenant.toLowerCase()) {
+    return null;
+  }
+
   return url.toString();
 }

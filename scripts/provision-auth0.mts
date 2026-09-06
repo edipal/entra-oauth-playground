@@ -24,11 +24,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import {
-  createPublicKey,
-  generateKeyPairSync,
-  randomBytes,
-} from "node:crypto";
+import { createPublicKey, generateKeyPairSync, randomBytes } from "node:crypto";
 import { calculateJwkThumbprint, exportJWK, importSPKI } from "jose";
 
 // --- what the live specs need -----------------------------------------------
@@ -38,8 +34,11 @@ const REDIRECT_URI =
 const API_IDENTIFIER =
   process.env.E2E_AUTH0_API_IDENTIFIER || "https://localhost/orders";
 const API_SCOPE = "read:orders";
-const CONNECTION = process.env.E2E_AUTH0_CONNECTION || "Username-Password-Authentication";
-const USER_EMAIL = process.env.E2E_AUTH0_TEST_USER || "e2e-user@demo-tenant.example";
+const RAR_TYPE = "payment_initiation";
+const CONNECTION =
+  process.env.E2E_AUTH0_CONNECTION || "Username-Password-Authentication";
+const USER_EMAIL =
+  process.env.E2E_AUTH0_TEST_USER || "e2e-user@demo-tenant.example";
 
 const PRIVATE_KEY_PATH = "certificates/auth0-e2e-private.pem";
 const ENV_PATH = ".env.e2e.local";
@@ -97,7 +96,9 @@ type AppKey = keyof typeof APPS;
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
-const DOMAIN = required("AUTH0_DOMAIN").replace(/^https?:\/\//, "").replace(/\/$/, "");
+const DOMAIN = required("AUTH0_DOMAIN")
+  .replace(/^https?:\/\//, "")
+  .replace(/\/$/, "");
 const TOKEN = readToken();
 
 function required(name: string): string {
@@ -111,7 +112,8 @@ function required(name: string): string {
 function readToken(): string {
   const file = process.env.AUTH0_MGMT_TOKEN_FILE?.trim();
   if (file) {
-    if (!existsSync(file)) fail(`AUTH0_MGMT_TOKEN_FILE does not exist: ${file}`);
+    if (!existsSync(file))
+      fail(`AUTH0_MGMT_TOKEN_FILE does not exist: ${file}`);
     return readFileSync(file, "utf8").trim();
   }
   return required("AUTH0_MGMT_TOKEN");
@@ -131,6 +133,29 @@ function note(action: "=" | "+" | "~", message: string) {
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The response body as JSON, or undefined when it is not JSON at all. An error
+ * page from an intermediary must not become a parse exception that hides the
+ * status it arrived with.
+ */
+function parseJsonBody(response: Response, text: string): any {
+  if (!text) return undefined;
+  if (!(response.headers.get("content-type") || "").includes("json")) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Enough of a non-JSON body to recognise it, without pasting a whole HTML page. */
+function summarize(text: string): string {
+  const collapsed = text.replaceAll(/\s+/g, " ").trim();
+  return collapsed.length > 200 ? `${collapsed.slice(0, 200)}…` : collapsed;
+}
 
 /**
  * The Management API rate-limits hard on non-production tenants, and a full
@@ -154,20 +179,30 @@ async function api<T = any>(
     });
 
     const text = await response.text();
-    const payload = text ? JSON.parse(text) : undefined;
 
+    // Status first, and only then the body. Parsing up front threw on any
+    // response that was not JSON — a gateway or WAF in front of the Management
+    // API answers 429 with an HTML page — so the retry below was skipped for
+    // exactly the rate limits it exists to absorb, and the run died with a JSON
+    // syntax error naming neither the method, the path, nor the status.
     if (response.status === 429 && attempt < 6) {
       const retryAfter = Number(response.headers.get("retry-after"));
-      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
-        ? retryAfter * 1000
-        : Math.min(2 ** attempt, 16) * 1000;
-      console.log(`    rate limited, retrying in ${waitMs / 1000}s`);
+      const waitMs =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter * 1000
+          : Math.min(2 ** attempt, 16) * 1000;
+      console.log(
+        `    ${method} ${path} rate limited (429), retrying in ${waitMs / 1000}s`,
+      );
       await sleep(waitMs);
       continue;
     }
 
+    const payload = parseJsonBody(response, text);
+
     if (!response.ok) {
-      const detail = payload?.message || payload?.error_description || text;
+      const detail =
+        payload?.message || payload?.error_description || summarize(text);
       fail(`${method} ${path} -> HTTP ${response.status}\n  ${detail}`);
     }
 
@@ -213,27 +248,49 @@ async function ensureApi() {
       identifier: API_IDENTIFIER,
       signing_alg: "RS256",
       scopes: [{ value: API_SCOPE, description: "Read orders" }],
+      authorization_details: [{ type: RAR_TYPE }],
     });
-    note("+", `API ${API_IDENTIFIER}`);
+    note("+", `API ${API_IDENTIFIER} (with RAR type ${RAR_TYPE})`);
     return;
   }
 
   const hasScope = (existing.scopes || []).some(
     (scope: any) => scope.value === API_SCOPE,
   );
+  const hasRarType = (existing.authorization_details || []).some(
+    (item: any) => item.type === RAR_TYPE,
+  );
 
-  if (hasScope) {
+  if (hasScope && hasRarType) {
     note("=", `API ${API_IDENTIFIER}`);
     return;
   }
 
-  await mutate("PATCH", `/resource-servers/${encodeURIComponent(existing.id)}`, {
-    scopes: [
+  const patchBody: Record<string, unknown> = {};
+  const updates: string[] = [];
+
+  if (!hasScope) {
+    patchBody.scopes = [
       ...(existing.scopes || []),
       { value: API_SCOPE, description: "Read orders" },
-    ],
-  });
-  note("~", `API ${API_IDENTIFIER}: added scope ${API_SCOPE}`);
+    ];
+    updates.push(`added scope ${API_SCOPE}`);
+  }
+
+  if (!hasRarType) {
+    patchBody.authorization_details = [
+      ...(existing.authorization_details || []),
+      { type: RAR_TYPE },
+    ];
+    updates.push(`added RAR type ${RAR_TYPE}`);
+  }
+
+  await mutate(
+    "PATCH",
+    `/resource-servers/${encodeURIComponent(existing.id)}`,
+    patchBody,
+  );
+  note("~", `API ${API_IDENTIFIER}: ${updates.join(", ")}`);
 }
 
 type Client = { client_id: string; client_secret?: string; name: string };
@@ -243,10 +300,18 @@ type Client = { client_id: string; client_secret?: string; name: string };
 let clientCache: any[] | undefined;
 
 async function allClients(): Promise<any[]> {
-  clientCache ??= await api(
-    "GET",
-    "/clients?per_page=100&fields=client_id,name,app_type,callbacks,grant_types,token_endpoint_auth_method,client_secret&include_fields=true",
-  );
+  if (!clientCache) {
+    const clients = await api<any[]>(
+      "GET",
+      "/clients?per_page=100&fields=client_id,name,app_type,callbacks,grant_types,token_endpoint_auth_method,client_secret&include_fields=true",
+    );
+    // Anything other than a list here would make every ensureClient below think
+    // its application is absent and create a second one. Stop instead.
+    if (!Array.isArray(clients)) {
+      fail("GET /clients did not return a list of applications");
+    }
+    clientCache = clients;
+  }
   return clientCache;
 }
 
@@ -321,7 +386,10 @@ async function ensurePrivateKeyJwt(clientId: string) {
 
   if (isPending(clientId)) {
     note("+", `credential on the private_key_jwt application (kid ${kid})`);
-    note("+", "credential assigned to client authentication and request objects");
+    note(
+      "+",
+      "credential assigned to client authentication and request objects",
+    );
     return { privateKeyPem, kid };
   }
 
@@ -362,7 +430,10 @@ async function ensurePrivateKeyJwt(clientId: string) {
   const requiresPar = client.require_pushed_authorization_requests === true;
 
   if (assignedToAuth && assignedToRequestObject && !requiresPar) {
-    note("=", "credential assigned to client authentication and request objects");
+    note(
+      "=",
+      "credential assigned to client authentication and request objects",
+    );
     return { privateKeyPem, kid };
   }
 
@@ -382,7 +453,10 @@ async function ensurePrivateKeyJwt(clientId: string) {
     // it; the app must offer PAR and JAR without demanding them.
     require_pushed_authorization_requests: false,
   });
-  note("~", "assigned the credential to client authentication and request objects");
+  note(
+    "~",
+    "assigned the credential to client authentication and request objects",
+  );
 
   return { privateKeyPem, kid };
 }
@@ -518,7 +592,10 @@ async function ensureConnectionEnabled(clientIds: string[]) {
   }
 
   if (pending > 0 && missing.length === 0) {
-    note("~", `connection ${CONNECTION}: would enable ${pending} new application(s)`);
+    note(
+      "~",
+      `connection ${CONNECTION}: would enable ${pending} new application(s)`,
+    );
     return;
   }
 
@@ -527,7 +604,10 @@ async function ensureConnectionEnabled(clientIds: string[]) {
     `/connections/${connection.id}/clients`,
     missing.map((client_id) => ({ client_id, status: true })),
   );
-  note("~", `connection ${CONNECTION}: enabled for ${missing.length} application(s)`);
+  note(
+    "~",
+    `connection ${CONNECTION}: enabled for ${missing.length} application(s)`,
+  );
 }
 
 async function ensureUser(): Promise<{ email: string; password?: string }> {
@@ -546,11 +626,18 @@ async function ensureUser(): Promise<{ email: string; password?: string }> {
     // The user exists but nothing here knows its password, which no API can read
     // back. Reset it so the specs have one.
     const password = generatePassword();
-    await mutate("PATCH", `/users/${encodeURIComponent((found as any[])[0].user_id)}`, {
-      password,
-      connection: CONNECTION,
-    });
-    note("~", `test user ${USER_EMAIL}: password reset (none was recorded locally)`);
+    await mutate(
+      "PATCH",
+      `/users/${encodeURIComponent((found as any[])[0].user_id)}`,
+      {
+        password,
+        connection: CONNECTION,
+      },
+    );
+    note(
+      "~",
+      `test user ${USER_EMAIL}: password reset (none was recorded locally)`,
+    );
     return { email: USER_EMAIL, password };
   }
 
@@ -631,7 +718,9 @@ function writeEnv(values: Record<string, string>) {
   }
 
   if (DRY_RUN) {
-    console.log(`\n  would write ${Object.keys(values).length} keys to ${ENV_PATH}`);
+    console.log(
+      `\n  would write ${Object.keys(values).length} keys to ${ENV_PATH}`,
+    );
     return;
   }
 

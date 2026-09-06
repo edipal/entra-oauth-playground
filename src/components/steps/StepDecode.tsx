@@ -64,13 +64,15 @@ export default function StepDecode({
   const namespacedClaimDescription = t(
     "claimsDialog.namespacedClaimDescription",
   );
-  const accessPayloadValue = useMemo(
-    () =>
-      decodedAccessFormat === "jwe"
-        ? t("notes.encryptedPayloadPlaceholder")
-        : decodedAccessPayload,
-    [decodedAccessFormat, decodedAccessPayload, t],
-  );
+  const accessPayloadValue = useMemo(() => {
+    if (decodedAccessFormat === "jwe") {
+      return t("notes.encryptedPayloadPlaceholder");
+    }
+    if (decodedAccessFormat === "opaque") {
+      return t("notes.opaquePayloadPlaceholder");
+    }
+    return decodedAccessPayload;
+  }, [decodedAccessFormat, decodedAccessPayload, t]);
   const idPayloadValue = useMemo(
     () =>
       decodedIdFormat === "jwe"
@@ -379,6 +381,20 @@ export default function StepDecode({
                       aria-hidden="true"
                     />
                     <p className="m-0 text-sm">{t("notes.encryptedToken")}</p>
+                  </div>
+                )}
+                {decodedAccessFormat === "opaque" && (
+                  <div className="mt-2 flex gap-3 align-items-start pl-2">
+                    <i
+                      className="pi pi-info-circle mr-2"
+                      style={{
+                        color: "var(--primary-color)",
+                        fontSize: "1.1rem",
+                        marginTop: "0.2rem",
+                      }}
+                      aria-hidden="true"
+                    />
+                    <p className="m-0 text-sm">{t("notes.opaqueToken")}</p>
                   </div>
                 )}
               </div>

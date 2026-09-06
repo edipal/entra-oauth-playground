@@ -4,6 +4,7 @@ import { Button } from "primereact/button";
 import { useTranslations } from "next-intl";
 import LabelWithHelp from "@/components/LabelWithHelp";
 import { TranslationUtils } from "@/lib/translation";
+import type { TokenExchangeBlocker } from "@/lib/tokenExchangeReadiness";
 
 type Props = {
   tokenRequestPreview: unknown;
@@ -11,6 +12,12 @@ type Props = {
   exchanging: boolean;
   onExchangeTokens: () => void | Promise<void>;
   resolvedTokenEndpoint?: string;
+  /**
+   * Set when Send was pressed but a precondition is unmet — see
+   * findTokenExchangeBlocker. The button stays enabled so the reason can be shown
+   * rather than left to be guessed from a screen that did not change.
+   */
+  blockedReason?: TokenExchangeBlocker | null;
 };
 
 export default function StepTokens({
@@ -19,6 +26,7 @@ export default function StepTokens({
   exchanging,
   onExchangeTokens,
   resolvedTokenEndpoint,
+  blockedReason,
 }: Readonly<Props>) {
   const t = useTranslations("StepTokens");
   const safeTWithFallback = (key: string, fallback = ""): string =>
@@ -127,6 +135,15 @@ export default function StepTokens({
                 disabled={exchanging || !`${reqStr ?? ""}`}
               />
             </div>
+            {blockedReason && (
+              <p
+                className="p-error mt-2 mb-0"
+                role="alert"
+                data-testid="tokenExchangeBlocked"
+              >
+                {t(`errors.blocked.${blockedReason}`)}
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -149,11 +149,12 @@ Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for 
 ## Testing
 
 ```sh
-pnpm lint          # ESLint
-pnpm test          # unit tests (Vitest) over the pure library modules
-pnpm e2e:offline   # end-to-end, no credentials needed
-pnpm e2e:live      # end-to-end against real tenants
-pnpm e2e           # both Playwright projects
+pnpm lint             # ESLint
+pnpm test             # unit tests (Vitest) over the pure library modules
+pnpm e2e:offline      # end-to-end, no credentials needed
+pnpm e2e:live         # end-to-end against real tenants
+pnpm e2e              # both Playwright projects
+pnpm provision:auth0  # configure an Auth0 tenant for pnpm e2e:live
 ```
 
 The end-to-end suites need browsers once per machine:
@@ -167,6 +168,12 @@ authorization-code round trip — so it is safe to run anywhere and takes well u
 minute. `pnpm e2e:live` drives real applications and needs a `.env.e2e.local`; every
 spec skips itself with a named reason when its credentials are absent, so a partial
 configuration is fine.
+
+`pnpm provision:auth0` brings an Auth0 tenant to the state those live specs expect —
+API, applications, credentials, grants, connection and test user — and writes the
+matching values into `.env.e2e.local`. It is idempotent, never deletes anything, and
+takes `--dry-run`. It needs a Management API token; see
+[e2e/README.md](./e2e/README.md#pnpm-provisionauth0).
 
 [e2e/README.md](./e2e/README.md) covers what each suite proves, what to provision in
 Entra and Auth0, and the provider settings that are easy to get wrong.

@@ -30,19 +30,20 @@ All of it — 157 files, 20,798 insertions — went into a single commit on 2026
 `fcbdc04 auth0 support + e2e tests`. The working tree is clean; the commit has not
 been pushed.
 
-## Verified green (2026-08-15, after T2, T3, T4 and T6)
+## Verified green (2026-09-06)
 
-All of the below were re-run after T6 rebuilt `node_modules` from scratch.
+Re-measured against the working tree after the review fixes. The previous table was
+taken on 2026-08-15 and had gone stale in every row that counts something.
 
-| Check        | Command            | Result                                                                                                                                                  |
-| ------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit tests   | `pnpm test`        | 114 tests, 9 files, pass                                                                                                                                |
-| Lint         | `pnpm lint`        | clean                                                                                                                                                   |
-| Build        | `pnpm build`       | exit 0, 20 routes plus middleware emitted                                                                                                               |
-| Offline e2e  | `pnpm e2e:offline` | 60/60 pass, ~24s                                                                                                                                        |
-| Live e2e     | `pnpm e2e:live`    | 18 pass, 3 fail — 2 are [T10](#t10--auth0-confidential-client-secret-is-rejected-on-the-original-tenant); the third is the shared-credential note in T2 |
-| i18n parity  | en/de key diff     | 477 keys each, no gaps either direction                                                                                                                 |
-| Okta removal | grep               | only surviving mentions are tests asserting rejection                                                                                                   |
+| Check        | Command            | Result                                                       |
+| ------------ | ------------------ | ------------------------------------------------------------ |
+| Unit tests   | `pnpm test`        | 146 tests, 12 files, pass                                    |
+| Lint         | `pnpm lint`        | clean                                                        |
+| Build        | `pnpm build`       | exit 0, 20 routes plus middleware emitted                    |
+| Offline e2e  | `pnpm e2e:offline` | 107/107 pass, ~35s                                           |
+| Live e2e     | `pnpm e2e:live`    | 21 pass, 0 fail — last measured 2026-08-17, not re-run since |
+| i18n parity  | en/de key diff     | 519 keys each, no gaps either direction                      |
+| Okta removal | grep               | only surviving mentions are tests asserting rejection        |
 
 Playwright browsers were **not** installed on this machine; the offline run needed
 `npx playwright install chromium` first. See [T5](#t5--no-ci-and-no-playwright-install-step).
@@ -159,22 +160,29 @@ authorization code: real sign-in, then the code redeemed server-side through
 spent on `/userinfo`. Both Entra `private_key_jwt` specs still pass, so the
 shared-library refactor caused no regression.
 
-**They were verified one at a time**, and on this tenant that is unavoidable: only a
-single Private Key JWT credential can be held at a time — the dashboard reports the
-allowance exhausted even while stating a limit of four. Whichever application holds
-the credential passes; the other fails with `invalid_client`. So a full
-`pnpm e2e:live` will always show one of the two red, and that failure is expected
-rather than flaky. (An earlier note here suggested registering the key on both
-applications would make them green together — that was speculation on my part and
-this tenant does not allow it.)
+**Both pass in the same run**, on one tenant — measured 2026-08-17, 21 of 21 live
+specs green. Register the *same* public key on both applications: Auth0 derives the
+`kid` from the RFC 7638 JWK thumbprint, so one key yields one `kid` that covers both,
+and one `E2E_AUTH0_CREDENTIAL_KID` serves them. `pnpm provision:auth0` does this.
+
+(This section previously recorded the opposite — that the tenant allowed only a
+single Private Key JWT credential, so one of the two specs was always red. That is no
+longer the case, and a `private_key_jwt` failure should now be read as a real
+regression rather than an expected one.)
 
 **Tenant setup that is easy to miss**, beyond the assignment trap below: the tenant
 needs its own API, its own database connection enabled on the application, and its own
 test user — and the API's _Machine To Machine Applications_ list must include the
-**Regular Web Application**, not just the M2M one. Without that last toggle Auth0
-refuses the authorization request with `Client ... is not authorized to access
-resource server ...` before any login form appears, even though the flow is
-user-delegated.
+**Regular Web Application** and the **SPA**, not just the M2M one. Without that
+authorization Auth0 refuses the authorization request with `Client ... is not
+authorized to access resource server ...` before any login form appears, even though
+the flow is user-delegated.
+
+The grant carries a `subject_type` that the dashboard does not surface: `user` for
+the authorization code flow, `client` for client credentials, and both for an
+application that serves both. Setup instructions live in
+[e2e/README.md](e2e/README.md) under _Authorizing an application against the API_;
+[provision-auth0.mts](scripts/provision-auth0.mts) creates them per application.
 
 **Three false trails, recorded so they are not walked again.**
 
@@ -241,10 +249,16 @@ request object signs with `clientAssertionKid`.
 
 **Live PAR, JAR and PAR + JAR now pass** against the trial tenant, added after the
 offline pass once the tenant was configured. Getting there needed three things, all
-recorded in [e2e/README.md](e2e/README.md): tenant-level _Allow PAR_, a **separate
-request-object credential** on the application (the Private Key JWT credential does
-not serve double duty — Auth0 says `Client has no associated credentials for signed
-JWT`), and both per-application _Require_ toggles left **off**. _Require PAR_ in
+recorded in [e2e/README.md](e2e/README.md): tenant-level _Allow PAR_, **the
+private_key_jwt credential also assigned to `signed_request_object`**, and both
+per-application _Require_ toggles left **off**. One credential covers both roles —
+[provision-auth0.mts](scripts/provision-auth0.mts) PATCHes the same credential id
+into `client_authentication_methods` and `signed_request_object` in one request, and
+an application has only two credential slots to spend. (An earlier note here said
+the private_key_jwt credential "does not serve double duty" and a second key was
+needed. What Auth0 actually requires is the assignment: unassigned, it answers
+`Client has no associated credentials for signed JWT` however many credentials the
+application holds.) _Require PAR_ in
 particular makes every non-PAR request fail with `The usage of Pushed Authorization
 Requests is required by the configuration`, which silently took down the
 `private_key_jwt, with PKCE` spec while it was on.
