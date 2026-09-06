@@ -169,7 +169,8 @@
       "requestObjectKey": "Request object signing key",
       "requestObjectKid": "Request object key ID (kid)",
       "privateKey": "Private Key (PKCS#8 PEM)",
-      "clientAssertionKid": "Key ID (kid)"
+      "clientAssertionKid": "Key ID (kid)",
+      "dpopJkt": "dpop_jkt (DPoP Key Thumbprint)"
     },
     "help": {
       "mode": "Auth0 authorization request transport: plain URL, pushed authorization request (PAR), JWT-secured authorization request (JAR), or PAR with a request object.",
@@ -189,7 +190,8 @@
       "requestObjectKey": "PKCS#8 PEM private key used to sign the request object. It stays in memory for this session and is never persisted. The same key is reused if you later choose private_key_jwt for client authentication.",
       "requestObjectKid": "Identifies which registered key signed the request object. For Auth0 this is the key ID of the application credential holding the matching public key.",
       "privateKey": "Keep this secure! PKCS#8 PEM private key used to sign the client assertion for PAR. It stays in memory for this session and is never persisted.",
-      "clientAssertionKid": "This should match the key identifier configured for the client signing key at Auth0."
+      "clientAssertionKid": "This should match the key identifier configured for the client signing key at Auth0.",
+      "dpopJkt": "RFC 9449 SHA-256 thumbprint of the client's DPoP public key. Binds the authorization code to this specific key pair."
     },
     "placeholders": {
       "connection": "Username-Password-Authentication",

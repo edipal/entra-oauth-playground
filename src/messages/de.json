@@ -169,7 +169,8 @@
       "requestObjectKey": "Signaturschlüssel für das Request Object",
       "requestObjectKid": "Key ID (kid) des Request Objects",
       "privateKey": "Privater Schlüssel (PKCS#8 PEM)",
-      "clientAssertionKid": "Schlüssel-ID (kid)"
+      "clientAssertionKid": "Schlüssel-ID (kid)",
+      "dpopJkt": "dpop_jkt (DPoP-Schlüssel-Thumbprint)"
     },
     "help": {
       "mode": "Auth0-Autorisierungsrequest-Transport: normale URL, Pushed Authorization Request (PAR), JWT-secured Authorization Request (JAR) oder PAR mit Request Object.",
@@ -189,7 +190,8 @@
       "requestObjectKey": "Privater Schlüssel im PKCS#8-PEM-Format zum Signieren des Request Objects. Er bleibt nur für diese Sitzung im Speicher und wird nicht persistiert. Derselbe Schlüssel wird wiederverwendet, wenn Sie später private_key_jwt als Client-Authentifizierung wählen.",
       "requestObjectKid": "Gibt an, welcher registrierte Schlüssel das Request Object signiert hat. Bei Auth0 ist das die Key ID der Anmeldeinformation mit dem passenden öffentlichen Schlüssel.",
       "privateKey": "Sicher aufbewahren! Privater Schlüssel im PKCS#8-PEM-Format zum Signieren der Client-Assertion für PAR. Er bleibt nur für diese Sitzung im Speicher und wird nicht persistiert.",
-      "clientAssertionKid": "Gibt an, welcher registrierte Schlüssel die Client-Assertion signiert hat. Bei Auth0 ist das die Key ID der Anmeldeinformation mit dem passenden öffentlichen Schlüssel."
+      "clientAssertionKid": "Gibt an, welcher registrierte Schlüssel die Client-Assertion signiert hat. Bei Auth0 ist das die Key ID der Anmeldeinformation mit dem passenden öffentlichen Schlüssel.",
+      "dpopJkt": "RFC 9449 SHA-256-Thumbprint des öffentlichen DPoP-Schlüssels. Bindet den Autorisierungscode an dieses spezifische Schlüsselpaar."
     },
     "placeholders": {
       "connection": "Username-Password-Authentication",

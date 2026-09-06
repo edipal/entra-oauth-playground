@@ -45,6 +45,11 @@ import {
   MAX_AUTHORIZATION_DETAILS_LENGTH,
   validateAuthorizationDetails,
 } from "@/lib/authorizationDetails";
+import {
+  generateDPoPKeyPair,
+  exportDPoPPublicJWK,
+  calculateDPoPThumbprint,
+} from "@/lib/dpop";
 
 enum StepIndex {
   Overview = 0,
@@ -77,6 +82,8 @@ interface RawAuthorizationParamsOptions {
   auth0AuthorizationParameters: Auth0AuthorizationParameters;
   pkceEnabled: boolean;
   codeChallenge: string;
+  dpopEnabled?: boolean;
+  dpopJkt?: string;
 }
 
 function appendOptionalParams(
@@ -113,6 +120,9 @@ function appendProviderSpecificParams(
   );
   for (const [k, v] of searchParams.entries()) {
     params[k] = v;
+  }
+  if (options.dpopEnabled && options.dpopJkt) {
+    params.dpop_jkt = options.dpopJkt;
   }
 }
 
@@ -216,6 +226,33 @@ export default function AuthorizationCodeConfidentialClientPage() {
     useState<Auth0AuthorizationParameters>({
       ...DEFAULT_AUTH0_AUTHORIZATION_PARAMETERS,
     });
+
+  // DPoP runtime
+  const dpopEnabled = !!authCodeConfidentialClientConfig.dpopEnabled;
+  const dpopJkt = authCodeConfidentialClientRuntime.dpopJkt || "";
+  const dpopPublicJwk = authCodeConfidentialClientRuntime.dpopPublicJwk;
+  const dpopKeyPair = authCodeConfidentialClientRuntime.dpopKeyPair;
+
+  const handleGenerateDpopKey = useCallback(async () => {
+    try {
+      const keyPair = await generateDPoPKeyPair();
+      const publicJwk = await exportDPoPPublicJWK(keyPair.publicKey);
+      const jkt = await calculateDPoPThumbprint(publicJwk);
+      setAuthCodeConfidentialClientRuntime({
+        dpopKeyPair: keyPair,
+        dpopPublicJwk: publicJwk,
+        dpopJkt: jkt,
+      });
+    } catch (err) {
+      console.error("Failed to generate DPoP key pair", err);
+    }
+  }, [setAuthCodeConfidentialClientRuntime]);
+
+  useEffect(() => {
+    if (dpopEnabled && !authCodeConfidentialClientRuntime.dpopKeyPair) {
+      handleGenerateDpopKey();
+    }
+  }, [dpopEnabled, authCodeConfidentialClientRuntime.dpopKeyPair, handleGenerateDpopKey]);
 
   // PAR Phase 1 / Phase 2 state
   const [parStatus, setParStatus] = useState<number | null>(null);
@@ -392,6 +429,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
         auth0AuthorizationParameters,
         pkceEnabled,
         codeChallenge,
+        dpopEnabled,
+        dpopJkt,
       }),
     [
       clientIdValid,
@@ -411,6 +450,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
       auth0AuthorizationParameters,
       pkceEnabled,
       codeChallenge,
+      dpopEnabled,
+      dpopJkt,
     ],
   );
 
@@ -1306,6 +1347,13 @@ export default function AuthorizationCodeConfidentialClientPage() {
           discoveryLoading={providerMetadata.loading}
           discoveryError={providerMetadata.error}
           showAudience={providerId === "auth0"}
+          dpopEnabled={dpopEnabled}
+          setDpopEnabled={(v: boolean) =>
+            setAuthCodeConfidentialClientConfig({ dpopEnabled: v })
+          }
+          dpopJkt={dpopJkt}
+          dpopPublicJwk={dpopPublicJwk}
+          onRegenerateDpopKey={handleGenerateDpopKey}
           t={tStepSettings}
           safeT={safeStepSettingsT}
         />
@@ -1402,6 +1450,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
                     clientAssertionKid: value,
                   })
                 }
+                dpopJkt={dpopEnabled ? dpopJkt : undefined}
               />
             ) : undefined
           }

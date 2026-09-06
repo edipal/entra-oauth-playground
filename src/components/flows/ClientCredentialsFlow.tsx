@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Steps } from "primereact/steps";
 import type { MenuItem } from "primereact/menuitem";
@@ -28,6 +28,11 @@ import {
   isProviderConfigValid,
   resolveProviderTokenEndpoint,
 } from "@/lib/identityProvider";
+import {
+  generateDPoPKeyPair,
+  exportDPoPPublicJWK,
+  calculateDPoPThumbprint,
+} from "@/lib/dpop";
 
 enum StepIndex {
   Overview = 0,
@@ -99,6 +104,33 @@ export default function ClientCredentialsPage() {
   const assertionClaims = clientCredentialsRuntime.assertionClaims || "";
   const testAssertion = clientCredentialsRuntime.testAssertion || "";
   const decodedAssertion = clientCredentialsRuntime.decodedAssertion || "";
+
+  // DPoP runtime
+  const dpopEnabled = !!clientCredentialsConfig.dpopEnabled;
+  const dpopJkt = clientCredentialsRuntime.dpopJkt || "";
+  const dpopPublicJwk = clientCredentialsRuntime.dpopPublicJwk;
+  const dpopKeyPair = clientCredentialsRuntime.dpopKeyPair;
+
+  const handleGenerateDpopKey = useCallback(async () => {
+    try {
+      const keyPair = await generateDPoPKeyPair();
+      const publicJwk = await exportDPoPPublicJWK(keyPair.publicKey);
+      const jkt = await calculateDPoPThumbprint(publicJwk);
+      setClientCredentialsRuntime({
+        dpopKeyPair: keyPair,
+        dpopPublicJwk: publicJwk,
+        dpopJkt: jkt,
+      });
+    } catch (err) {
+      console.error("Failed to generate DPoP key pair", err);
+    }
+  }, [setClientCredentialsRuntime]);
+
+  useEffect(() => {
+    if (dpopEnabled && !clientCredentialsRuntime.dpopKeyPair) {
+      handleGenerateDpopKey();
+    }
+  }, [dpopEnabled, clientCredentialsRuntime.dpopKeyPair, handleGenerateDpopKey]);
 
   // Token exchange
   const [exchanging, setExchanging] = useState(false);
@@ -555,12 +587,19 @@ export default function ClientCredentialsPage() {
           redirectUriValid={true}
           discoveryLoading={providerMetadata.loading}
           discoveryError={providerMetadata.error}
+          showAudience={providerId === "auth0"}
+          dpopEnabled={dpopEnabled}
+          setDpopEnabled={(v: boolean) =>
+            setClientCredentialsConfig({ dpopEnabled: v })
+          }
+          dpopJkt={dpopJkt}
+          dpopPublicJwk={dpopPublicJwk}
+          onRegenerateDpopKey={handleGenerateDpopKey}
           t={tStepSettings}
           safeT={safeStepSettingsT}
           showPkceToggle={false}
           showRedirectUri={false}
           showAuthEndpoint={false}
-          showAudience={providerId === "auth0"}
         />
       )}
 

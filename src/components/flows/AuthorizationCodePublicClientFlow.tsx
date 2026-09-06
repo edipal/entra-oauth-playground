@@ -41,6 +41,11 @@ import {
   MAX_AUTHORIZATION_DETAILS_LENGTH,
   validateAuthorizationDetails,
 } from "@/lib/authorizationDetails";
+import {
+  generateDPoPKeyPair,
+  exportDPoPPublicJWK,
+  calculateDPoPThumbprint,
+} from "@/lib/dpop";
 
 enum StepIndex {
   Overview = 0,
@@ -88,6 +93,7 @@ export default function AuthorizationCodePublicClientPage() {
   const pkceEnabled = !!authCodePublicClientConfig.pkceEnabled;
   const authRequestMode = authCodePublicClientConfig.authRequestMode || "url";
   const rarJson = authCodePublicClientConfig.rarJson || "";
+  const dpopEnabled = !!authCodePublicClientConfig.dpopEnabled;
 
   // Wizard state (start at Settings by default; Overview still accessible via steps navigation)
   const [currentStep, setCurrentStep] = useState<StepIndex>(
@@ -114,6 +120,32 @@ export default function AuthorizationCodePublicClientPage() {
     endpointOverrideEnabled,
     tokenEndpointOverride,
   });
+
+  // DPoP runtime
+  const dpopJkt = authCodePublicClientRuntime.dpopJkt || "";
+  const dpopPublicJwk = authCodePublicClientRuntime.dpopPublicJwk;
+  const dpopKeyPair = authCodePublicClientRuntime.dpopKeyPair;
+
+  const handleGenerateDpopKey = useCallback(async () => {
+    try {
+      const keyPair = await generateDPoPKeyPair();
+      const publicJwk = await exportDPoPPublicJWK(keyPair.publicKey);
+      const jkt = await calculateDPoPThumbprint(publicJwk);
+      setAuthCodePublicClientRuntime({
+        dpopKeyPair: keyPair,
+        dpopPublicJwk: publicJwk,
+        dpopJkt: jkt,
+      });
+    } catch (err) {
+      console.error("Failed to generate DPoP key pair", err);
+    }
+  }, [setAuthCodePublicClientRuntime]);
+
+  useEffect(() => {
+    if (dpopEnabled && !authCodePublicClientRuntime.dpopKeyPair) {
+      handleGenerateDpopKey();
+    }
+  }, [dpopEnabled, authCodePublicClientRuntime.dpopKeyPair, handleGenerateDpopKey]);
 
   // PKCE fields (global runtime via context)
   const codeVerifier = authCodePublicClientRuntime.codeVerifier!;
@@ -271,6 +303,9 @@ export default function AuthorizationCodePublicClientPage() {
         url.searchParams,
         auth0AuthorizationParameters,
       );
+      if (dpopEnabled && dpopJkt) {
+        url.searchParams.set("dpop_jkt", dpopJkt);
+      }
     }
     // domain_hint and claims intentionally omitted here per request
     if (pkceEnabled && codeChallenge) {
@@ -285,6 +320,8 @@ export default function AuthorizationCodePublicClientPage() {
     clientIdValid,
     codeChallenge,
     auth0AuthorizationParameters,
+    dpopEnabled,
+    dpopJkt,
     isEntra,
     nonce,
     rarValidation,
@@ -878,6 +915,13 @@ export default function AuthorizationCodePublicClientPage() {
           discoveryLoading={providerMetadata.loading}
           discoveryError={providerMetadata.error}
           showAudience={providerId === "auth0"}
+          dpopEnabled={dpopEnabled}
+          setDpopEnabled={(v) =>
+            setAuthCodePublicClientConfig({ dpopEnabled: v })
+          }
+          dpopJkt={dpopJkt}
+          dpopPublicJwk={dpopPublicJwk}
+          onRegenerateDpopKey={handleGenerateDpopKey}
           safeT={safeStepSettingsT}
           t={tStepSettings}
         />
@@ -950,6 +994,7 @@ export default function AuthorizationCodePublicClientPage() {
                 }
                 rarError={rarError}
                 supportedModes={["url"]}
+                dpopJkt={dpopEnabled ? dpopJkt : undefined}
               />
             ) : undefined
           }
