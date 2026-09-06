@@ -187,7 +187,10 @@ export default function StepTokens({
           </div>
 
           {dpopNonceRetried && (
-            <div className="p-message p-message-info mb-3">
+            <div
+              id="dpopNonceRetryNotice"
+              className="p-message p-message-info mb-3"
+            >
               <div className="p-message-wrapper py-2 px-3 flex align-items-center">
                 <span className="pi pi-info-circle mr-2 text-primary"></span>
                 <span className="p-message-text text-sm">

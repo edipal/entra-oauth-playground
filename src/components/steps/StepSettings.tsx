@@ -445,6 +445,7 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
 
               {dpopEnabled && dpopJkt && (
                 <div
+                  id="dpopKeyDetails"
                   className="mt-3 p-3 surface-50 border-round border-1 surface-border"
                   style={{ marginLeft: "clamp(0px, 15rem, 20rem)" }}
                 >
@@ -474,7 +475,7 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
                         "JWK Thumbprint (dpop_jkt):",
                       )}{" "}
                     </span>
-                    <code className="select-all font-bold">{dpopJkt}</code>
+                    <code id="dpopThumbprint" className="select-all font-bold">{dpopJkt}</code>
                   </div>
                   {dpopPublicJwk && (
                     <details className="text-xs">
