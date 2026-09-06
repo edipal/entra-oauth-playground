@@ -326,6 +326,17 @@
     "help": {
       "tokenEndpointPreview": "Die vollständige Token-Endpunkt-URL, die zum Eintausch des Autorisierungscodes verwendet wird.",
       "tokenRequest": "Der POST-Body (x-www-form-urlencoded), mit dem der Code gegen Tokens eingetauscht wird."
+    },
+    "dpop": {
+      "proofTitle": "DPoP-Proof-Header (RFC 9449)",
+      "proofHelp": "RFC 9449 Proof-of-Possession-JWT, mit ES256 signiert und im 'DPoP'-HTTP-Request-Header übermittelt.",
+      "proofPending": "Ein frisches DPoP-Proof-JWT wird mit ES256 signiert und im 'DPoP'-Header gesendet, sobald die Token-Anforderung abgeschickt wird.",
+      "rawProof": "Rohes DPoP-Proof-JWT",
+      "decodedHeader": "Dekodierter Header (JOSE)",
+      "decodedPayload": "Dekodierte Nutzdaten (Claims)",
+      "tokenTypeBadge": "token_type: DPoP",
+      "tokenTypeHelp": "Auth0 hat die Proof-of-Possession-Bindung mit token_type: DPoP bestätigt.",
+      "nonceRetriedNotice": "Auth0 forderte eine Aktualisierung mit 'use_dpop_nonce'. Die Anforderung wurde automatisch mit dem vom Server übermittelten frischen 'DPoP-Nonce'-Header wiederholt."
     }
   },
   "StepValidate": {

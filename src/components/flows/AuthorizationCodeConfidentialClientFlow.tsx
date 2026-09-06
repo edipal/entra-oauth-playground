@@ -49,6 +49,7 @@ import {
   generateDPoPKeyPair,
   exportDPoPPublicJWK,
   calculateDPoPThumbprint,
+  createDPoPProof,
 } from "@/lib/dpop";
 
 enum StepIndex {
@@ -290,6 +291,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
   const [exchangeBlockedReason, setExchangeBlockedReason] =
     useState<TokenExchangeBlocker | null>(null);
   const [tokenResponseText, setTokenResponseText] = useState("");
+  const [dpopNonceRetried, setDpopNonceRetried] = useState(false);
   const accessToken = authCodeConfidentialClientRuntime.accessToken || "";
   const idToken = authCodeConfidentialClientRuntime.idToken || "";
 
@@ -1013,6 +1015,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
     setExchanging(true);
     setTokenResponseText("");
+    setDpopNonceRetried(false);
     setAuthCodeConfidentialClientRuntime({ accessToken: "", idToken: "" });
     setDecodedAccessHeader("");
     setDecodedAccessPayload("");
@@ -1021,7 +1024,19 @@ export default function AuthorizationCodeConfidentialClientPage() {
     setDecodedIdPayload("");
     setDecodedIdFormat("invalid");
     try {
-      const res = await fetch(`/api/oauth/${providerId}/exchange-token`, {
+      let proof: string | undefined;
+      if (!isEntra && dpopEnabled && dpopKeyPair && dpopPublicJwk) {
+        proof = await createDPoPProof({
+          privateKey: dpopKeyPair.privateKey,
+          jwk: dpopPublicJwk,
+          htm: "POST",
+          htu: tokenEndpoint,
+          nonce: authCodeConfidentialClientRuntime.serverDPoPNonce || undefined,
+        });
+        setAuthCodeConfidentialClientRuntime({ lastTokenDPoPProof: proof });
+      }
+
+      let res = await fetch(`/api/oauth/${providerId}/exchange-token`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -1041,12 +1056,76 @@ export default function AuthorizationCodeConfidentialClientPage() {
           clientAssertionKid,
           clientAssertionX5t,
           tokenEndpoint,
+          dpopProof: proof,
         }),
       });
-      const contentType = res.headers.get("content-type") || "";
-      const txt = contentType.includes("application/json")
+      const responseNonce = res.headers.get("dpop-nonce");
+      if (responseNonce) {
+        setAuthCodeConfidentialClientRuntime({ serverDPoPNonce: responseNonce });
+      }
+      let contentType = res.headers.get("content-type") || "";
+      let txt = contentType.includes("application/json")
         ? JSON.stringify(await res.json(), null, 2)
         : await res.text();
+
+      if (
+        !isEntra &&
+        dpopEnabled &&
+        dpopKeyPair &&
+        dpopPublicJwk &&
+        res.status === 400 &&
+        responseNonce &&
+        txt.includes("use_dpop_nonce")
+      ) {
+        setDpopNonceRetried(true);
+        const retryProof = await createDPoPProof({
+          privateKey: dpopKeyPair.privateKey,
+          jwk: dpopPublicJwk,
+          htm: "POST",
+          htu: tokenEndpoint,
+          nonce: responseNonce,
+        });
+        setAuthCodeConfidentialClientRuntime({
+          lastTokenDPoPProof: retryProof,
+          serverDPoPNonce: responseNonce,
+        });
+
+        res = await fetch(`/api/oauth/${providerId}/exchange-token`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            providerId,
+            tenantId,
+            issuerUrl,
+            clientId,
+            redirectUri,
+            authCode,
+            scopes,
+            audience,
+            pkceEnabled,
+            codeVerifier,
+            clientAuthMethod,
+            clientSecret,
+            privateKeyPem,
+            clientAssertionKid,
+            clientAssertionX5t,
+            tokenEndpoint,
+            dpopProof: retryProof,
+          }),
+        });
+
+        const retryResponseNonce = res.headers.get("dpop-nonce");
+        if (retryResponseNonce) {
+          setAuthCodeConfidentialClientRuntime({
+            serverDPoPNonce: retryResponseNonce,
+          });
+        }
+        contentType = res.headers.get("content-type") || "";
+        txt = contentType.includes("application/json")
+          ? JSON.stringify(await res.json(), null, 2)
+          : await res.text();
+      }
+
       setTokenResponseText(txt);
       try {
         const parsed = JSON.parse(txt);
@@ -1533,6 +1612,9 @@ export default function AuthorizationCodeConfidentialClientPage() {
           exchanging={exchanging}
           onExchangeTokens={handleExchangeTokens}
           blockedReason={exchangeBlockedReason}
+          dpopEnabled={!isEntra && dpopEnabled}
+          dpopProof={authCodeConfidentialClientRuntime.lastTokenDPoPProof}
+          dpopNonceRetried={dpopNonceRetried}
         />
       )}
 

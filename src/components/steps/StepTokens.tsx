@@ -1,9 +1,12 @@
 "use client";
+import { useMemo } from "react";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
+import { Tag } from "primereact/tag";
 import { useTranslations } from "next-intl";
 import LabelWithHelp from "@/components/LabelWithHelp";
 import { TranslationUtils } from "@/lib/translation";
+import { decodeJwt } from "@/lib/jwtDecode";
 import type { TokenExchangeBlocker } from "@/lib/tokenExchangeReadiness";
 
 type Props = {
@@ -18,6 +21,9 @@ type Props = {
    * rather than left to be guessed from a screen that did not change.
    */
   blockedReason?: TokenExchangeBlocker | null;
+  dpopEnabled?: boolean;
+  dpopProof?: string;
+  dpopNonceRetried?: boolean;
 };
 
 export default function StepTokens({
@@ -27,6 +33,9 @@ export default function StepTokens({
   onExchangeTokens,
   resolvedTokenEndpoint,
   blockedReason,
+  dpopEnabled = false,
+  dpopProof = "",
+  dpopNonceRetried = false,
 }: Readonly<Props>) {
   const t = useTranslations("StepTokens");
   const safeTWithFallback = (key: string, fallback = ""): string =>
@@ -48,6 +57,24 @@ export default function StepTokens({
   };
   const reqStr = toPretty(tokenRequestPreview);
   const resStr = toPretty(tokenResponseText);
+
+  const decodedDpopProof = useMemo(() => {
+    if (!dpopProof) return { header: "", payload: "" };
+    return decodeJwt(dpopProof);
+  }, [dpopProof]);
+
+  const isDPoPTokenType = useMemo(() => {
+    try {
+      const parsed = JSON.parse(resStr);
+      return (
+        parsed &&
+        typeof parsed === "object" &&
+        parsed.token_type?.toLowerCase() === "dpop"
+      );
+    } catch {
+      return false;
+    }
+  }, [resStr]);
   return (
     <>
       <section>
@@ -148,12 +175,101 @@ export default function StepTokens({
         </div>
       </div>
 
+      {dpopEnabled && (
+        <div className="mb-4 surface-0 py-3 px-0 border-round">
+          <div className="flex align-items-center gap-2 mb-2">
+            <h4 className="m-0">{t("dpop.proofTitle")}</h4>
+            <LabelWithHelp
+              id="dpopProofHelp"
+              text=""
+              help={t("dpop.proofHelp")}
+            />
+          </div>
+
+          {dpopNonceRetried && (
+            <div className="p-message p-message-info mb-3">
+              <div className="p-message-wrapper py-2 px-3 flex align-items-center">
+                <span className="pi pi-info-circle mr-2 text-primary"></span>
+                <span className="p-message-text text-sm">
+                  {t("dpop.nonceRetriedNotice")}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {dpopProof ? (
+            <div className="grid formgrid p-fluid gap-3">
+              <div className="col-12">
+                <LabelWithHelp
+                  id="rawDpopProof"
+                  text={t("dpop.rawProof")}
+                  help={t("dpop.proofHelp")}
+                />
+                <InputTextarea
+                  id="rawDpopProof"
+                  value={dpopProof}
+                  rows={2}
+                  autoResize
+                  readOnly
+                  style={{ width: "100%", fontFamily: "monospace" }}
+                />
+              </div>
+
+              <div className="col-12 md:col-6">
+                <label
+                  htmlFor="decodedDpopHeader"
+                  className="font-semibold text-sm mb-1 block"
+                >
+                  {t("dpop.decodedHeader")}
+                </label>
+                <InputTextarea
+                  id="decodedDpopHeader"
+                  value={decodedDpopProof.header}
+                  rows={6}
+                  autoResize
+                  readOnly
+                  style={{ width: "100%", fontFamily: "monospace" }}
+                />
+              </div>
+
+              <div className="col-12 md:col-6">
+                <label
+                  htmlFor="decodedDpopPayload"
+                  className="font-semibold text-sm mb-1 block"
+                >
+                  {t("dpop.decodedPayload")}
+                </label>
+                <InputTextarea
+                  id="decodedDpopPayload"
+                  value={decodedDpopProof.payload}
+                  rows={6}
+                  autoResize
+                  readOnly
+                  style={{ width: "100%", fontFamily: "monospace" }}
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm opacity-75 m-0">{t("dpop.proofPending")}</p>
+          )}
+        </div>
+      )}
+
       <div className="surface-0 py-3 px-0 border-round">
-        <h4 className="mt-0 mb-3">
-          {t("sections.tokens.responseTitle", {
-            default: t("labels.responsePreview"),
-          })}
-        </h4>
+        <div className="flex align-items-center gap-2 mb-3">
+          <h4 className="m-0">
+            {t("sections.tokens.responseTitle", {
+              default: t("labels.responsePreview"),
+            })}
+          </h4>
+          {isDPoPTokenType && (
+            <Tag
+              value={t("dpop.tokenTypeBadge")}
+              severity="success"
+              title={t("dpop.tokenTypeHelp")}
+            />
+          )}
+        </div>
         <div className="grid formgrid p-fluid gap-3">
           <div className="col-12">
             <InputTextarea

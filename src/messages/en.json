@@ -326,6 +326,17 @@
     "help": {
       "tokenEndpointPreview": "The full token endpoint URL that will be used to exchange the authorization code.",
       "tokenRequest": "The POST body (x-www-form-urlencoded) used to exchange the code for tokens."
+    },
+    "dpop": {
+      "proofTitle": "DPoP Proof Header (RFC 9449)",
+      "proofHelp": "RFC 9449 proof-of-possession JWT signed with ES256 and sent in the 'DPoP' HTTP request header.",
+      "proofPending": "A fresh DPoP Proof JWT will be signed with ES256 and sent in the 'DPoP' header when sending this token request.",
+      "rawProof": "Raw DPoP Proof JWT",
+      "decodedHeader": "Decoded Header (JOSE)",
+      "decodedPayload": "Decoded Payload (Claims)",
+      "tokenTypeBadge": "token_type: DPoP",
+      "tokenTypeHelp": "Auth0 confirmed proof-of-possession binding by returning token_type: DPoP.",
+      "nonceRetriedNotice": "Auth0 challenged with error 'use_dpop_nonce'. The request was automatically retried with the fresh 'DPoP-Nonce' header provided by the server."
     }
   },
   "StepValidate": {
