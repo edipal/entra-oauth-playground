@@ -176,26 +176,29 @@ test.describe("Auth0 client credentials", () => {
     const body = await response.inputValue();
     expect(body, `token endpoint returned: ${body}`).toContain("access_token");
     const parsedBody = JSON.parse(body);
-    if (parsedBody.token_type?.toLowerCase() === "dpop") {
-      await expect(
-        flow.page.getByText("token_type: DPoP", { exact: false }),
-      ).toBeVisible();
-    } else {
-      expect(parsedBody.token_type?.toLowerCase()).toBe("bearer");
-    }
+    expect(
+      parsedBody.token_type?.toLowerCase(),
+      "token_type must be DPoP",
+    ).toBe("dpop");
+    await expect(
+      flow.page.getByText("token_type: DPoP", { exact: false }),
+    ).toBeVisible();
 
     await flow.next();
     await flow.expectStep("Decode");
     await flow.page.getByRole("button", { name: "Decode" }).click();
 
     const payload = await flow.page.locator("#accessPayload").inputValue();
-    if (payload.trim().startsWith("{")) {
-      const parsedPayload = JSON.parse(payload);
-      expect(parsedPayload.iss).toContain(auth0.issuerUrl);
-      if (parsedPayload.cnf?.jkt) {
-        expect(parsedPayload.cnf.jkt).toBe(clientDpopJkt);
-      }
-    }
+    expect(
+      payload.trim(),
+      "access token must decode to a JSON payload",
+    ).toMatch(/^\{/);
+    const parsedPayload = JSON.parse(payload);
+    expect(parsedPayload.iss).toContain(auth0.issuerUrl);
+    expect(
+      parsedPayload.cnf?.jkt,
+      "access token must contain cnf.jkt matching client DPoP thumbprint",
+    ).toBe(clientDpopJkt);
 
     await flow.next();
     await flow.expectStep("Validate");

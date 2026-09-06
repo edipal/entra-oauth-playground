@@ -178,6 +178,15 @@ authorization Auth0 refuses the authorization request with `Client ... is not
 authorized to access resource server ...` before any login form appears, even though
 the flow is user-delegated.
 
+The API also needs **Token Sender-Constraining** set to **DPoP** with **Require Token
+Sender-Constraining** left off. The two DPoP specs assert a `DPoP` `token_type` and a
+`cnf.jkt` matching the client key, so an unset mechanism fails them with
+`expected "dpop", received "bearer"`; requiring it instead breaks the Bearer specs,
+which share the same four applications. `ensureApi` in
+[provision-auth0.mts](scripts/provision-auth0.mts) converges both halves, so a tenant
+where the dashboard toggle was flipped on is corrected rather than reported as
+matching.
+
 The grant carries a `subject_type` that the dashboard does not surface: `user` for
 the authorization code flow, `client` for client credentials, and both for an
 application that serves both. Setup instructions live in

@@ -7,11 +7,16 @@
  *   AUTH0_MGMT_TOKEN_FILE=/path/to/token \
  *   pnpm provision:auth0 [--dry-run]
  *
+ * Both are optional on a re-run: the domain falls back to E2E_AUTH0_ISSUER_URL in
+ * .env.e2e.local, and the token to AUTH0_MGMT_TOKEN, from the environment or from
+ * that same file. The banner prints which tenant it resolved. There is no flag for
+ * the token on purpose — see readToken.
+ *
  * Why this exists: every Auth0 problem this suite has hit was a configuration
  * mistake, not a code one — a credential added but never assigned, a Require PAR
- * toggle left on, an application missing from an API's authorized list, a grant
- * with the wrong subject type. Each of those is one line below, and none of them
- * can drift again.
+ * toggle left on, a Require Token Sender-Constraining toggle left on, an
+ * application missing from an API's authorized list, a grant with the wrong
+ * subject type. Each of those is one line below, and none of them can drift again.
  *
  * It is idempotent. Run it against a brand new tenant to build everything, or
  * against a configured one to converge it. It only creates and patches — it never
@@ -23,7 +28,13 @@
  * API Explorer gives one that covers all of it.
  */
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { createPublicKey, generateKeyPairSync, randomBytes } from "node:crypto";
 import { calculateJwkThumbprint, exportJWK, importSPKI } from "jose";
 
@@ -35,6 +46,16 @@ const API_IDENTIFIER =
   process.env.E2E_AUTH0_API_IDENTIFIER || "https://localhost/orders";
 const API_SCOPE = "read:orders";
 const RAR_TYPE = "payment_initiation";
+
+/**
+ * DPoP supported but not required. Auth0 binds the access token whenever a client
+ * presents a proof, and still issues a Bearer token to the specs that send none —
+ * which the Bearer specs depend on, since all four applications below are shared
+ * between them and the DPoP specs. Flipping `required` here, or setting
+ * `require_proof_of_possession` on an application, breaks every one of them, so
+ * ensureApi converges this value back rather than only checking the mechanism.
+ */
+const PROOF_OF_POSSESSION = { mechanism: "dpop", required: false } as const;
 const CONNECTION =
   process.env.E2E_AUTH0_CONNECTION || "Username-Password-Authentication";
 const USER_EMAIL =
@@ -96,19 +117,42 @@ type AppKey = keyof typeof APPS;
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
-const DOMAIN = required("AUTH0_DOMAIN")
+/**
+ * AUTH0_DOMAIN, falling back to the issuer already in .env.e2e.local so converging
+ * the same tenant again does not need the variable a second time. Which one it used
+ * goes into the banner, because this script mutates whichever tenant it is handed
+ * and a stale env file would otherwise silently retarget it.
+ */
+let DOMAIN_SOURCE = "AUTH0_DOMAIN";
+
+function resolveDomain(): string {
+  const fromEnv = process.env.AUTH0_DOMAIN?.trim();
+  if (fromEnv) return fromEnv;
+
+  const fromFile = readEnvValue("E2E_AUTH0_ISSUER_URL");
+  if (fromFile) {
+    DOMAIN_SOURCE = `E2E_AUTH0_ISSUER_URL in ${ENV_PATH}`;
+    return fromFile;
+  }
+
+  fail(
+    `AUTH0_DOMAIN is not set, and ${ENV_PATH} has no E2E_AUTH0_ISSUER_URL to fall ` +
+      `back to. See the header of this file.`,
+  );
+}
+
+const DOMAIN = resolveDomain()
   .replace(/^https?:\/\//, "")
   .replace(/\/$/, "");
 const TOKEN = readToken();
 
-function required(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    fail(`${name} is not set. See the header of this file.`);
-  }
-  return value;
-}
-
+/**
+ * In order: AUTH0_MGMT_TOKEN_FILE, AUTH0_MGMT_TOKEN, then AUTH0_MGMT_TOKEN in
+ * .env.e2e.local — which is gitignored and mode 0600, so it is as good a home as a
+ * dedicated file. There is deliberately no flag for the token: a Management API
+ * token passed as an argument lands in shell history and in `ps` output for every
+ * other user on the machine.
+ */
 function readToken(): string {
   const file = process.env.AUTH0_MGMT_TOKEN_FILE?.trim();
   if (file) {
@@ -116,7 +160,18 @@ function readToken(): string {
       fail(`AUTH0_MGMT_TOKEN_FILE does not exist: ${file}`);
     return readFileSync(file, "utf8").trim();
   }
-  return required("AUTH0_MGMT_TOKEN");
+
+  const fromEnv = process.env.AUTH0_MGMT_TOKEN?.trim();
+  if (fromEnv) return fromEnv;
+
+  const fromFile = readEnvValue("AUTH0_MGMT_TOKEN");
+  if (fromFile) return fromFile;
+
+  fail(
+    `No Management API token. Set AUTH0_MGMT_TOKEN_FILE to a file holding one, or ` +
+      `AUTH0_MGMT_TOKEN in the environment or in ${ENV_PATH}. See the header of ` +
+      `this file.`,
+  );
 }
 
 function fail(message: string): never {
@@ -251,8 +306,12 @@ async function ensureApi() {
       signing_alg: "RS256",
       scopes: [{ value: API_SCOPE, description: "Read orders" }],
       authorization_details: [{ type: RAR_TYPE }],
+      proof_of_possession: PROOF_OF_POSSESSION,
     });
-    note("+", `API ${API_IDENTIFIER} (with RAR type ${RAR_TYPE})`);
+    note(
+      "+",
+      `API ${API_IDENTIFIER} (with RAR type ${RAR_TYPE}, DPoP supported)`,
+    );
     return;
   }
 
@@ -262,8 +321,12 @@ async function ensureApi() {
   const hasRarType = (existing.authorization_details || []).some(
     (item: any) => item.type === RAR_TYPE,
   );
+  const pop = existing.proof_of_possession;
+  const hasDpop =
+    pop?.mechanism === PROOF_OF_POSSESSION.mechanism &&
+    pop?.required === PROOF_OF_POSSESSION.required;
 
-  if (hasScope && hasRarType) {
+  if (hasScope && hasRarType && hasDpop) {
     note("=", `API ${API_IDENTIFIER}`);
     return;
   }
@@ -285,6 +348,15 @@ async function ensureApi() {
       { type: RAR_TYPE },
     ];
     updates.push(`added RAR type ${RAR_TYPE}`);
+  }
+
+  if (!hasDpop) {
+    patchBody.proof_of_possession = PROOF_OF_POSSESSION;
+    updates.push(
+      pop?.required
+        ? "turned Require Token Sender-Constraining back off (it rejects the Bearer specs)"
+        : "enabled DPoP sender-constraining",
+    );
   }
 
   await mutate(
@@ -584,9 +656,7 @@ async function ensureConnectionEnabled(clientIds: string[]) {
   );
 
   const pending = clientIds.filter(isPending).length;
-  const missing = clientIds.filter(
-    (id) => !isPending(id) && !enabled.has(id),
-  );
+  const missing = clientIds.filter((id) => !isPending(id) && !enabled.has(id));
 
   if (missing.length + pending === 0) {
     note("=", `connection ${CONNECTION} enabled for every application`);
@@ -741,7 +811,9 @@ function writeEnv(values: Record<string, string>) {
 // --- run --------------------------------------------------------------------
 
 async function main() {
-  console.log(`\nprovisioning ${DOMAIN}${DRY_RUN ? "  (dry run)" : ""}\n`);
+  console.log(
+    `\nprovisioning ${DOMAIN}  (from ${DOMAIN_SOURCE})${DRY_RUN ? "  (dry run)" : ""}\n`,
+  );
 
   await ensureTenantSettings();
   await ensureApi();
@@ -784,7 +856,9 @@ async function main() {
     E2E_AUTH0_USER_SCOPES: `openid profile email ${API_SCOPE}`,
     E2E_AUTH0_USERNAME: user.email,
     ...(password ? { E2E_AUTH0_PASSWORD: password } : {}),
-    E2E_AUTH0_PRIVATE_KEY_PEM: privateKeyPem.trim().replaceAll("\n", String.raw`\n`),
+    E2E_AUTH0_PRIVATE_KEY_PEM: privateKeyPem
+      .trim()
+      .replaceAll("\n", String.raw`\n`),
     E2E_AUTH0_CREDENTIAL_KID: kid,
     // One application serves client credentials, confidential authorization code
     // and PAR/JAR, so both point at it.

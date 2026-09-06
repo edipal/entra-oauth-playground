@@ -72,7 +72,9 @@ test.describe("Auth0 DPoP (RFC 9449) offline flows", () => {
 
     // Verify authorize request contains dpop_jkt parameter
     const authUrlPreview = await flow.authUrlPreview.inputValue();
-    expect(authUrlPreview).toContain(`dpop_jkt=${encodeURIComponent(clientDpopJkt)}`);
+    expect(authUrlPreview).toContain(
+      `dpop_jkt=${encodeURIComponent(clientDpopJkt)}`,
+    );
 
     // Track requests made to AUTH0.token and simulate nonce challenge
     const tokenCalls: { headers: Record<string, string>; body: string }[] = [];
@@ -111,7 +113,8 @@ test.describe("Auth0 DPoP (RFC 9449) offline flows", () => {
           },
           body: JSON.stringify({
             error: "use_dpop_nonce",
-            error_description: "Authorization server requires a nonce in the DPoP proof",
+            error_description:
+              "Authorization server requires a nonce in the DPoP proof",
           }),
         });
       }
@@ -182,7 +185,9 @@ test.describe("Auth0 DPoP (RFC 9449) offline flows", () => {
 
     // Verify DPoP nonce retry notice and response badge
     await expect(page.locator("#dpopNonceRetryNotice")).toBeVisible();
-    await expect(page.getByText("token_type: DPoP", { exact: false })).toBeVisible();
+    await expect(
+      page.getByText("token_type: DPoP", { exact: false }),
+    ).toBeVisible();
 
     // Advance to Decode step
     await flow.next();
@@ -195,9 +200,7 @@ test.describe("Auth0 DPoP (RFC 9449) offline flows", () => {
     await flow.expectStep("Validate");
 
     // Verify cnf.jkt checkmark is present and verified
-    await expect(
-      page.getByText(clientDpopJkt, { exact: false }),
-    ).toBeVisible();
+    await expect(page.getByText(clientDpopJkt, { exact: false })).toBeVisible();
 
     // Advance to Call API step
     await flow.next();
@@ -252,7 +255,9 @@ test.describe("Auth0 DPoP (RFC 9449) offline flows", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ request_uri: "urn:ietf:params:oauth:request_uri:mock-par" }),
+        body: JSON.stringify({
+          request_uri: "urn:ietf:params:oauth:request_uri:mock-par",
+        }),
       });
     });
 
@@ -382,6 +387,8 @@ test.describe("Auth0 DPoP (RFC 9449) offline flows", () => {
     expect(typeof capturedBody.dpopProof).toBe("string");
 
     // Assert DPoP badge is visible
-    await expect(page.getByText("token_type: DPoP", { exact: false })).toBeVisible();
+    await expect(
+      page.getByText("token_type: DPoP", { exact: false }),
+    ).toBeVisible();
   });
 });

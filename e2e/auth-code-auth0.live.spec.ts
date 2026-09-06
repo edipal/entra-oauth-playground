@@ -173,31 +173,30 @@ test.describe("Auth0 authorization code (public client)", () => {
     await flow.next();
     await flow.expectStep("Tokens");
 
-    await expect(
-      page.getByText("DPoP Proof Header (RFC 9449)"),
-    ).toBeVisible();
+    await expect(page.getByText("DPoP Proof Header (RFC 9449)")).toBeVisible();
 
     const body = await sendTokenRequest(page);
     await expect(page.locator("#rawDpopProof")).toBeVisible();
     expect(body, `token endpoint said: ${body}`).toContain("access_token");
     const parsedBody = JSON.parse(body);
-    if (parsedBody.token_type?.toLowerCase() === "dpop") {
-      await expect(
-        page.getByText("token_type: DPoP", { exact: false }),
-      ).toBeVisible();
-    } else {
-      expect(parsedBody.token_type?.toLowerCase()).toBe("bearer");
-    }
+    expect(
+      parsedBody.token_type?.toLowerCase(),
+      "token_type must be DPoP",
+    ).toBe("dpop");
+    await expect(
+      page.getByText("token_type: DPoP", { exact: false }),
+    ).toBeVisible();
 
     // Decode tokens
     const { access, id } = await decodeTokens(flow);
     expect(access.iss).toBe(`${auth0.issuerUrl}/`);
     expect(id.aud).toBe(auth0.publicClientId);
 
-    // Verify cnf.jkt in access token
-    if (access.cnf?.jkt) {
-      expect(access.cnf.jkt).toBe(clientDpopJkt);
-    }
+    // Verify cnf.jkt in access token matches client DPoP key thumbprint
+    expect(
+      access.cnf?.jkt,
+      "access token must contain cnf.jkt matching client DPoP thumbprint",
+    ).toBe(clientDpopJkt);
 
     // Validate step
     await flow.next();
@@ -220,13 +219,8 @@ test.describe("Auth0 authorization code (public client)", () => {
     await sendButton.click();
     await expect(apiResponse).not.toHaveValue("", { timeout: 30_000 });
     const apiResponseBody = await apiResponse.inputValue();
-    if (parsedBody.token_type?.toLowerCase() === "dpop") {
-      expect(apiResponseBody).toContain("sub");
-    } else {
-      // Live Auth0 tenant issued a Bearer token (DPoP not enabled on tenant API),
-      // so presenting Authorization: DPoP to /userinfo is rejected by Auth0 as expected per RFC 9449.
-      expect(apiResponseBody).toContain("Unauthorized");
-    }
+    expect(apiResponseBody).not.toContain("Unauthorized");
+    expect(apiResponseBody).toContain("sub");
   });
 
   test("with RAR on plain URL, Auth0 refuses and directs to PAR", async ({

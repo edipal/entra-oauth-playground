@@ -254,7 +254,11 @@ export default function AuthorizationCodeConfidentialClientPage() {
     if (dpopEnabled && !authCodeConfidentialClientRuntime.dpopKeyPair) {
       handleGenerateDpopKey();
     }
-  }, [dpopEnabled, authCodeConfidentialClientRuntime.dpopKeyPair, handleGenerateDpopKey]);
+  }, [
+    dpopEnabled,
+    authCodeConfidentialClientRuntime.dpopKeyPair,
+    handleGenerateDpopKey,
+  ]);
 
   // PAR Phase 1 / Phase 2 state
   const [parStatus, setParStatus] = useState<number | null>(null);
@@ -1062,7 +1066,9 @@ export default function AuthorizationCodeConfidentialClientPage() {
       });
       const responseNonce = res.headers.get("dpop-nonce");
       if (responseNonce) {
-        setAuthCodeConfidentialClientRuntime({ serverDPoPNonce: responseNonce });
+        setAuthCodeConfidentialClientRuntime({
+          serverDPoPNonce: responseNonce,
+        });
       }
       let contentType = res.headers.get("content-type") || "";
       let txt = contentType.includes("application/json")
@@ -1172,7 +1178,8 @@ export default function AuthorizationCodeConfidentialClientPage() {
     setCallingApi(true);
     setApiResponseText("");
     try {
-      const isDPoP = !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
+      const isDPoP =
+        !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
       let currentNonce = authCodeConfidentialClientRuntime.serverDPoPNonce;
       const headers: Record<string, string> = {};
 

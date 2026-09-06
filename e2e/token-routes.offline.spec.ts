@@ -349,7 +349,9 @@ test.describe("Malformed input", () => {
 });
 
 test.describe("DPoP proof parameter acceptance", () => {
-  test("accepts dpopProof in Auth0 exchange-token request body", async ({ request }) => {
+  test("accepts dpopProof in Auth0 exchange-token request body", async ({
+    request,
+  }) => {
     const response = await request.post(AUTH0.exchange, {
       data: {
         issuerUrl: AUTH0.issuerUrl,
@@ -365,7 +367,9 @@ test.describe("DPoP proof parameter acceptance", () => {
     expect((await response.json()).error).toBe("invalid_client_auth_method");
   });
 
-  test("accepts dpopProof in Auth0 client-credentials request body", async ({ request }) => {
+  test("accepts dpopProof in Auth0 client-credentials request body", async ({
+    request,
+  }) => {
     const response = await request.post(AUTH0.clientCredentials, {
       data: {
         issuerUrl: AUTH0.issuerUrl,

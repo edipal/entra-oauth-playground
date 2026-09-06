@@ -147,7 +147,11 @@ export default function AuthorizationCodePublicClientPage() {
     if (dpopEnabled && !authCodePublicClientRuntime.dpopKeyPair) {
       handleGenerateDpopKey();
     }
-  }, [dpopEnabled, authCodePublicClientRuntime.dpopKeyPair, handleGenerateDpopKey]);
+  }, [
+    dpopEnabled,
+    authCodePublicClientRuntime.dpopKeyPair,
+    handleGenerateDpopKey,
+  ]);
 
   // PKCE fields (global runtime via context)
   const codeVerifier = authCodePublicClientRuntime.codeVerifier!;
@@ -733,7 +737,8 @@ export default function AuthorizationCodePublicClientPage() {
     setCallingApi(true);
     setApiResponseText("");
     try {
-      const isDPoP = !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
+      const isDPoP =
+        !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
       let currentNonce = authCodePublicClientRuntime.serverDPoPNonce;
       const headers: Record<string, string> = {};
 

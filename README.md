@@ -170,8 +170,8 @@ spec skips itself with a named reason when its credentials are absent, so a part
 configuration is fine.
 
 `pnpm provision:auth0` brings an Auth0 tenant to the state those live specs expect —
-API, applications, credentials, grants, connection and test user — and writes the
-matching values into `.env.e2e.local`. It is idempotent, never deletes anything, and
+API, DPoP sender-constraining, applications, credentials, grants, connection and test
+user — and writes the matching values into `.env.e2e.local`. It is idempotent, never deletes anything, and
 takes `--dry-run`. It needs a Management API token; see
 [e2e/README.md](./e2e/README.md#pnpm-provisionauth0).
 

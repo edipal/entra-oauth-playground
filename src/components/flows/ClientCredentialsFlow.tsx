@@ -132,7 +132,11 @@ export default function ClientCredentialsPage() {
     if (dpopEnabled && !clientCredentialsRuntime.dpopKeyPair) {
       handleGenerateDpopKey();
     }
-  }, [dpopEnabled, clientCredentialsRuntime.dpopKeyPair, handleGenerateDpopKey]);
+  }, [
+    dpopEnabled,
+    clientCredentialsRuntime.dpopKeyPair,
+    handleGenerateDpopKey,
+  ]);
 
   // Token exchange
   const [exchanging, setExchanging] = useState(false);
@@ -448,7 +452,8 @@ export default function ClientCredentialsPage() {
     setCallingApi(true);
     setApiResponseText("");
     try {
-      const isDPoP = !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
+      const isDPoP =
+        !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
       let currentNonce = clientCredentialsRuntime.serverDPoPNonce;
       const headers: Record<string, string> = {};
 
