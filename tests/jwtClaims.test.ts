@@ -92,7 +92,6 @@ describe("message catalogue wiring", () => {
         "nbf",
         "jti",
         "cnf",
-        "cnf.jkt",
       ]) {
         expect(resolved[claim]).toBeTruthy();
       }

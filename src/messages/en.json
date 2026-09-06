@@ -572,8 +572,7 @@
         "acr": "Authentication context class reference.",
         "amr": "Authentication method references used during sign-in.",
         "sid": "Session identifier for sign-in session tracking.",
-        "cnf": "Confirmation — identifies the proof-of-possession key bound to this token (RFC 7800 / RFC 9449).",
-        "cnf.jkt": "JWK SHA-256 Thumbprint of the DPoP public key bound to this token."
+        "cnf": "Confirmation — identifies the proof-of-possession key (such as jkt thumbprint) bound to this token (RFC 7800 / RFC 9449)."
       },
       "entra": {
         "tid": "Tenant ID: Microsoft Entra tenant GUID.",

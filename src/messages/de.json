@@ -572,8 +572,7 @@
         "acr": "Authentication Context Class Reference.",
         "amr": "Authentication Method References der Anmeldung.",
         "sid": "Sitzungs-ID zur Nachverfolgung der Anmeldesitzung.",
-        "cnf": "Confirmation (Bestätigung) — identifiziert den an dieses Token gebundenen Proof-of-Possession-Schlüssel (RFC 7800 / RFC 9449).",
-        "cnf.jkt": "JWK-SHA-256-Thumbprint des an dieses Token gebundenen öffentlichen DPoP-Schlüssels."
+        "cnf": "Confirmation (Bestätigung) — identifiziert den an dieses Token gebundenen Proof-of-Possession-Schlüssel (wie jkt-Thumbprint) (RFC 7800 / RFC 9449)."
       },
       "entra": {
         "tid": "Tenant-ID: GUID des Microsoft-Entra-Mandanten.",
