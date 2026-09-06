@@ -23,14 +23,20 @@ async function forwardTokenResponse(response: Response) {
     ? JSON.stringify(await response.json(), null, 2)
     : await response.text();
 
+  const responseHeaders: Record<string, string> = {
+    "content-type": isJson
+      ? "application/json; charset=utf-8"
+      : "text/plain; charset=utf-8",
+    ...CACHE_HEADERS,
+  };
+  const dpopNonce = response.headers.get("dpop-nonce");
+  if (dpopNonce) {
+    responseHeaders["dpop-nonce"] = dpopNonce;
+  }
+
   return new Response(text, {
     status: response.status,
-    headers: {
-      "content-type": isJson
-        ? "application/json; charset=utf-8"
-        : "text/plain; charset=utf-8",
-      ...CACHE_HEADERS,
-    },
+    headers: responseHeaders,
   });
 }
 
@@ -119,6 +125,7 @@ export async function handleExchangeTokenRequest(
       clientAssertionKid,
       clientAssertionX5t,
       tokenEndpoint,
+      dpopProof,
     } = json || {};
 
     if (!clientId || !redirectUri || !authCode || !tokenEndpoint) {
@@ -161,9 +168,16 @@ export async function handleExchangeTokenRequest(
     });
     if (authError) return authError;
 
+    const headers: Record<string, string> = {
+      "content-type": "application/x-www-form-urlencoded",
+    };
+    if (typeof dpopProof === "string" && dpopProof.trim()) {
+      headers["DPoP"] = dpopProof.trim();
+    }
+
     const response = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
+      headers,
       body: body.toString(),
       cache: "no-store",
     });
@@ -195,6 +209,7 @@ export async function handleClientCredentialsRequest(
       clientAssertionKid,
       clientAssertionX5t,
       tokenEndpoint,
+      dpopProof,
     } = json || {};
 
     const scopesText = scopes ? String(scopes).trim() : "";
@@ -245,9 +260,16 @@ export async function handleClientCredentialsRequest(
     });
     if (authError) return authError;
 
+    const headers: Record<string, string> = {
+      "content-type": "application/x-www-form-urlencoded",
+    };
+    if (typeof dpopProof === "string" && dpopProof.trim()) {
+      headers["DPoP"] = dpopProof.trim();
+    }
+
     const response = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
+      headers,
       body: body.toString(),
       cache: "no-store",
     });

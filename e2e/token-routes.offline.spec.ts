@@ -347,3 +347,36 @@ test.describe("Malformed input", () => {
     });
   }
 });
+
+test.describe("DPoP proof parameter acceptance", () => {
+  test("accepts dpopProof in Auth0 exchange-token request body", async ({ request }) => {
+    const response = await request.post(AUTH0.exchange, {
+      data: {
+        issuerUrl: AUTH0.issuerUrl,
+        clientId: AUTH0.clientId,
+        redirectUri: REDIRECT_URI,
+        authCode: AUTH_CODE,
+        tokenEndpoint: AUTH0.tokenEndpoint,
+        clientAuthMethod: "invalid_method",
+        dpopProof: "mock.dpop.jwt",
+      },
+    });
+    expect(response.status()).toBe(400);
+    expect((await response.json()).error).toBe("invalid_client_auth_method");
+  });
+
+  test("accepts dpopProof in Auth0 client-credentials request body", async ({ request }) => {
+    const response = await request.post(AUTH0.clientCredentials, {
+      data: {
+        issuerUrl: AUTH0.issuerUrl,
+        clientId: AUTH0.clientId,
+        audience: "https://api.demo-tenant.example/orders",
+        tokenEndpoint: AUTH0.tokenEndpoint,
+        clientAuthMethod: "invalid_method",
+        dpopProof: "mock.dpop.jwt",
+      },
+    });
+    expect(response.status()).toBe(400);
+    expect((await response.json()).error).toBe("invalid_client_auth_method");
+  });
+});
