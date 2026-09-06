@@ -485,10 +485,7 @@ const readPersistedProviderSettings = (
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new TypeError("settings must be an object");
     }
-    return mergeProviderSettings(
-      providerId,
-      parsed as Partial<Settings>,
-    );
+    return mergeProviderSettings(providerId, parsed as Partial<Settings>);
   } catch {
     // Keep the unreadable value rather than letting the next edit in this
     // workspace overwrite it, and carry on with defaults for this provider

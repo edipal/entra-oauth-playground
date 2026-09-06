@@ -148,7 +148,8 @@
       "decodedHeader": "Dekodierter Header",
       "decodedPayload": "Dekodierter Payload (mit ath)",
       "proofPending": "Ein frischer DPoP-Proof mit 'ath' wird beim Senden der API-Anfrage generiert.",
-      "athHelp": "Der 'ath'-Claim ist base64url(SHA-256(access_token)) und bindet diesen Proof kryptografisch an das spezifische Access Token."
+      "athHelp": "Der 'ath'-Claim ist base64url(SHA-256(access_token)) und bindet diesen Proof kryptografisch an das spezifische Access Token.",
+      "toggleDetails": "DPoP-Details umschalten"
     }
   },
   "Auth0AuthorizationOptions": {
@@ -246,7 +247,8 @@
       "rarEmptyArray": "Authorization Details müssen mindestens einen Eintrag enthalten.",
       "rarEntryNotObject": "Jeder Eintrag in den Authorization Details muss ein JSON-Objekt sein.",
       "rarEntryMissingType": "Jeder Eintrag in den Authorization Details benötigt eine nicht leere \"type\"-Zeichenkette.",
-      "rarTooLarge": "Authorization Details dürfen höchstens {max} Zeichen lang sein."
+      "rarTooLarge": "Authorization Details dürfen höchstens {max} Zeichen lang sein.",
+      "dpopKeyUnavailable": "Das DPoP-Schlüsselpaar ist nicht bereit. Warten Sie, bis die Schlüsselerzeugung abgeschlossen ist, oder erzeugen Sie den Schlüssel in den Einstellungen neu."
     }
   },
   "StepCallback": {
@@ -484,7 +486,8 @@
       "clientIdRequired": "Client-ID ist erforderlich und muss eine GUID sein",
       "clientIdInvalid": "Client-ID muss eine GUID sein",
       "clientIdRequiredGeneric": "Client-ID ist erforderlich",
-      "redirectUriInvalid": "Umleitungs-URI muss eine gültige http(s)-URL sein"
+      "redirectUriInvalid": "Umleitungs-URI muss eine gültige http(s)-URL sein",
+      "dpopKeyGeneration": "DPoP-Schlüsselerzeugung fehlgeschlagen: {error}. Anfragen, die einen Proof benötigen, bleiben blockiert, bis ein Schlüssel verfügbar ist."
     },
     "status": {
       "discoveryLoading": "OIDC-Discovery-Metadaten werden geladen..."

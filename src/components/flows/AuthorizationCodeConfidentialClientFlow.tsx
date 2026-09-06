@@ -45,13 +45,8 @@ import {
   MAX_AUTHORIZATION_DETAILS_LENGTH,
   validateAuthorizationDetails,
 } from "@/lib/authorizationDetails";
-import {
-  generateDPoPKeyPair,
-  exportDPoPPublicJWK,
-  calculateDPoPThumbprint,
-  calculateAccessTokenHash,
-  createDPoPProof,
-} from "@/lib/dpop";
+import { calculateAccessTokenHash, createDPoPProof } from "@/lib/dpop";
+import { useDpopKeyPair } from "@/hooks/useDpopKeyPair";
 
 enum StepIndex {
   Overview = 0,
@@ -132,6 +127,7 @@ function buildRawAuthorizationParams(
   options: RawAuthorizationParamsOptions,
 ): Record<string, string> {
   if (!options.clientIdValid || !options.providerConfigValid) return {};
+  if (!options.isEntra && options.dpopEnabled && !options.dpopJkt) return {};
 
   const params: Record<string, string> = {
     client_id: options.clientId,
@@ -171,6 +167,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
 
   const providerId =
     authCodeConfidentialClientConfig.providerId || DEFAULT_PROVIDER_ID;
+  const isEntra = isEntraProvider(providerId);
   const issuerUrl = authCodeConfidentialClientConfig.issuerUrl || "";
   const audience = authCodeConfidentialClientConfig.audience || "";
   const endpointOverrideEnabled =
@@ -235,30 +232,31 @@ export default function AuthorizationCodeConfidentialClientPage() {
   const dpopPublicJwk = authCodeConfidentialClientRuntime.dpopPublicJwk;
   const dpopKeyPair = authCodeConfidentialClientRuntime.dpopKeyPair;
 
-  const handleGenerateDpopKey = useCallback(async () => {
-    try {
-      const keyPair = await generateDPoPKeyPair();
-      const publicJwk = await exportDPoPPublicJWK(keyPair.publicKey);
-      const jkt = await calculateDPoPThumbprint(publicJwk);
+  // Auth0-only: an Entra flow keeps a stored dpopEnabled setting inert rather
+  // than minting key material no request path would ever use.
+  const dpopSupported = !isEntra && dpopEnabled;
+  const {
+    generate: generateDpopKey,
+    regenerate: regenerateDpopKey,
+    error: dpopKeyError,
+  } = useDpopKeyPair({
+    enabled: dpopSupported,
+    hasKeyPair: !!dpopKeyPair,
+    onGenerated: ({ keyPair, publicJwk, jkt }) =>
       setAuthCodeConfidentialClientRuntime({
         dpopKeyPair: keyPair,
         dpopPublicJwk: publicJwk,
         dpopJkt: jkt,
-      });
-    } catch (err) {
-      console.error("Failed to generate DPoP key pair", err);
-    }
-  }, [setAuthCodeConfidentialClientRuntime]);
+      }),
+  });
 
-  useEffect(() => {
-    if (dpopEnabled && !authCodeConfidentialClientRuntime.dpopKeyPair) {
-      handleGenerateDpopKey();
-    }
-  }, [
-    dpopEnabled,
-    authCodeConfidentialClientRuntime.dpopKeyPair,
-    handleGenerateDpopKey,
-  ]);
+  /**
+   * Whether a DPoP-enabled request can be sent at all. Web Crypto generation is
+   * asynchronous and can fail outright, and a request sent before it lands would
+   * come back an ordinary bearer token while the screen still claims DPoP.
+   */
+  const dpopReady =
+    !dpopSupported || !!(dpopKeyPair && dpopPublicJwk && dpopJkt);
 
   // PAR Phase 1 / Phase 2 state
   const [parStatus, setParStatus] = useState<number | null>(null);
@@ -357,7 +355,6 @@ export default function AuthorizationCodeConfidentialClientPage() {
       return false;
     }
   };
-  const isEntra = isEntraProvider(providerId);
   const tenantIdValid = isProviderConfigValid({ providerId, tenantId });
   const issuerUrlValid =
     isEntra || isProviderConfigValid({ providerId, issuerUrl });
@@ -465,6 +462,10 @@ export default function AuthorizationCodeConfidentialClientPage() {
   // Build authorization URL preview
   const authUrlPreview = useMemo(() => {
     if (!clientIdValid || !providerConfigValid || !authEndpoint) return "";
+    // buildRawAuthorizationParams withholds every parameter while the DPoP key
+    // is missing, so without this the preview would resolve to a bare authorize
+    // endpoint and the launch would look sent rather than refused.
+    if (!dpopReady) return "";
 
     let url: URL;
     try {
@@ -500,6 +501,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
     clientIdValid,
     providerConfigValid,
     authEndpoint,
+    dpopReady,
     isParMode,
     isEntra,
     authRequestMode,
@@ -584,6 +586,10 @@ export default function AuthorizationCodeConfidentialClientPage() {
   // Execute PAR push call
   const executeParPush = useCallback(async (): Promise<string> => {
     setParError("");
+    if (!dpopReady) {
+      setParError(tAuth0Options("errors.dpopKeyUnavailable"));
+      return "";
+    }
     if (rarInvalid) {
       setParError(rarError);
       return "";
@@ -679,6 +685,7 @@ export default function AuthorizationCodeConfidentialClientPage() {
       setPushingPar(false);
     }
   }, [
+    dpopReady,
     rarInvalid,
     rarError,
     rawAuthorizationParams,
@@ -861,6 +868,10 @@ export default function AuthorizationCodeConfidentialClientPage() {
   };
 
   const openAuthorizePopup = async () => {
+    if (!dpopReady) {
+      setAuthorizationLaunchError(tAuth0Options("errors.dpopKeyUnavailable"));
+      return;
+    }
     if (!authUrlPreview) return;
 
     const popup = globalThis.window.open("", "oauth_auth_popup");
@@ -1030,10 +1041,23 @@ export default function AuthorizationCodeConfidentialClientPage() {
     setDecodedIdFormat("invalid");
     try {
       let proof: string | undefined;
-      if (!isEntra && dpopEnabled && dpopKeyPair && dpopPublicJwk) {
+      let activeKeyPair = dpopKeyPair;
+      let activePublicJwk = dpopPublicJwk;
+
+      if (dpopSupported) {
+        if (!activeKeyPair || !activePublicJwk) {
+          const generated = await generateDpopKey();
+          if (generated) {
+            activeKeyPair = generated.keyPair;
+            activePublicJwk = generated.publicJwk;
+          }
+        }
+        if (!activeKeyPair || !activePublicJwk) {
+          throw new Error("DPoP is enabled but key pair is unavailable.");
+        }
         proof = await createDPoPProof({
-          privateKey: dpopKeyPair.privateKey,
-          jwk: dpopPublicJwk,
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
           htm: "POST",
           htu: tokenEndpoint,
           nonce: authCodeConfidentialClientRuntime.serverDPoPNonce || undefined,
@@ -1076,18 +1100,17 @@ export default function AuthorizationCodeConfidentialClientPage() {
         : await res.text();
 
       if (
-        !isEntra &&
-        dpopEnabled &&
-        dpopKeyPair &&
-        dpopPublicJwk &&
+        dpopSupported &&
+        activeKeyPair &&
+        activePublicJwk &&
         res.status === 400 &&
         responseNonce &&
         txt.includes("use_dpop_nonce")
       ) {
         setDpopNonceRetried(true);
         const retryProof = await createDPoPProof({
-          privateKey: dpopKeyPair.privateKey,
-          jwk: dpopPublicJwk,
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
           htm: "POST",
           htu: tokenEndpoint,
           nonce: responseNonce,
@@ -1136,19 +1159,25 @@ export default function AuthorizationCodeConfidentialClientPage() {
       setTokenResponseText(txt);
       try {
         const parsed = JSON.parse(txt);
-        if (parsed && typeof parsed === "object" && parsed.access_token) {
-          setAuthCodeConfidentialClientRuntime({
-            accessToken: parsed.access_token as string,
-          });
-        }
-        if (parsed && typeof parsed === "object" && parsed.id_token) {
-          setAuthCodeConfidentialClientRuntime({
-            idToken: parsed.id_token as string,
-          });
-        }
-      } catch {}
-    } catch (e: any) {
-      setTokenResponseText(String(e));
+        setAuthCodeConfidentialClientRuntime({
+          accessToken:
+            typeof parsed?.access_token === "string" ? parsed.access_token : "",
+          idToken: typeof parsed?.id_token === "string" ? parsed.id_token : "",
+        });
+      } catch {
+        // non-JSON response
+      }
+    } catch (err) {
+      setTokenResponseText(
+        JSON.stringify(
+          {
+            error: "token_exchange_failed",
+            error_description: err instanceof Error ? err.message : String(err),
+          },
+          null,
+          2,
+        ),
+      );
     } finally {
       setExchanging(false);
     }
@@ -1178,16 +1207,26 @@ export default function AuthorizationCodeConfidentialClientPage() {
     setCallingApi(true);
     setApiResponseText("");
     try {
-      const isDPoP =
-        !isEntra && dpopEnabled && !!dpopKeyPair && !!dpopPublicJwk;
+      let activeKeyPair = dpopKeyPair;
+      let activePublicJwk = dpopPublicJwk;
       let currentNonce = authCodeConfidentialClientRuntime.serverDPoPNonce;
       const headers: Record<string, string> = {};
 
-      if (isDPoP) {
+      if (dpopSupported) {
+        if (!activeKeyPair || !activePublicJwk) {
+          const generated = await generateDpopKey();
+          if (generated) {
+            activeKeyPair = generated.keyPair;
+            activePublicJwk = generated.publicJwk;
+          }
+        }
+        if (!activeKeyPair || !activePublicJwk) {
+          throw new Error("DPoP is enabled but key pair is unavailable.");
+        }
         const ath = await calculateAccessTokenHash(accessToken);
         const proof = await createDPoPProof({
-          privateKey: dpopKeyPair.privateKey,
-          jwk: dpopPublicJwk,
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
           htm: "GET",
           htu: apiEndpointUrl,
           ath,
@@ -1211,11 +1250,17 @@ export default function AuthorizationCodeConfidentialClientPage() {
         currentNonce = respNonce;
       }
 
-      if (isDPoP && res.status === 401 && respNonce) {
+      if (
+        dpopSupported &&
+        res.status === 401 &&
+        respNonce &&
+        activeKeyPair &&
+        activePublicJwk
+      ) {
         const ath = await calculateAccessTokenHash(accessToken);
         const retryProof = await createDPoPProof({
-          privateKey: dpopKeyPair.privateKey,
-          jwk: dpopPublicJwk,
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
           htm: "GET",
           htu: apiEndpointUrl,
           ath,
@@ -1480,13 +1525,15 @@ export default function AuthorizationCodeConfidentialClientPage() {
           discoveryLoading={providerMetadata.loading}
           discoveryError={providerMetadata.error}
           showAudience={providerId === "auth0"}
+          showDpopToggle={providerId === "auth0"}
           dpopEnabled={dpopEnabled}
           setDpopEnabled={(v: boolean) =>
             setAuthCodeConfidentialClientConfig({ dpopEnabled: v })
           }
           dpopJkt={dpopJkt}
           dpopPublicJwk={dpopPublicJwk}
-          onRegenerateDpopKey={handleGenerateDpopKey}
+          dpopKeyError={dpopKeyError}
+          onRegenerateDpopKey={regenerateDpopKey}
           t={tStepSettings}
           safeT={safeStepSettingsT}
         />

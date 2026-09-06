@@ -846,15 +846,13 @@ export default function StepValidate(props: Readonly<Props>) {
             </li>
             {isDPoPActive && (
               <>
-                {resolvedTokenType && (
-                  <li>
-                    {t("validateUi.claims.access.tokenType")}:{" "}
-                    <code>{resolvedTokenType}</code>{" "}
-                    <span className="ml-2">
-                      <StatusIcon ok={accClaimOk.tokenTypeOk} />
-                    </span>
-                  </li>
-                )}
+                <li>
+                  {t("validateUi.claims.access.tokenType")}:{" "}
+                  <code>{resolvedTokenType || "—"}</code>{" "}
+                  <span className="ml-2">
+                    <StatusIcon ok={accClaimOk.tokenTypeOk} />
+                  </span>
+                </li>
                 <li>
                   {t("validateUi.claims.access.cnf")}:{" "}
                   <code>{accessPayload.cnf?.jkt || "—"}</code>{" "}

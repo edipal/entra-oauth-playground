@@ -192,15 +192,28 @@ test.describe("Auth0 DPoP (RFC 9449) offline flows", () => {
     // Advance to Decode step
     await flow.next();
     await flow.expectStep("Decode");
+    // The exchange already filled the panes, so a broken Decode button leaves
+    // them populated and only an uncaught handler error gives it away.
+    const decodeErrors: string[] = [];
+    page.on("pageerror", (error) => decodeErrors.push(error.message));
     await page.getByRole("button", { name: "Decode", exact: true }).click();
     await expect(page.locator("#accessPayload")).not.toHaveValue("");
+    expect(decodeErrors).toEqual([]);
 
     // Advance to Validate step
     await flow.next();
     await flow.expectStep("Validate");
 
-    // Verify cnf.jkt checkmark is present and verified
-    await expect(page.getByText(clientDpopJkt, { exact: false })).toBeVisible();
+    // Both rows always render, so the icon is what says the check passed
+    const tokenTypeRow = page.locator("li", {
+      hasText: "token_type must be DPoP",
+    });
+    await expect(tokenTypeRow.locator("code")).toHaveText("DPoP");
+    await expect(tokenTypeRow.locator("i.pi-check")).toBeVisible();
+
+    const cnfRow = page.locator("li", { hasText: clientDpopJkt });
+    await expect(cnfRow.locator("code")).toHaveText(clientDpopJkt);
+    await expect(cnfRow.locator("i.pi-check")).toBeVisible();
 
     // Advance to Call API step
     await flow.next();
@@ -390,5 +403,27 @@ test.describe("Auth0 DPoP (RFC 9449) offline flows", () => {
     await expect(
       page.getByText("token_type: DPoP", { exact: false }),
     ).toBeVisible();
+  });
+
+  test("Entra flows leave a stored dpopEnabled inert", async ({ page }) => {
+    // Seeded enabled on purpose: the toggle is hidden for Entra, so only a
+    // stored value can prove the flow ignores it rather than never seeing it.
+    await seedSettings(page, "entra", {
+      authCodePublicClient: defaultsFor("entra", { dpopEnabled: true }),
+    });
+
+    const flow = new FlowPage(
+      page,
+      "entra",
+      "authorization-code/public-client",
+    );
+    await flow.goto();
+    await flow.expectStep("Settings");
+
+    await expect(page.locator("#dpopEnabled")).toHaveCount(0);
+    await expect(page.locator("#dpopKeyDetails")).toHaveCount(0);
+
+    await flow.advanceTo("Authorize");
+    expect(await flow.authorizeParams()).not.toHaveProperty("dpop_jkt");
   });
 });

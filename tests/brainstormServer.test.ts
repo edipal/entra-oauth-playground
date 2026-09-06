@@ -34,6 +34,8 @@ describe("brainstorming server decodeFrame", () => {
     header[1] = 0x80 | 127; // masked + length 127
     header.writeBigUInt64BE(BigInt(2 * 1024 * 1024), 2);
 
-    expect(() => decodeFrame(header)).toThrow(/Frame payload exceeds maximum allowed size/);
+    expect(() => decodeFrame(header)).toThrow(
+      /Frame payload exceeds maximum allowed size/,
+    );
   });
 });

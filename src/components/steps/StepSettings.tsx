@@ -48,6 +48,7 @@ type Props = {
   showDpopToggle?: boolean;
   dpopJkt?: string;
   dpopPublicJwk?: any;
+  dpopKeyError?: string;
   onRegenerateDpopKey?: () => void;
   showRedirectUri?: boolean;
   showAuthEndpoint?: boolean;
@@ -62,9 +63,7 @@ function getClientIdErrorMessage(
   if (!isEntra) {
     return t("errors.clientIdRequiredGeneric");
   }
-  return clientId
-    ? t("errors.clientIdInvalid")
-    : t("errors.clientIdRequired");
+  return clientId ? t("errors.clientIdInvalid") : t("errors.clientIdRequired");
 }
 
 export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
@@ -108,6 +107,7 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
     showDpopToggle = true,
     dpopJkt = "",
     dpopPublicJwk,
+    dpopKeyError = "",
     onRegenerateDpopKey,
     showRedirectUri = true,
     showAuthEndpoint = true,
@@ -443,6 +443,12 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
                 </div>
               </div>
 
+              {dpopEnabled && dpopKeyError && (
+                <small className="p-error block mt-2">
+                  {t("errors.dpopKeyGeneration", { error: dpopKeyError })}
+                </small>
+              )}
+
               {dpopEnabled && dpopJkt && (
                 <div
                   id="dpopKeyDetails"
@@ -475,7 +481,9 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
                         "JWK Thumbprint (dpop_jkt):",
                       )}{" "}
                     </span>
-                    <code id="dpopThumbprint" className="select-all font-bold">{dpopJkt}</code>
+                    <code id="dpopThumbprint" className="select-all font-bold">
+                      {dpopJkt}
+                    </code>
                   </div>
                   {dpopPublicJwk && (
                     <details className="text-xs">
@@ -533,7 +541,9 @@ type ResolvedEndpointsSectionProps = {
   redirectUriValid: boolean;
 };
 
-function ResolvedEndpointsSection(props: Readonly<ResolvedEndpointsSectionProps>) {
+function ResolvedEndpointsSection(
+  props: Readonly<ResolvedEndpointsSectionProps>,
+) {
   const {
     t,
     safeT,

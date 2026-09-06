@@ -168,11 +168,7 @@ export default function StepDecode({
       ? t("claimsDialog.accessTitle")
       : t("claimsDialog.idTitle");
   const primaryDocUrl = getPrimaryDocUrl(providerId, activeDialogToken);
-  const primaryDocLabel = getPrimaryDocLabel(
-    providerId,
-    activeDialogToken,
-    t,
-  );
+  const primaryDocLabel = getPrimaryDocLabel(providerId, activeDialogToken, t);
   const supplementalDocs =
     providerId === "auth0"
       ? [

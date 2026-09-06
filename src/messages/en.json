@@ -148,7 +148,8 @@
       "decodedHeader": "Decoded Header",
       "decodedPayload": "Decoded Payload (with ath)",
       "proofPending": "A fresh DPoP proof with 'ath' will be generated when sending the API request.",
-      "athHelp": "The 'ath' claim is base64url(SHA-256(access_token)), cryptographically binding this proof to the specific access token."
+      "athHelp": "The 'ath' claim is base64url(SHA-256(access_token)), cryptographically binding this proof to the specific access token.",
+      "toggleDetails": "Toggle DPoP details"
     }
   },
   "Auth0AuthorizationOptions": {
@@ -246,7 +247,8 @@
       "rarEmptyArray": "Authorization details must contain at least one entry.",
       "rarEntryNotObject": "Every authorization details entry must be a JSON object.",
       "rarEntryMissingType": "Every authorization details entry needs a non-empty \"type\" string.",
-      "rarTooLarge": "Authorization details must stay under {max} characters."
+      "rarTooLarge": "Authorization details must stay under {max} characters.",
+      "dpopKeyUnavailable": "The DPoP key pair is not ready. Wait for key generation to finish, or regenerate the key in Settings."
     }
   },
   "StepCallback": {
@@ -484,7 +486,8 @@
       "clientIdRequired": "Client ID is required and must be a GUID",
       "clientIdInvalid": "Client ID must be a GUID",
       "clientIdRequiredGeneric": "Client ID is required",
-      "redirectUriInvalid": "Redirect URI must be a valid http(s) URL"
+      "redirectUriInvalid": "Redirect URI must be a valid http(s) URL",
+      "dpopKeyGeneration": "DPoP key generation failed: {error}. Requests that need a proof stay blocked until a key is available."
     },
     "status": {
       "discoveryLoading": "Loading OIDC discovery metadata..."

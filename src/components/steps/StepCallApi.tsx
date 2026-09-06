@@ -152,7 +152,7 @@ export default function StepCallApi({
                       text
                       size="small"
                       onClick={() => setShowDpopDetails((prev) => !prev)}
-                      aria-label="Toggle DPoP details"
+                      aria-label={t("dpop.toggleDetails")}
                     />
                   )}
                 </div>
