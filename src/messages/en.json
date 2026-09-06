@@ -408,6 +408,10 @@
       "redirectUri": "Redirect URI",
       "streamlined": "Streamlined mode",
       "pkceEnabled": "Use PKCE",
+      "dpopEnabled": "Use DPoP (RFC 9449)",
+      "dpopKeyDetails": "DPoP Client Key (ES256 / P-256)",
+      "dpopThumbprint": "JWK Thumbprint (dpop_jkt):",
+      "dpopPublicJwk": "View Public JWK",
       "endpointOverride": "Endpoint overrides"
     },
     "placeholders": {
@@ -425,8 +429,13 @@
       "streamlinedOff": "Disabled",
       "pkceEnabledOn": "Enabled",
       "pkceEnabledOff": "Disabled",
+      "dpopEnabledOn": "Enabled",
+      "dpopEnabledOff": "Disabled",
       "endpointOverrideOn": "Enabled",
       "endpointOverrideOff": "Disabled"
+    },
+    "buttons": {
+      "regenerateDpopKey": "Regenerate Key"
     },
     "help": {
       "tenantId": "Directory (tenant) GUID of your Entra ID instance.",
@@ -439,6 +448,7 @@
       "redirectUri": "Callback URL for this app. Must match the redirect URI in the app registration.",
       "streamlined": "Automatically runs steps and hides advanced fields to speed up the demo.",
       "pkceEnabled": "PKCE is recommended for public clients and optional for confidential clients.",
+      "dpopEnabled": "Demonstrating Proof-of-Possession binds issued tokens and authorization codes to an asymmetric key pair held by the browser, preventing token replay attacks.",
       "endpointOverride": "Use custom authorization or token endpoints instead of the provider defaults or discovered metadata. Server-side token exchange still validates the endpoint."
     },
     "errors": {

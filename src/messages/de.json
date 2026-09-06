@@ -408,6 +408,10 @@
       "redirectUri": "Umleitungs-URI",
       "streamlined": "Streamlined-Modus",
       "pkceEnabled": "PKCE verwenden",
+      "dpopEnabled": "DPoP verwenden (RFC 9449)",
+      "dpopKeyDetails": "DPoP-Client-Schlüssel (ES256 / P-256)",
+      "dpopThumbprint": "JWK-Thumbprint (dpop_jkt):",
+      "dpopPublicJwk": "Öffentlichen JWK anzeigen",
       "endpointOverride": "Endpunkt-Overrides"
     },
     "placeholders": {
@@ -425,8 +429,13 @@
       "streamlinedOff": "Deaktiviert",
       "pkceEnabledOn": "Aktiviert",
       "pkceEnabledOff": "Deaktiviert",
+      "dpopEnabledOn": "Aktiviert",
+      "dpopEnabledOff": "Deaktiviert",
       "endpointOverrideOn": "Aktiviert",
       "endpointOverrideOff": "Deaktiviert"
+    },
+    "buttons": {
+      "regenerateDpopKey": "Schlüssel neu generieren"
     },
     "help": {
       "tenantId": "Verzeichnis-(Mandanten-)GUID Ihrer Entra ID.",
@@ -439,6 +448,7 @@
       "redirectUri": "Callback-URL dieser App. Muss in der App-Registrierung hinterlegt sein.",
       "streamlined": "Führt Schritte automatisch aus und blendet erweiterte Felder aus, um die Demo zu beschleunigen.",
       "pkceEnabled": "PKCE ist für öffentliche Clients empfohlen und für vertrauliche optional.",
+      "dpopEnabled": "Demonstrating Proof-of-Possession bindet ausgegebene Tokens und Autorisierungscodes an ein asymmetrisches Schlüsselpaar im Browser, um Token-Replay-Angriffe zu verhindern.",
       "endpointOverride": "Verwenden Sie eigene Autorisierungs- oder Token-Endpunkte statt Provider-Standards oder Discovery-Metadaten. Serverseitiger Token-Austausch validiert den Endpunkt weiterhin."
     },
     "errors": {

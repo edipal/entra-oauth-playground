@@ -43,6 +43,12 @@ type Props = {
   discoveryLoading?: boolean;
   discoveryError?: string;
   showPkceToggle?: boolean;
+  dpopEnabled?: boolean;
+  setDpopEnabled?: (v: boolean) => void;
+  showDpopToggle?: boolean;
+  dpopJkt?: string;
+  dpopPublicJwk?: any;
+  onRegenerateDpopKey?: () => void;
   showRedirectUri?: boolean;
   showAuthEndpoint?: boolean;
   showAudience?: boolean;
@@ -97,6 +103,12 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
     discoveryLoading = false,
     discoveryError = "",
     showPkceToggle = true,
+    dpopEnabled = false,
+    setDpopEnabled,
+    showDpopToggle = true,
+    dpopJkt = "",
+    dpopPublicJwk,
+    onRegenerateDpopKey,
     showRedirectUri = true,
     showAuthEndpoint = true,
     showAudience = false,
@@ -392,6 +404,90 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {showDpopToggle && setDpopEnabled && (
+            <div className="col-12 md:col-12">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
+                  alignItems: "center",
+                  columnGap: "1rem",
+                }}
+              >
+                <div style={{ textAlign: "left" }}>
+                  <LabelWithHelp
+                    id="dpopEnabled"
+                    text={maybeT("labels.dpopEnabled", "Use DPoP (RFC 9449)")}
+                    help={maybeT(
+                      "help.dpopEnabled",
+                      "Demonstrating Proof-of-Possession binds issued tokens and authorization codes to an asymmetric key pair held by the browser, preventing token replay attacks.",
+                    )}
+                  />
+                </div>
+                <div>
+                  <div className="flex align-items-center gap-2">
+                    <InputSwitch
+                      inputId="dpopEnabled"
+                      checked={!!dpopEnabled}
+                      onChange={(e) => setDpopEnabled(!!e.value)}
+                    />
+                    <label htmlFor="dpopEnabled" className="m-0">
+                      {dpopEnabled
+                        ? maybeT("toggles.dpopEnabledOn", "Enabled")
+                        : maybeT("toggles.dpopEnabledOff", "Disabled")}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {dpopEnabled && dpopJkt && (
+                <div
+                  className="mt-3 p-3 surface-50 border-round border-1 surface-border"
+                  style={{ marginLeft: "clamp(0px, 15rem, 20rem)" }}
+                >
+                  <div className="flex justify-content-between align-items-center mb-2">
+                    <span className="font-semibold text-sm">
+                      {maybeT(
+                        "labels.dpopKeyDetails",
+                        "DPoP Client Key (ES256 / P-256)",
+                      )}
+                    </span>
+                    {onRegenerateDpopKey && (
+                      <button
+                        type="button"
+                        className="p-button p-button-sm p-button-text p-button-secondary"
+                        onClick={onRegenerateDpopKey}
+                        style={{ fontSize: "0.8rem", padding: "0.2rem 0.5rem" }}
+                      >
+                        <i className="pi pi-refresh mr-1" />
+                        {maybeT("buttons.regenerateDpopKey", "Regenerate Key")}
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs mb-2">
+                    <span className="opacity-75">
+                      {maybeT(
+                        "labels.dpopThumbprint",
+                        "JWK Thumbprint (dpop_jkt):",
+                      )}{" "}
+                    </span>
+                    <code className="select-all font-bold">{dpopJkt}</code>
+                  </div>
+                  {dpopPublicJwk && (
+                    <details className="text-xs">
+                      <summary className="cursor-pointer opacity-75">
+                        {maybeT("labels.dpopPublicJwk", "View Public JWK")}
+                      </summary>
+                      <pre className="mt-1 p-2 surface-100 border-round overflow-x-auto">
+                        {JSON.stringify(dpopPublicJwk, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
