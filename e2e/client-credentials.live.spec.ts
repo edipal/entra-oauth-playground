@@ -129,6 +129,88 @@ test.describe("Auth0 client credentials", () => {
     await exchangeAndAssert(flow, auth0.issuerUrl);
   });
 
+  test("client secret with DPoP", async ({ page }) => {
+    requires({
+      E2E_AUTH0_ISSUER_URL: auth0.issuerUrl,
+      E2E_AUTH0_M2M_CLIENT_ID: auth0.m2mClientId,
+      E2E_AUTH0_M2M_CLIENT_SECRET: auth0.m2mClientSecret,
+      E2E_AUTH0_AUDIENCE: auth0.audience,
+    });
+
+    await seedSettings(page, "auth0", {
+      clientCredentials: {
+        providerId: "auth0",
+        issuerUrl: auth0.issuerUrl,
+        clientId: auth0.m2mClientId,
+        audience: auth0.audience,
+        apiEndpointUrl: auth0.apiEndpoint,
+        clientAuthMethod: "secret",
+        dpopEnabled: true,
+      },
+    });
+
+    const flow = new FlowPage(page, "auth0", "client-credentials");
+    await flow.goto();
+
+    // Verify DPoP details on Settings step
+    await flow.expectStep("Settings");
+    const dpopThumbprint = page.locator("#dpopThumbprint");
+    await expect(dpopThumbprint).toBeVisible({ timeout: 15_000 });
+    const clientDpopJkt = (await dpopThumbprint.innerText()).trim();
+    expect(clientDpopJkt.length).toBeGreaterThan(10);
+
+    await flow.advanceTo("Authentication");
+    await flow.fill("clientSecret", auth0.m2mClientSecret);
+
+    await flow.advanceTo("Tokens");
+    await expect(
+      flow.page.getByText("DPoP Proof Header (RFC 9449)"),
+    ).toBeVisible();
+
+    await flow.page.getByRole("button", { name: "Send", exact: true }).click();
+
+    const response = flow.page.locator("#tokenResponse");
+    await expect(response).not.toHaveValue("", { timeout: 30_000 });
+    await expect(flow.page.locator("#rawDpopProof")).toBeVisible();
+
+    const body = await response.inputValue();
+    expect(body, `token endpoint returned: ${body}`).toContain("access_token");
+    const parsedBody = JSON.parse(body);
+    expect(
+      parsedBody.token_type?.toLowerCase(),
+      "token_type must be DPoP",
+    ).toBe("dpop");
+    await expect(
+      flow.page.getByText("token_type: DPoP", { exact: false }),
+    ).toBeVisible();
+
+    await flow.next();
+    await flow.expectStep("Decode");
+    await flow.page.getByRole("button", { name: "Decode" }).click();
+
+    const payload = await flow.page.locator("#accessPayload").inputValue();
+    expect(
+      payload.trim(),
+      "access token must decode to a JSON payload",
+    ).toMatch(/^\{/);
+    const parsedPayload = JSON.parse(payload);
+    expect(parsedPayload.iss).toContain(auth0.issuerUrl);
+    expect(
+      parsedPayload.cnf?.jkt,
+      "access token must contain cnf.jkt matching client DPoP thumbprint",
+    ).toBe(clientDpopJkt);
+
+    await flow.next();
+    await flow.expectStep("Validate");
+
+    await flow.next();
+    await flow.expectStep("Call API");
+
+    const apiHeaders = await flow.page.locator("#apiHeaders").inputValue();
+    expect(apiHeaders).toContain("Authorization: DPoP");
+    expect(apiHeaders).toContain("DPoP:");
+  });
+
   test("private_key_jwt (registered public key)", async ({ page }) => {
     requires({
       E2E_AUTH0_PKJWT_ISSUER_URL: auth0PkJwt.issuerUrl,

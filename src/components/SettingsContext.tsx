@@ -16,6 +16,8 @@ import {
   ENTRA_TOKEN_ENDPOINT_TEMPLATE,
   PROVIDER_PRESETS,
 } from "@/lib/identityProvider";
+import type { DPoPKeyPair } from "@/lib/dpop";
+import type * as jose from "jose";
 import { usePathname } from "@/navigation";
 import {
   DEFAULT_PROVIDER_APP_ID,
@@ -44,6 +46,8 @@ export type AuthCodePublicClientConfig = {
   streamlined?: boolean;
   // PKCE (optional)
   pkceEnabled?: boolean;
+  // DPoP (optional, RFC 9449)
+  dpopEnabled?: boolean;
 };
 
 // Runtime (global for the flow) that should NOT be persisted to localStorage
@@ -51,6 +55,13 @@ export type AuthCodePublicClientRuntime = {
   // PKCE
   codeVerifier?: string;
   codeChallenge?: string;
+  // DPoP (runtime, not persisted)
+  dpopKeyPair?: DPoPKeyPair;
+  dpopPublicJwk?: jose.JWK;
+  dpopJkt?: string;
+  serverDPoPNonce?: string;
+  lastTokenDPoPProof?: string;
+  lastApiDPoPProof?: string;
   // Endpoints (runtime, not persisted)
   authEndpoint?: string;
   tokenEndpoint?: string;
@@ -85,6 +96,7 @@ export type AuthCodeConfidentialClientConfig = {
   rarJson?: string;
   streamlined?: boolean;
   pkceEnabled?: boolean;
+  dpopEnabled?: boolean;
   clientAuthMethod?: ClientAuthMethod;
   // Optional header kid for client assertion (certificate mode)
   clientAssertionKid?: string;
@@ -97,6 +109,13 @@ export type AuthCodeConfidentialClientRuntime = {
   // PKCE (optional)
   codeVerifier?: string;
   codeChallenge?: string;
+  // DPoP (runtime, not persisted)
+  dpopKeyPair?: DPoPKeyPair;
+  dpopPublicJwk?: jose.JWK;
+  dpopJkt?: string;
+  serverDPoPNonce?: string;
+  lastTokenDPoPProof?: string;
+  lastApiDPoPProof?: string;
   // Endpoints (runtime)
   authEndpoint?: string;
   tokenEndpoint?: string;
@@ -145,10 +164,18 @@ export type ClientCredentialsConfig = {
   clientAssertionX5t?: string;
   // No PKCE for this flow, but kept for StepSettings compatibility
   pkceEnabled?: boolean;
+  dpopEnabled?: boolean;
 };
 
 // Client Credentials runtime state (not persisted)
 export type ClientCredentialsRuntime = {
+  // DPoP (runtime, not persisted)
+  dpopKeyPair?: DPoPKeyPair;
+  dpopPublicJwk?: jose.JWK;
+  dpopJkt?: string;
+  serverDPoPNonce?: string;
+  lastTokenDPoPProof?: string;
+  lastApiDPoPProof?: string;
   // Endpoints (runtime)
   tokenEndpoint?: string;
   // Tokens
@@ -259,6 +286,7 @@ const defaultEntraAuthCodePublicClientConfig: AuthCodePublicClientConfig = {
   rarJson: "",
   streamlined: false,
   pkceEnabled: true,
+  dpopEnabled: false,
 };
 
 const defaultAuth0AuthCodePublicClientConfig: AuthCodePublicClientConfig = {
@@ -277,6 +305,7 @@ const defaultAuth0AuthCodePublicClientConfig: AuthCodePublicClientConfig = {
   rarJson: "",
   streamlined: false,
   pkceEnabled: true,
+  dpopEnabled: false,
 };
 
 const defaultSettings: Settings = {
@@ -297,6 +326,7 @@ const defaultSettings: Settings = {
     rarJson: "",
     streamlined: false,
     pkceEnabled: true,
+    dpopEnabled: false,
     clientAuthMethod: "secret",
     clientAssertionKid: "",
     clientAssertionX5t: "",
@@ -316,6 +346,7 @@ const defaultSettings: Settings = {
     clientAssertionKid: "",
     clientAssertionX5t: "",
     pkceEnabled: false,
+    dpopEnabled: false,
   },
 };
 
@@ -337,6 +368,7 @@ const defaultAuth0Settings: Settings = {
     rarJson: "",
     streamlined: false,
     pkceEnabled: true,
+    dpopEnabled: false,
     clientAuthMethod: "secret",
     clientAssertionKid: "",
     clientAssertionX5t: "",
@@ -356,6 +388,7 @@ const defaultAuth0Settings: Settings = {
     clientAssertionKid: "",
     clientAssertionX5t: "",
     pkceEnabled: false,
+    dpopEnabled: false,
   },
 };
 
@@ -452,10 +485,7 @@ const readPersistedProviderSettings = (
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new TypeError("settings must be an object");
     }
-    return mergeProviderSettings(
-      providerId,
-      parsed as Partial<Settings>,
-    );
+    return mergeProviderSettings(providerId, parsed as Partial<Settings>);
   } catch {
     // Keep the unreadable value rather than letting the next edit in this
     // workspace overwrite it, and carry on with defaults for this provider
@@ -481,6 +511,12 @@ const readPersistedProviderSettings = (
 const defaultAuthCodePublicClientRuntime: AuthCodePublicClientRuntime = {
   codeVerifier: "",
   codeChallenge: "",
+  dpopKeyPair: undefined,
+  dpopPublicJwk: undefined,
+  dpopJkt: "",
+  serverDPoPNonce: "",
+  lastTokenDPoPProof: "",
+  lastApiDPoPProof: "",
   authEndpoint: ENTRA_AUTH_ENDPOINT_TEMPLATE,
   tokenEndpoint: ENTRA_TOKEN_ENDPOINT_TEMPLATE,
   stateParam: "",
@@ -498,6 +534,12 @@ const defaultAuthCodeConfidentialClientRuntime: AuthCodeConfidentialClientRuntim
   {
     codeVerifier: "",
     codeChallenge: "",
+    dpopKeyPair: undefined,
+    dpopPublicJwk: undefined,
+    dpopJkt: "",
+    serverDPoPNonce: "",
+    lastTokenDPoPProof: "",
+    lastApiDPoPProof: "",
     authEndpoint: ENTRA_AUTH_ENDPOINT_TEMPLATE,
     tokenEndpoint: ENTRA_TOKEN_ENDPOINT_TEMPLATE,
     stateParam: "",
@@ -523,6 +565,12 @@ const defaultAuthCodeConfidentialClientRuntime: AuthCodeConfidentialClientRuntim
   };
 
 const defaultClientCredentialsRuntime: ClientCredentialsRuntime = {
+  dpopKeyPair: undefined,
+  dpopPublicJwk: undefined,
+  dpopJkt: "",
+  serverDPoPNonce: "",
+  lastTokenDPoPProof: "",
+  lastApiDPoPProof: "",
   tokenEndpoint: ENTRA_TOKEN_ENDPOINT_TEMPLATE,
   accessToken: "",
   idToken: "",

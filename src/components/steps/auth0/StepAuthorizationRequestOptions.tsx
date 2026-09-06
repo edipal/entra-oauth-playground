@@ -43,6 +43,7 @@ type Props = {
   setRequestObjectKeyPem?: (value: string) => void;
   requestObjectKid?: string;
   setRequestObjectKid?: (value: string) => void;
+  dpopJkt?: string;
 };
 
 const MODE_LABEL_KEYS: Record<AuthRequestMode, string> = {
@@ -69,6 +70,7 @@ export default function Auth0AuthorizationRequestOptions({
   setRequestObjectKeyPem,
   requestObjectKid = "",
   setRequestObjectKid,
+  dpopJkt = "",
 }: Readonly<Props>) {
   const t = useTranslations("Auth0AuthorizationOptions");
   const rowStyle = {
@@ -585,6 +587,28 @@ export default function Auth0AuthorizationRequestOptions({
           </div>
         </div>
       </div>
+
+      {dpopJkt && (
+        <div className="col-12">
+          <div style={rowStyle}>
+            <div style={{ textAlign: "left" }}>
+              <LabelWithHelp
+                id="auth0DpopJkt"
+                text={t("labels.dpopJkt")}
+                help={t("help.dpopJkt")}
+              />
+            </div>
+            <div>
+              <InputText
+                id="auth0DpopJkt"
+                value={dpopJkt}
+                readOnly
+                style={{ fontFamily: "monospace", width: "100%" }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

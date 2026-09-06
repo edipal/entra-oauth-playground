@@ -10,8 +10,14 @@ export const entra = {
   publicClientId: env("E2E_ENTRA_PUBLIC_CLIENT_ID"),
   confidentialClientId: env("E2E_ENTRA_CONFIDENTIAL_CLIENT_ID"),
   clientSecret: env("E2E_ENTRA_CLIENT_SECRET"),
-  privateKeyPem: env("E2E_ENTRA_PRIVATE_KEY_PEM").replaceAll(String.raw`\n`, "\n"),
-  certificatePem: env("E2E_ENTRA_CERTIFICATE_PEM").replaceAll(String.raw`\n`, "\n"),
+  privateKeyPem: env("E2E_ENTRA_PRIVATE_KEY_PEM").replaceAll(
+    String.raw`\n`,
+    "\n",
+  ),
+  certificatePem: env("E2E_ENTRA_CERTIFICATE_PEM").replaceAll(
+    String.raw`\n`,
+    "\n",
+  ),
   clientAssertionX5t: env("E2E_ENTRA_CLIENT_ASSERTION_X5T"),
   userScopes: env("E2E_ENTRA_USER_SCOPES") || "openid profile offline_access",
   appScope:
@@ -29,7 +35,10 @@ export const auth0 = {
   clientSecret: env("E2E_AUTH0_CLIENT_SECRET"),
   m2mClientId: env("E2E_AUTH0_M2M_CLIENT_ID"),
   m2mClientSecret: env("E2E_AUTH0_M2M_CLIENT_SECRET"),
-  privateKeyPem: env("E2E_AUTH0_PRIVATE_KEY_PEM").replaceAll(String.raw`\n`, "\n"),
+  privateKeyPem: env("E2E_AUTH0_PRIVATE_KEY_PEM").replaceAll(
+    String.raw`\n`,
+    "\n",
+  ),
   // Auth0 derives this from the JWK thumbprint of the public key, so registering
   // the same key on several applications yields the same kid for all of them.
   credentialKid: env("E2E_AUTH0_CREDENTIAL_KID"),

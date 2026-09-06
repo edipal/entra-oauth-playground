@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Steps } from "primereact/steps";
 import type { MenuItem } from "primereact/menuitem";
@@ -28,6 +28,8 @@ import {
   isProviderConfigValid,
   resolveProviderTokenEndpoint,
 } from "@/lib/identityProvider";
+import { calculateAccessTokenHash, createDPoPProof } from "@/lib/dpop";
+import { useDpopKeyPair } from "@/hooks/useDpopKeyPair";
 
 enum StepIndex {
   Overview = 0,
@@ -58,6 +60,7 @@ export default function ClientCredentialsPage() {
   } = useSettings();
 
   const providerId = clientCredentialsConfig.providerId || DEFAULT_PROVIDER_ID;
+  const isEntra = isEntraProvider(providerId);
   const issuerUrl = clientCredentialsConfig.issuerUrl || "";
   const audience = clientCredentialsConfig.audience || "";
   const endpointOverrideEnabled =
@@ -100,11 +103,44 @@ export default function ClientCredentialsPage() {
   const testAssertion = clientCredentialsRuntime.testAssertion || "";
   const decodedAssertion = clientCredentialsRuntime.decodedAssertion || "";
 
+  // DPoP runtime
+  const dpopEnabled = !!clientCredentialsConfig.dpopEnabled;
+  const dpopJkt = clientCredentialsRuntime.dpopJkt || "";
+  const dpopPublicJwk = clientCredentialsRuntime.dpopPublicJwk;
+  const dpopKeyPair = clientCredentialsRuntime.dpopKeyPair;
+
+  // Auth0-only: an Entra flow keeps a stored dpopEnabled setting inert rather
+  // than minting key material no request path would ever use.
+  const dpopSupported = !isEntra && dpopEnabled;
+  const {
+    generate: generateDpopKey,
+    regenerate: regenerateDpopKey,
+    error: dpopKeyError,
+  } = useDpopKeyPair({
+    enabled: dpopSupported,
+    hasKeyPair: !!dpopKeyPair,
+    onGenerated: ({ keyPair, publicJwk, jkt }) =>
+      setClientCredentialsRuntime({
+        dpopKeyPair: keyPair,
+        dpopPublicJwk: publicJwk,
+        dpopJkt: jkt,
+      }),
+  });
+
+  /**
+   * Whether a DPoP-enabled request can be sent at all. Web Crypto generation is
+   * asynchronous and can fail outright, and a request sent before it lands would
+   * come back an ordinary bearer token while the screen still claims DPoP.
+   */
+  const dpopReady =
+    !dpopSupported || !!(dpopKeyPair && dpopPublicJwk && dpopJkt);
+
   // Token exchange
   const [exchanging, setExchanging] = useState(false);
   const [exchangeBlockedReason, setExchangeBlockedReason] =
     useState<TokenExchangeBlocker | null>(null);
   const [tokenResponseText, setTokenResponseText] = useState("");
+  const [dpopNonceRetried, setDpopNonceRetried] = useState(false);
   const accessToken = clientCredentialsRuntime.accessToken || "";
   const idToken = clientCredentialsRuntime.idToken || "";
 
@@ -126,7 +162,6 @@ export default function ClientCredentialsPage() {
   const [callingApi, setCallingApi] = useState(false);
 
   // Validation helpers
-  const isEntra = isEntraProvider(providerId);
   const tenantIdValid = isProviderConfigValid({ providerId, tenantId });
   const issuerUrlValid =
     isEntra || isProviderConfigValid({ providerId, issuerUrl });
@@ -177,7 +212,8 @@ export default function ClientCredentialsPage() {
       providerConfigValid &&
       tokenGrantParametersValid &&
       tokenEndpoint &&
-      (clientAuthMethod === "secret" ? clientSecret : privateKeyPem)
+      (clientAuthMethod === "secret" ? clientSecret : privateKeyPem) &&
+      dpopReady
     ) {
       autoExchangedRef.current = true;
       handleExchangeTokensRef.current().catch(() => undefined);
@@ -194,6 +230,7 @@ export default function ClientCredentialsPage() {
     clientSecret,
     privateKeyPem,
     accessToken,
+    dpopReady,
   ]);
 
   // Streamlined: when on Decode step, auto decode then advance to Validate
@@ -267,6 +304,7 @@ export default function ClientCredentialsPage() {
 
     setExchanging(true);
     setTokenResponseText("");
+    setDpopNonceRetried(false);
     setClientCredentialsRuntime({ accessToken: "", idToken: "" });
     setDecodedAccessHeader("");
     setDecodedAccessPayload("");
@@ -275,7 +313,32 @@ export default function ClientCredentialsPage() {
     setDecodedIdPayload("");
     setDecodedIdFormat("invalid");
     try {
-      const res = await fetch(`/api/oauth/${providerId}/client-credentials`, {
+      let proof: string | undefined;
+      let activeKeyPair = dpopKeyPair;
+      let activePublicJwk = dpopPublicJwk;
+
+      if (dpopSupported) {
+        if (!activeKeyPair || !activePublicJwk) {
+          const generated = await generateDpopKey();
+          if (generated) {
+            activeKeyPair = generated.keyPair;
+            activePublicJwk = generated.publicJwk;
+          }
+        }
+        if (!activeKeyPair || !activePublicJwk) {
+          throw new Error("DPoP is enabled but key pair is unavailable.");
+        }
+        proof = await createDPoPProof({
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
+          htm: "POST",
+          htu: tokenEndpoint,
+          nonce: clientCredentialsRuntime.serverDPoPNonce || undefined,
+        });
+        setClientCredentialsRuntime({ lastTokenDPoPProof: proof });
+      }
+
+      let res = await fetch(`/api/oauth/${providerId}/client-credentials`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -291,26 +354,93 @@ export default function ClientCredentialsPage() {
           clientAssertionKid,
           clientAssertionX5t,
           tokenEndpoint,
+          dpopProof: proof,
         }),
       });
-      const contentType = res.headers.get("content-type") || "";
-      const txt = contentType.includes("application/json")
+      const responseNonce = res.headers.get("dpop-nonce");
+      if (responseNonce) {
+        setClientCredentialsRuntime({ serverDPoPNonce: responseNonce });
+      }
+      let contentType = res.headers.get("content-type") || "";
+      let txt = contentType.includes("application/json")
         ? JSON.stringify(await res.json(), null, 2)
         : await res.text();
+
+      if (
+        dpopSupported &&
+        activeKeyPair &&
+        activePublicJwk &&
+        res.status === 400 &&
+        responseNonce &&
+        txt.includes("use_dpop_nonce")
+      ) {
+        setDpopNonceRetried(true);
+        const retryProof = await createDPoPProof({
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
+          htm: "POST",
+          htu: tokenEndpoint,
+          nonce: responseNonce,
+        });
+        setClientCredentialsRuntime({
+          lastTokenDPoPProof: retryProof,
+          serverDPoPNonce: responseNonce,
+        });
+
+        res = await fetch(`/api/oauth/${providerId}/client-credentials`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            providerId,
+            tenantId,
+            issuerUrl,
+            clientId,
+            scopes,
+            audience,
+            clientAuthMethod,
+            clientSecret,
+            privateKeyPem,
+            clientAssertionKid,
+            clientAssertionX5t,
+            tokenEndpoint,
+            dpopProof: retryProof,
+          }),
+        });
+
+        const retryResponseNonce = res.headers.get("dpop-nonce");
+        if (retryResponseNonce) {
+          setClientCredentialsRuntime({
+            serverDPoPNonce: retryResponseNonce,
+          });
+        }
+        contentType = res.headers.get("content-type") || "";
+        txt = contentType.includes("application/json")
+          ? JSON.stringify(await res.json(), null, 2)
+          : await res.text();
+      }
+
       setTokenResponseText(txt);
       try {
         const parsed = JSON.parse(txt);
-        if (parsed && typeof parsed === "object" && parsed.access_token) {
-          setClientCredentialsRuntime({
-            accessToken: parsed.access_token as string,
-          });
-        }
-        if (parsed && typeof parsed === "object" && parsed.id_token) {
-          setClientCredentialsRuntime({ idToken: parsed.id_token as string });
-        }
-      } catch {}
-    } catch (e: any) {
-      setTokenResponseText(String(e));
+        setClientCredentialsRuntime({
+          accessToken:
+            typeof parsed?.access_token === "string" ? parsed.access_token : "",
+          idToken: typeof parsed?.id_token === "string" ? parsed.id_token : "",
+        });
+      } catch {
+        // non-JSON response
+      }
+    } catch (err) {
+      setTokenResponseText(
+        JSON.stringify(
+          {
+            error: "token_exchange_failed",
+            error_description: err instanceof Error ? err.message : String(err),
+          },
+          null,
+          2,
+        ),
+      );
     } finally {
       setExchanging(false);
     }
@@ -340,10 +470,73 @@ export default function ClientCredentialsPage() {
     setCallingApi(true);
     setApiResponseText("");
     try {
-      const res = await fetch(apiEndpointUrl, {
+      let activeKeyPair = dpopKeyPair;
+      let activePublicJwk = dpopPublicJwk;
+      let currentNonce = clientCredentialsRuntime.serverDPoPNonce;
+      const headers: Record<string, string> = {};
+
+      if (dpopSupported) {
+        if (!activeKeyPair || !activePublicJwk) {
+          const generated = await generateDpopKey();
+          if (generated) {
+            activeKeyPair = generated.keyPair;
+            activePublicJwk = generated.publicJwk;
+          }
+        }
+        if (!activeKeyPair || !activePublicJwk) {
+          throw new Error("DPoP is enabled but key pair is unavailable.");
+        }
+        const ath = await calculateAccessTokenHash(accessToken);
+        const proof = await createDPoPProof({
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
+          htm: "GET",
+          htu: apiEndpointUrl,
+          ath,
+          nonce: currentNonce,
+        });
+        headers["Authorization"] = `DPoP ${accessToken}`;
+        headers["DPoP"] = proof;
+        setClientCredentialsRuntime({ lastApiDPoPProof: proof });
+      } else {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      let res = await fetch(apiEndpointUrl, {
         method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers,
       });
+
+      const respNonce = res.headers.get("dpop-nonce");
+      if (respNonce && respNonce !== currentNonce) {
+        setClientCredentialsRuntime({ serverDPoPNonce: respNonce });
+        currentNonce = respNonce;
+      }
+
+      if (
+        dpopSupported &&
+        res.status === 401 &&
+        respNonce &&
+        activeKeyPair &&
+        activePublicJwk
+      ) {
+        const ath = await calculateAccessTokenHash(accessToken);
+        const retryProof = await createDPoPProof({
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
+          htm: "GET",
+          htu: apiEndpointUrl,
+          ath,
+          nonce: respNonce,
+        });
+        headers["DPoP"] = retryProof;
+        setClientCredentialsRuntime({ lastApiDPoPProof: retryProof });
+        res = await fetch(apiEndpointUrl, {
+          method: "GET",
+          headers,
+        });
+      }
+
       const contentType = res.headers.get("content-type") || "";
       const txt = contentType.includes("application/json")
         ? JSON.stringify(await res.json(), null, 2)
@@ -555,12 +748,21 @@ export default function ClientCredentialsPage() {
           redirectUriValid={true}
           discoveryLoading={providerMetadata.loading}
           discoveryError={providerMetadata.error}
+          showAudience={providerId === "auth0"}
+          showDpopToggle={providerId === "auth0"}
+          dpopEnabled={dpopEnabled}
+          setDpopEnabled={(v: boolean) =>
+            setClientCredentialsConfig({ dpopEnabled: v })
+          }
+          dpopJkt={dpopJkt}
+          dpopPublicJwk={dpopPublicJwk}
+          dpopKeyError={dpopKeyError}
+          onRegenerateDpopKey={regenerateDpopKey}
           t={tStepSettings}
           safeT={safeStepSettingsT}
           showPkceToggle={false}
           showRedirectUri={false}
           showAuthEndpoint={false}
-          showAudience={providerId === "auth0"}
         />
       )}
 
@@ -630,6 +832,9 @@ export default function ClientCredentialsPage() {
           exchanging={exchanging}
           onExchangeTokens={handleExchangeTokens}
           blockedReason={exchangeBlockedReason}
+          dpopEnabled={!isEntra && dpopEnabled}
+          dpopProof={clientCredentialsRuntime.lastTokenDPoPProof}
+          dpopNonceRetried={dpopNonceRetried}
         />
       )}
 
@@ -665,6 +870,9 @@ export default function ClientCredentialsPage() {
           decodedIdFormat={decodedIdFormat}
           accessToken={accessToken}
           idToken={idToken}
+          dpopEnabled={dpopEnabled}
+          dpopJkt={dpopJkt}
+          tokenResponseText={tokenResponseText}
         />
       )}
 
@@ -678,6 +886,8 @@ export default function ClientCredentialsPage() {
           apiResponseText={apiResponseText}
           callingApi={callingApi}
           onCallApi={handleCallProtectedApi}
+          dpopEnabled={!isEntra && dpopEnabled}
+          dpopProof={clientCredentialsRuntime.lastApiDPoPProof}
         />
       )}
 

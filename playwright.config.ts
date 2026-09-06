@@ -89,7 +89,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "pnpm dev",
+    command: process.env.PLAYWRIGHT_DEV_CMD || "npm run dev",
     url: BASE_URL,
     reuseExistingServer: true,
     ignoreHTTPSErrors: true,

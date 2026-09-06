@@ -138,6 +138,18 @@
     "buttons": {
       "sendGet": "Send GET",
       "sending": "Sending..."
+    },
+    "dpop": {
+      "cardTitle": "API DPoP Proof (RFC 9449)",
+      "badge": "DPoP Bound",
+      "badgeHelp": "Protected resource requests use the 'DPoP' authorization scheme and include a DPoP proof JWT with an 'ath' (Access Token Hash) claim.",
+      "rawProof": "DPoP Proof JWT",
+      "proofHelp": "RFC 9449 proof signed by the client's ES256 key, binding the request method (GET), URI, and access token hash (ath).",
+      "decodedHeader": "Decoded Header",
+      "decodedPayload": "Decoded Payload (with ath)",
+      "proofPending": "A fresh DPoP proof with 'ath' will be generated when sending the API request.",
+      "athHelp": "The 'ath' claim is base64url(SHA-256(access_token)), cryptographically binding this proof to the specific access token.",
+      "toggleDetails": "Toggle DPoP details"
     }
   },
   "Auth0AuthorizationOptions": {
@@ -169,7 +181,8 @@
       "requestObjectKey": "Request object signing key",
       "requestObjectKid": "Request object key ID (kid)",
       "privateKey": "Private Key (PKCS#8 PEM)",
-      "clientAssertionKid": "Key ID (kid)"
+      "clientAssertionKid": "Key ID (kid)",
+      "dpopJkt": "dpop_jkt (DPoP Key Thumbprint)"
     },
     "help": {
       "mode": "Auth0 authorization request transport: plain URL, pushed authorization request (PAR), JWT-secured authorization request (JAR), or PAR with a request object.",
@@ -189,7 +202,8 @@
       "requestObjectKey": "PKCS#8 PEM private key used to sign the request object. It stays in memory for this session and is never persisted. The same key is reused if you later choose private_key_jwt for client authentication.",
       "requestObjectKid": "Identifies which registered key signed the request object. For Auth0 this is the key ID of the application credential holding the matching public key.",
       "privateKey": "Keep this secure! PKCS#8 PEM private key used to sign the client assertion for PAR. It stays in memory for this session and is never persisted.",
-      "clientAssertionKid": "This should match the key identifier configured for the client signing key at Auth0."
+      "clientAssertionKid": "This should match the key identifier configured for the client signing key at Auth0.",
+      "dpopJkt": "RFC 9449 SHA-256 thumbprint of the client's DPoP public key. Binds the authorization code to this specific key pair."
     },
     "placeholders": {
       "connection": "Username-Password-Authentication",
@@ -233,7 +247,8 @@
       "rarEmptyArray": "Authorization details must contain at least one entry.",
       "rarEntryNotObject": "Every authorization details entry must be a JSON object.",
       "rarEntryMissingType": "Every authorization details entry needs a non-empty \"type\" string.",
-      "rarTooLarge": "Authorization details must stay under {max} characters."
+      "rarTooLarge": "Authorization details must stay under {max} characters.",
+      "dpopKeyUnavailable": "The DPoP key pair is not ready. Wait for key generation to finish, or regenerate the key in Settings."
     }
   },
   "StepCallback": {
@@ -324,6 +339,17 @@
     "help": {
       "tokenEndpointPreview": "The full token endpoint URL that will be used to exchange the authorization code.",
       "tokenRequest": "The POST body (x-www-form-urlencoded) used to exchange the code for tokens."
+    },
+    "dpop": {
+      "proofTitle": "DPoP Proof Header (RFC 9449)",
+      "proofHelp": "RFC 9449 proof-of-possession JWT signed with ES256 and sent in the 'DPoP' HTTP request header.",
+      "proofPending": "A fresh DPoP Proof JWT will be signed with ES256 and sent in the 'DPoP' header when sending this token request.",
+      "rawProof": "Raw DPoP Proof JWT",
+      "decodedHeader": "Decoded Header (JOSE)",
+      "decodedPayload": "Decoded Payload (Claims)",
+      "tokenTypeBadge": "token_type: DPoP",
+      "tokenTypeHelp": "Auth0 confirmed proof-of-possession binding by returning token_type: DPoP.",
+      "nonceRetriedNotice": "Auth0 challenged with error 'use_dpop_nonce'. The request was automatically retried with the fresh 'DPoP-Nonce' header provided by the server."
     }
   },
   "StepValidate": {
@@ -381,7 +407,9 @@
           "roles": "roles (app permissions)",
           "wids": "wids (app roles)",
           "ver": "ver (token version)",
-          "msGraph": "(Microsoft Graph audience; only Graph can verify signatures)"
+          "msGraph": "(Microsoft Graph audience; only Graph can verify signatures)",
+          "cnf": "cnf.jkt (DPoP key thumbprint confirmation)",
+          "tokenType": "token_type must be DPoP"
         }
       }
     }
@@ -408,6 +436,10 @@
       "redirectUri": "Redirect URI",
       "streamlined": "Streamlined mode",
       "pkceEnabled": "Use PKCE",
+      "dpopEnabled": "Use DPoP (RFC 9449)",
+      "dpopKeyDetails": "DPoP Client Key (ES256 / P-256)",
+      "dpopThumbprint": "JWK Thumbprint (dpop_jkt):",
+      "dpopPublicJwk": "View Public JWK",
       "endpointOverride": "Endpoint overrides"
     },
     "placeholders": {
@@ -425,8 +457,13 @@
       "streamlinedOff": "Disabled",
       "pkceEnabledOn": "Enabled",
       "pkceEnabledOff": "Disabled",
+      "dpopEnabledOn": "Enabled",
+      "dpopEnabledOff": "Disabled",
       "endpointOverrideOn": "Enabled",
       "endpointOverrideOff": "Disabled"
+    },
+    "buttons": {
+      "regenerateDpopKey": "Regenerate Key"
     },
     "help": {
       "tenantId": "Directory (tenant) GUID of your Entra ID instance.",
@@ -439,6 +476,7 @@
       "redirectUri": "Callback URL for this app. Must match the redirect URI in the app registration.",
       "streamlined": "Automatically runs steps and hides advanced fields to speed up the demo.",
       "pkceEnabled": "PKCE is recommended for public clients and optional for confidential clients.",
+      "dpopEnabled": "Demonstrating Proof-of-Possession binds issued tokens and authorization codes to an asymmetric key pair held by the browser, preventing token replay attacks.",
       "endpointOverride": "Use custom authorization or token endpoints instead of the provider defaults or discovered metadata. Server-side token exchange still validates the endpoint."
     },
     "errors": {
@@ -448,7 +486,8 @@
       "clientIdRequired": "Client ID is required and must be a GUID",
       "clientIdInvalid": "Client ID must be a GUID",
       "clientIdRequiredGeneric": "Client ID is required",
-      "redirectUriInvalid": "Redirect URI must be a valid http(s) URL"
+      "redirectUriInvalid": "Redirect URI must be a valid http(s) URL",
+      "dpopKeyGeneration": "DPoP key generation failed: {error}. Requests that need a proof stay blocked until a key is available."
     },
     "status": {
       "discoveryLoading": "Loading OIDC discovery metadata..."
@@ -535,7 +574,8 @@
         "auth_time": "Time when user authentication occurred.",
         "acr": "Authentication context class reference.",
         "amr": "Authentication method references used during sign-in.",
-        "sid": "Session identifier for sign-in session tracking."
+        "sid": "Session identifier for sign-in session tracking.",
+        "cnf": "Confirmation — identifies the proof-of-possession key (such as jkt thumbprint) bound to this token (RFC 7800 / RFC 9449)."
       },
       "entra": {
         "tid": "Tenant ID: Microsoft Entra tenant GUID.",

@@ -54,10 +54,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const parEndpoint = getProviderExpectedParEndpoint(
-      "auth0",
-      issuerUrl,
-    );
+    const parEndpoint = getProviderExpectedParEndpoint("auth0", issuerUrl);
     if (!parEndpoint) {
       return NextResponse.json(
         { error: "invalid_par_endpoint" },

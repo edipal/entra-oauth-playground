@@ -125,6 +125,104 @@ test.describe("Auth0 authorization code (public client)", () => {
     });
   });
 
+  test("with DPoP and PKCE, completes the whole flow with DPoP binding", async ({
+    page,
+  }) => {
+    requiresInteractiveAuth0({
+      E2E_AUTH0_PUBLIC_CLIENT_ID: auth0.publicClientId,
+    });
+
+    await seedSettings(page, "auth0", {
+      authCodePublicClient: {
+        providerId: "auth0",
+        issuerUrl: auth0.issuerUrl,
+        clientId: auth0.publicClientId,
+        audience: auth0.audience,
+        scopes: auth0.userScopes,
+        apiEndpointUrl: auth0.apiEndpoint,
+        pkceEnabled: true,
+        dpopEnabled: true,
+        streamlined: false,
+      },
+    });
+
+    const flow = new FlowPage(
+      page,
+      "auth0",
+      "authorization-code/public-client",
+    );
+    await flow.goto();
+
+    // Verify DPoP details on Settings step
+    await flow.expectStep("Settings");
+    const dpopThumbprint = page.locator("#dpopThumbprint");
+    await expect(dpopThumbprint).toBeVisible({ timeout: 15_000 });
+    const clientDpopJkt = (await dpopThumbprint.innerText()).trim();
+    expect(clientDpopJkt.length).toBeGreaterThan(10);
+
+    await flow.advanceTo("Authorize");
+
+    const params = await prepareAuthorizeRequest(flow);
+    expect(params.dpop_jkt, "dpop_jkt must be on authorize request").toBe(
+      clientDpopJkt,
+    );
+
+    await authorizeThroughPopup(page, "auth0");
+    await expectCallbackFor(flow, params.state);
+
+    await flow.next();
+    await flow.expectStep("Tokens");
+
+    await expect(page.getByText("DPoP Proof Header (RFC 9449)")).toBeVisible();
+
+    const body = await sendTokenRequest(page);
+    await expect(page.locator("#rawDpopProof")).toBeVisible();
+    expect(body, `token endpoint said: ${body}`).toContain("access_token");
+    const parsedBody = JSON.parse(body);
+    expect(
+      parsedBody.token_type?.toLowerCase(),
+      "token_type must be DPoP",
+    ).toBe("dpop");
+    await expect(
+      page.getByText("token_type: DPoP", { exact: false }),
+    ).toBeVisible();
+
+    // Decode tokens
+    const { access, id } = await decodeTokens(flow);
+    expect(access.iss).toBe(`${auth0.issuerUrl}/`);
+    expect(id.aud).toBe(auth0.publicClientId);
+
+    // Verify cnf.jkt in access token matches client DPoP key thumbprint
+    expect(
+      access.cnf?.jkt,
+      "access token must contain cnf.jkt matching client DPoP thumbprint",
+    ).toBe(clientDpopJkt);
+
+    // Validate step
+    await flow.next();
+    await flow.expectStep("Validate");
+
+    // Call API with DPoP scheme
+    await flow.next();
+    await flow.expectStep("Call API");
+
+    const apiHeaders = await page.locator("#apiHeaders").inputValue();
+    expect(apiHeaders).toContain("Authorization: DPoP");
+    expect(apiHeaders).toContain("DPoP:");
+
+    const sendButton = flow.page.getByRole("button", {
+      name: "Send GET",
+      exact: true,
+    });
+    const apiResponse = flow.page.locator("#apiResponse");
+    await expect(sendButton).toBeEnabled();
+    await sendButton.click();
+    await expect(apiResponse).not.toHaveValue("", { timeout: 30_000 });
+    const apiResponseBody = await apiResponse.inputValue();
+    expect(apiResponseBody).not.toContain("Unauthorized");
+    expect(apiResponseBody).toContain("sub");
+  });
+
   test("with RAR on plain URL, Auth0 refuses and directs to PAR", async ({
     page,
   }) => {

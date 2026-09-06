@@ -23,14 +23,20 @@ async function forwardTokenResponse(response: Response) {
     ? JSON.stringify(await response.json(), null, 2)
     : await response.text();
 
+  const responseHeaders: Record<string, string> = {
+    "content-type": isJson
+      ? "application/json; charset=utf-8"
+      : "text/plain; charset=utf-8",
+    ...CACHE_HEADERS,
+  };
+  const dpopNonce = response.headers.get("dpop-nonce");
+  if (dpopNonce) {
+    responseHeaders["dpop-nonce"] = dpopNonce;
+  }
+
   return new Response(text, {
     status: response.status,
-    headers: {
-      "content-type": isJson
-        ? "application/json; charset=utf-8"
-        : "text/plain; charset=utf-8",
-      ...CACHE_HEADERS,
-    },
+    headers: responseHeaders,
   });
 }
 
@@ -60,13 +66,15 @@ async function applyClientAuthentication({
   clientAssertionX5t: unknown;
 }): Promise<NextResponse | null> {
   if (clientAuthMethod === "secret") {
-    if (typeof clientSecret !== "string" || !clientSecret) return errorResponse("missing_client_secret");
+    if (typeof clientSecret !== "string" || !clientSecret)
+      return errorResponse("missing_client_secret");
     body.set("client_secret", clientSecret);
     return null;
   }
 
   if (clientAuthMethod === "certificate") {
-    if (typeof privateKeyPem !== "string" || !privateKeyPem) return errorResponse("missing_private_key");
+    if (typeof privateKeyPem !== "string" || !privateKeyPem)
+      return errorResponse("missing_private_key");
 
     const audience = getClientAssertionAudience(providerId, {
       issuerUrl: typeof issuerUrl === "string" ? issuerUrl : undefined,
@@ -76,14 +84,23 @@ async function applyClientAuthentication({
 
     // Auth0 identifies the signing key by its own `kid`; an x5t here could only
     // be a stale Entra thumbprint, so it is never forwarded.
-    const useX5t = providerId !== "auth0" && typeof clientAssertionX5t === "string" && !!clientAssertionX5t;
+    const useX5t =
+      providerId !== "auth0" &&
+      typeof clientAssertionX5t === "string" &&
+      !!clientAssertionX5t;
 
     const assertion = await buildClientAssertion({
       clientId,
       audience,
       privateKeyPem,
-      x5t: useX5t && typeof clientAssertionX5t === "string" ? clientAssertionX5t : undefined,
-      kid: typeof clientAssertionKid === "string" && clientAssertionKid ? clientAssertionKid : undefined,
+      x5t:
+        useX5t && typeof clientAssertionX5t === "string"
+          ? clientAssertionX5t
+          : undefined,
+      kid:
+        typeof clientAssertionKid === "string" && clientAssertionKid
+          ? clientAssertionKid
+          : undefined,
       lifetimeSec: 60,
     });
     body.set(
@@ -119,6 +136,7 @@ export async function handleExchangeTokenRequest(
       clientAssertionKid,
       clientAssertionX5t,
       tokenEndpoint,
+      dpopProof,
     } = json || {};
 
     if (!clientId || !redirectUri || !authCode || !tokenEndpoint) {
@@ -161,9 +179,16 @@ export async function handleExchangeTokenRequest(
     });
     if (authError) return authError;
 
+    const headers: Record<string, string> = {
+      "content-type": "application/x-www-form-urlencoded",
+    };
+    if (typeof dpopProof === "string" && dpopProof.trim()) {
+      headers["DPoP"] = dpopProof.trim();
+    }
+
     const response = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
+      headers,
       body: body.toString(),
       cache: "no-store",
     });
@@ -195,6 +220,7 @@ export async function handleClientCredentialsRequest(
       clientAssertionKid,
       clientAssertionX5t,
       tokenEndpoint,
+      dpopProof,
     } = json || {};
 
     const scopesText = scopes ? String(scopes).trim() : "";
@@ -245,9 +271,16 @@ export async function handleClientCredentialsRequest(
     });
     if (authError) return authError;
 
+    const headers: Record<string, string> = {
+      "content-type": "application/x-www-form-urlencoded",
+    };
+    if (typeof dpopProof === "string" && dpopProof.trim()) {
+      headers["DPoP"] = dpopProof.trim();
+    }
+
     const response = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
+      headers,
       body: body.toString(),
       cache: "no-store",
     });

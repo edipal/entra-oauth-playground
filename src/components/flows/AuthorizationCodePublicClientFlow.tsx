@@ -41,6 +41,8 @@ import {
   MAX_AUTHORIZATION_DETAILS_LENGTH,
   validateAuthorizationDetails,
 } from "@/lib/authorizationDetails";
+import { calculateAccessTokenHash, createDPoPProof } from "@/lib/dpop";
+import { useDpopKeyPair } from "@/hooks/useDpopKeyPair";
 
 enum StepIndex {
   Overview = 0,
@@ -75,6 +77,7 @@ export default function AuthorizationCodePublicClientPage() {
   } = useSettings();
   const providerId =
     authCodePublicClientConfig.providerId || DEFAULT_PROVIDER_ID;
+  const isEntra = isEntraProvider(providerId);
   const issuerUrl = authCodePublicClientConfig.issuerUrl || "";
   const audience = authCodePublicClientConfig.audience || "";
   const endpointOverrideEnabled =
@@ -88,6 +91,7 @@ export default function AuthorizationCodePublicClientPage() {
   const pkceEnabled = !!authCodePublicClientConfig.pkceEnabled;
   const authRequestMode = authCodePublicClientConfig.authRequestMode || "url";
   const rarJson = authCodePublicClientConfig.rarJson || "";
+  const dpopEnabled = !!authCodePublicClientConfig.dpopEnabled;
 
   // Wizard state (start at Settings by default; Overview still accessible via steps navigation)
   const [currentStep, setCurrentStep] = useState<StepIndex>(
@@ -114,6 +118,37 @@ export default function AuthorizationCodePublicClientPage() {
     endpointOverrideEnabled,
     tokenEndpointOverride,
   });
+
+  // DPoP runtime
+  const dpopJkt = authCodePublicClientRuntime.dpopJkt || "";
+  const dpopPublicJwk = authCodePublicClientRuntime.dpopPublicJwk;
+  const dpopKeyPair = authCodePublicClientRuntime.dpopKeyPair;
+
+  // Auth0-only: an Entra flow keeps a stored dpopEnabled setting inert rather
+  // than minting key material no request path would ever use.
+  const dpopSupported = !isEntra && dpopEnabled;
+  const {
+    generate: generateDpopKey,
+    regenerate: regenerateDpopKey,
+    error: dpopKeyError,
+  } = useDpopKeyPair({
+    enabled: dpopSupported,
+    hasKeyPair: !!dpopKeyPair,
+    onGenerated: ({ keyPair, publicJwk, jkt }) =>
+      setAuthCodePublicClientRuntime({
+        dpopKeyPair: keyPair,
+        dpopPublicJwk: publicJwk,
+        dpopJkt: jkt,
+      }),
+  });
+
+  /**
+   * Whether a DPoP-enabled request can be sent at all. Web Crypto generation is
+   * asynchronous and can fail outright, and a request sent before it lands would
+   * come back an ordinary bearer token while the screen still claims DPoP.
+   */
+  const dpopReady =
+    !dpopSupported || !!(dpopKeyPair && dpopPublicJwk && dpopJkt);
 
   // PKCE fields (global runtime via context)
   const codeVerifier = authCodePublicClientRuntime.codeVerifier!;
@@ -144,6 +179,7 @@ export default function AuthorizationCodePublicClientPage() {
   const [exchangeBlockedReason, setExchangeBlockedReason] =
     useState<TokenExchangeBlocker | null>(null);
   const [tokenResponseText, setTokenResponseText] = useState("");
+  const [dpopNonceRetried, setDpopNonceRetried] = useState(false);
   const accessToken = authCodePublicClientRuntime.accessToken!;
   const idToken = authCodePublicClientRuntime.idToken!;
 
@@ -204,7 +240,6 @@ export default function AuthorizationCodePublicClientPage() {
       return false;
     }
   };
-  const isEntra = isEntraProvider(providerId);
   const tenantIdValid = isProviderConfigValid({ providerId, tenantId });
   const issuerUrlValid =
     isEntra || isProviderConfigValid({ providerId, issuerUrl });
@@ -271,6 +306,12 @@ export default function AuthorizationCodePublicClientPage() {
         url.searchParams,
         auth0AuthorizationParameters,
       );
+      if (dpopEnabled) {
+        // Fail closed: an authorize request launched without dpop_jkt comes back
+        // as a plain bearer token while the wizard still claims DPoP.
+        if (!dpopReady) return "";
+        url.searchParams.set("dpop_jkt", dpopJkt);
+      }
     }
     // domain_hint and claims intentionally omitted here per request
     if (pkceEnabled && codeChallenge) {
@@ -285,6 +326,9 @@ export default function AuthorizationCodePublicClientPage() {
     clientIdValid,
     codeChallenge,
     auth0AuthorizationParameters,
+    dpopEnabled,
+    dpopJkt,
+    dpopReady,
     isEntra,
     nonce,
     rarValidation,
@@ -480,6 +524,10 @@ export default function AuthorizationCodePublicClientPage() {
   };
 
   const openAuthorizePopup = async () => {
+    if (!dpopReady) {
+      setAuthorizationLaunchError(tAuth0Options("errors.dpopKeyUnavailable"));
+      return;
+    }
     if (!authUrlPreview) return;
 
     const popup = globalThis.window.open("", "oauth_auth_popup");
@@ -559,6 +607,7 @@ export default function AuthorizationCodePublicClientPage() {
 
     setExchanging(true);
     setTokenResponseText("");
+    setDpopNonceRetried(false);
     setAuthCodePublicClientRuntime({ accessToken: "", idToken: "" });
     setDecodedAccessHeader("");
     setDecodedAccessPayload("");
@@ -575,52 +624,132 @@ export default function AuthorizationCodePublicClientPage() {
       if (pkceEnabled) body.set("code_verifier", codeVerifier);
       if (isEntra && scopes.trim()) body.set("scope", scopes.trim());
 
-      const res = await fetch(tokenEndpoint, {
+      const headers: Record<string, string> = {
+        "content-type": "application/x-www-form-urlencoded",
+      };
+      let activeKeyPair = dpopKeyPair;
+      let activePublicJwk = dpopPublicJwk;
+
+      if (dpopSupported) {
+        if (!activeKeyPair || !activePublicJwk) {
+          const generated = await generateDpopKey();
+          if (generated) {
+            activeKeyPair = generated.keyPair;
+            activePublicJwk = generated.publicJwk;
+          }
+        }
+        if (!activeKeyPair || !activePublicJwk) {
+          throw new Error("DPoP is enabled but key pair is unavailable.");
+        }
+        const proof = await createDPoPProof({
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
+          htm: "POST",
+          htu: tokenEndpoint,
+          nonce: authCodePublicClientRuntime.serverDPoPNonce || undefined,
+        });
+        headers["DPoP"] = proof;
+        setAuthCodePublicClientRuntime({ lastTokenDPoPProof: proof });
+      }
+
+      let res = await fetch(tokenEndpoint, {
         method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
+        headers,
         body: body.toString(),
       });
-      const contentType = res.headers.get("content-type") || "";
-      const txt = contentType.includes("application/json")
+      const responseNonce = res.headers.get("dpop-nonce");
+      if (responseNonce) {
+        setAuthCodePublicClientRuntime({ serverDPoPNonce: responseNonce });
+      }
+      let contentType = res.headers.get("content-type") || "";
+      let txt = contentType.includes("application/json")
         ? JSON.stringify(await res.json(), null, 2)
         : await res.text();
+
+      if (
+        dpopSupported &&
+        activeKeyPair &&
+        activePublicJwk &&
+        res.status === 400 &&
+        responseNonce &&
+        txt.includes("use_dpop_nonce")
+      ) {
+        setDpopNonceRetried(true);
+        const retryProof = await createDPoPProof({
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
+          htm: "POST",
+          htu: tokenEndpoint,
+          nonce: responseNonce,
+        });
+        headers["DPoP"] = retryProof;
+        setAuthCodePublicClientRuntime({
+          lastTokenDPoPProof: retryProof,
+          serverDPoPNonce: responseNonce,
+        });
+
+        res = await fetch(tokenEndpoint, {
+          method: "POST",
+          headers,
+          body: body.toString(),
+        });
+        const retryResponseNonce = res.headers.get("dpop-nonce");
+        if (retryResponseNonce) {
+          setAuthCodePublicClientRuntime({
+            serverDPoPNonce: retryResponseNonce,
+          });
+        }
+        contentType = res.headers.get("content-type") || "";
+        txt = contentType.includes("application/json")
+          ? JSON.stringify(await res.json(), null, 2)
+          : await res.text();
+      }
+
       setTokenResponseText(txt);
       try {
         const parsed = JSON.parse(txt);
-        if (parsed && typeof parsed === "object" && parsed.access_token) {
-          setAuthCodePublicClientRuntime({
-            accessToken: parsed.access_token as string,
-          });
-        }
-        if (parsed && typeof parsed === "object" && parsed.id_token) {
-          setAuthCodePublicClientRuntime({
-            idToken: parsed.id_token as string,
-          });
-        }
+        const at =
+          typeof parsed?.access_token === "string" ? parsed.access_token : "";
+        const it = typeof parsed?.id_token === "string" ? parsed.id_token : "";
+        setAuthCodePublicClientRuntime({ accessToken: at, idToken: it });
+        decodeTokens(at, it);
       } catch {
-        // non-JSON response
+        // ignore parse error if response isn't JSON
       }
-    } catch (e: any) {
-      setTokenResponseText(String(e));
+    } catch (err) {
+      setTokenResponseText(
+        JSON.stringify(
+          {
+            error: "token_exchange_failed",
+            error_description: err instanceof Error ? err.message : String(err),
+          },
+          null,
+          2,
+        ),
+      );
     } finally {
       setExchanging(false);
     }
   }
 
   // Helpers to decode JWTs
-  function handleDecodeTokens() {
-    const acc = accessToken
-      ? decodeJwt(accessToken)
-      : { header: "", payload: "", format: "invalid" as const };
-    const idt = idToken
-      ? decodeJwt(idToken)
-      : { header: "", payload: "", format: "invalid" as const };
+  function decodeTokens(accessTokenValue: string, idTokenValue: string) {
+    const acc = decodeJwt(accessTokenValue);
     setDecodedAccessHeader(acc.header);
     setDecodedAccessPayload(acc.payload);
     setDecodedAccessFormat(acc.format);
+    const idt = decodeJwt(idTokenValue);
     setDecodedIdHeader(idt.header);
     setDecodedIdPayload(idt.payload);
     setDecodedIdFormat(idt.format);
+  }
+
+  /**
+   * Takes no arguments on purpose: it is handed straight to a Button `onClick`,
+   * which would otherwise pass the mouse event as a token to decode.
+   */
+  function handleDecodeTokens() {
+    decodeTokens(accessToken, idToken);
   }
 
   handleExchangeTokensRef.current = handleExchangeTokens;
@@ -631,10 +760,73 @@ export default function AuthorizationCodePublicClientPage() {
     setCallingApi(true);
     setApiResponseText("");
     try {
-      const res = await fetch(apiEndpointUrl, {
+      let activeKeyPair = dpopKeyPair;
+      let activePublicJwk = dpopPublicJwk;
+      let currentNonce = authCodePublicClientRuntime.serverDPoPNonce;
+      const headers: Record<string, string> = {};
+
+      if (dpopSupported) {
+        if (!activeKeyPair || !activePublicJwk) {
+          const generated = await generateDpopKey();
+          if (generated) {
+            activeKeyPair = generated.keyPair;
+            activePublicJwk = generated.publicJwk;
+          }
+        }
+        if (!activeKeyPair || !activePublicJwk) {
+          throw new Error("DPoP is enabled but key pair is unavailable.");
+        }
+        const ath = await calculateAccessTokenHash(accessToken);
+        const proof = await createDPoPProof({
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
+          htm: "GET",
+          htu: apiEndpointUrl,
+          ath,
+          nonce: currentNonce,
+        });
+        headers["Authorization"] = `DPoP ${accessToken}`;
+        headers["DPoP"] = proof;
+        setAuthCodePublicClientRuntime({ lastApiDPoPProof: proof });
+      } else {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      let res = await fetch(apiEndpointUrl, {
         method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers,
       });
+
+      const respNonce = res.headers.get("dpop-nonce");
+      if (respNonce && respNonce !== currentNonce) {
+        setAuthCodePublicClientRuntime({ serverDPoPNonce: respNonce });
+        currentNonce = respNonce;
+      }
+
+      if (
+        dpopSupported &&
+        res.status === 401 &&
+        respNonce &&
+        activeKeyPair &&
+        activePublicJwk
+      ) {
+        const ath = await calculateAccessTokenHash(accessToken);
+        const retryProof = await createDPoPProof({
+          privateKey: activeKeyPair.privateKey,
+          jwk: activePublicJwk,
+          htm: "GET",
+          htu: apiEndpointUrl,
+          ath,
+          nonce: respNonce,
+        });
+        headers["DPoP"] = retryProof;
+        setAuthCodePublicClientRuntime({ lastApiDPoPProof: retryProof });
+        res = await fetch(apiEndpointUrl, {
+          method: "GET",
+          headers,
+        });
+      }
+
       const contentType = res.headers.get("content-type") || "";
       const txt = contentType.includes("application/json")
         ? JSON.stringify(await res.json(), null, 2)
@@ -878,6 +1070,15 @@ export default function AuthorizationCodePublicClientPage() {
           discoveryLoading={providerMetadata.loading}
           discoveryError={providerMetadata.error}
           showAudience={providerId === "auth0"}
+          showDpopToggle={providerId === "auth0"}
+          dpopEnabled={dpopEnabled}
+          setDpopEnabled={(v) =>
+            setAuthCodePublicClientConfig({ dpopEnabled: v })
+          }
+          dpopJkt={dpopJkt}
+          dpopPublicJwk={dpopPublicJwk}
+          dpopKeyError={dpopKeyError}
+          onRegenerateDpopKey={regenerateDpopKey}
           safeT={safeStepSettingsT}
           t={tStepSettings}
         />
@@ -950,6 +1151,7 @@ export default function AuthorizationCodePublicClientPage() {
                 }
                 rarError={rarError}
                 supportedModes={["url"]}
+                dpopJkt={dpopEnabled ? dpopJkt : undefined}
               />
             ) : undefined
           }
@@ -975,6 +1177,9 @@ export default function AuthorizationCodePublicClientPage() {
           exchanging={exchanging}
           onExchangeTokens={handleExchangeTokens}
           blockedReason={exchangeBlockedReason}
+          dpopEnabled={!isEntra && dpopEnabled}
+          dpopProof={authCodePublicClientRuntime.lastTokenDPoPProof}
+          dpopNonceRetried={dpopNonceRetried}
         />
       )}
 
@@ -1010,6 +1215,9 @@ export default function AuthorizationCodePublicClientPage() {
           decodedIdFormat={decodedIdFormat}
           accessToken={accessToken}
           idToken={idToken}
+          dpopEnabled={dpopEnabled}
+          dpopJkt={dpopJkt}
+          tokenResponseText={tokenResponseText}
         />
       )}
 
@@ -1023,6 +1231,8 @@ export default function AuthorizationCodePublicClientPage() {
           apiResponseText={apiResponseText}
           callingApi={callingApi}
           onCallApi={handleCallProtectedApi}
+          dpopEnabled={!isEntra && dpopEnabled}
+          dpopProof={authCodePublicClientRuntime.lastApiDPoPProof}
         />
       )}
 

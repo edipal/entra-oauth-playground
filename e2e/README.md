@@ -156,8 +156,9 @@ AUTH0_MGMT_TOKEN_FILE=/path/to/token \
 pnpm provision:auth0 --dry-run
 ```
 
-It converges, in order: tenant settings (_Allow PAR_), the API and its `read:orders`
-scope and `payment_initiation` RAR type, the four applications, the private_key_jwt credential assigned to **both**
+It converges, in order: tenant settings (_Allow PAR_), the API with its `read:orders`
+scope, its `payment_initiation` RAR type and DPoP sender-constraining, the four
+applications, the private_key_jwt credential assigned to **both**
 client authentication and `signed_request_object`, the `user` and `client` grants
 each application needs, the database connection, and the test user. Then it writes
 18 `E2E_AUTH0_*` keys into `.env.e2e.local`, plus the two password keys when the
@@ -173,8 +174,14 @@ read a password back.
 - **The token** comes from _Dashboard → Applications → APIs → Auth0 Management API →
   API Explorer_, and needs read/create/update on `clients`, `client_credentials`,
   `client_grants`, `connections`, `resource_servers`, `users` and `tenant_settings`.
-  It is read from a **file** rather than an argument, so it stays out of shell
-  history; `AUTH0_MGMT_TOKEN` works too if you would rather pass it directly.
+  It is never read from an argument, so it stays out of shell history and out of
+  `ps`: `AUTH0_MGMT_TOKEN_FILE` points at a file holding it, or set
+  `AUTH0_MGMT_TOKEN` in the environment or in `.env.e2e.local`, which is gitignored
+  at mode `0600`.
+- **`AUTH0_DOMAIN` is optional on a re-run.** It falls back to
+  `E2E_AUTH0_ISSUER_URL` in `.env.e2e.local`. The banner prints the tenant it
+  resolved and where the name came from — worth reading, since the script mutates
+  whichever tenant it is pointed at.
 - **It writes secrets.** `.env.e2e.local` is created at mode `0600` and is
   gitignored. The private key lands in `certificates/auth0-e2e-private.pem`, also
   gitignored. Only the keys it owns are rewritten, so Entra configuration in the same
@@ -198,6 +205,16 @@ against it.
    (a compact JWE) rather than a readable JWT — which is exactly the token the
    decode step reports as encrypted. Requesting this audience is what produces an
    inspectable access token.
+
+   On the same _Settings_ tab, under **Token Sender-Constraining**, choose **DPoP**
+   and leave **Require Token Sender-Constraining** _off_. The two DPoP specs assert
+   that `token_type` comes back as `DPoP` and that `cnf.jkt` matches the client key
+   thumbprint, so without the mechanism selected they fail with
+   `expected "dpop", received "bearer"`. Leaving the toggle **off** matters just as
+   much: these four applications are shared with the Bearer specs, and requiring
+   sender-constraining — here or via **Require Proof of Possession** on an
+   application — makes Auth0 reject every request that sends no proof. If you have
+   an older tenant, re-run `pnpm provision:auth0` and it will set both for you.
 
 2. **Single Page Application** — _Applications → Create Application → Single Page
    Web Applications_. Set:

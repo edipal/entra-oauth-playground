@@ -28,6 +28,7 @@ export type FlowSettings = {
   rarJson?: string;
   streamlined?: boolean;
   pkceEnabled?: boolean;
+  dpopEnabled?: boolean;
   clientAuthMethod?: "secret" | "certificate";
   clientAssertionKid?: string;
   clientAssertionX5t?: string;
