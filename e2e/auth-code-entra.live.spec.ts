@@ -199,7 +199,7 @@ test.describe("Entra authorization code (confidential client)", () => {
     if (options.pkceEnabled) {
       expect(params.code_challenge_method).toBe("S256");
     } else {
-      expect(params.code_challenge).toBe(undefined);
+      expect(params.code_challenge).toBeUndefined();
     }
     if (options.responseMode) {
       expect(params.response_mode).toBe(options.responseMode);

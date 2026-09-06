@@ -97,7 +97,7 @@ export function resolveAndValidateTokenEndpoint(
   // endpoint override exists so a user can reach the v1.0 shape (/oauth2/token)
   // as well as v2.0. Fixing the tenant segment allows that while refusing another
   // tenant. The tenant is always a GUID here — see isProviderConfigValid.
-  const [tenantSegment] = url.pathname.split("/").filter(Boolean);
+  const tenantSegment = url.pathname.split("/").find(Boolean);
   if (tenantSegment?.toLowerCase() !== tenant.toLowerCase()) {
     return null;
   }

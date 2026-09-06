@@ -36,6 +36,25 @@ const renderCodeChunk = (chunks: ReactNode) => <code>{chunks}</code>;
 
 type TokenType = "access" | "id";
 
+const getPrimaryDocUrl = (
+  providerId: IdentityProviderId,
+  activeDialogToken: TokenType | null,
+): string => {
+  if (providerId === "auth0") return AUTH0_TOKENS_DOC;
+  return activeDialogToken === "access" ? ACCESS_CLAIMS_DOC : ID_CLAIMS_DOC;
+};
+
+const getPrimaryDocLabel = (
+  providerId: IdentityProviderId,
+  activeDialogToken: TokenType | null,
+  t: (key: string) => string,
+): string => {
+  if (providerId === "auth0") return t("claimsDialog.references.auth0");
+  return activeDialogToken === "access"
+    ? t("claimsDialog.references.access")
+    : t("claimsDialog.references.id");
+};
+
 export default function StepDecode({
   accessToken,
   idToken,
@@ -148,18 +167,12 @@ export default function StepDecode({
     activeDialogToken === "access"
       ? t("claimsDialog.accessTitle")
       : t("claimsDialog.idTitle");
-  const primaryDocUrl =
-    providerId === "auth0"
-      ? AUTH0_TOKENS_DOC
-      : activeDialogToken === "access"
-        ? ACCESS_CLAIMS_DOC
-        : ID_CLAIMS_DOC;
-  const primaryDocLabel =
-    providerId === "auth0"
-      ? t("claimsDialog.references.auth0")
-      : activeDialogToken === "access"
-        ? t("claimsDialog.references.access")
-        : t("claimsDialog.references.id");
+  const primaryDocUrl = getPrimaryDocUrl(providerId, activeDialogToken);
+  const primaryDocLabel = getPrimaryDocLabel(
+    providerId,
+    activeDialogToken,
+    t,
+  );
   const supplementalDocs =
     providerId === "auth0"
       ? [

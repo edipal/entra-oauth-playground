@@ -24,11 +24,8 @@ import {
 import { TranslationUtils } from "@/lib/translation";
 import { useSettings } from "@/components/SettingsContext";
 import { useProviderMetadata } from "@/hooks/useProviderMetadata";
-import type { IdentityProviderId } from "@/lib/identityProvider";
 import {
   DEFAULT_PROVIDER_ID,
-  getProviderDefaultApiEndpoint,
-  getProviderDefaultScopes,
   isClientIdValidForProvider,
   isEntraProvider,
   isProviderConfigValid,

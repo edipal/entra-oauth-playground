@@ -61,12 +61,12 @@ export function useProviderMetadata(
         metadataCache.set(metadataUrl, json);
         setState({ metadataUrl, metadata: json, error: "" });
       })
-      .catch((caught: unknown) => {
+      .catch((error_: unknown) => {
         if (controller.signal.aborted) return;
         setState({
           metadataUrl,
           metadata: null,
-          error: caught instanceof Error ? caught.message : String(caught),
+          error: error_ instanceof Error ? error_.message : String(error_),
         });
       });
 

@@ -53,8 +53,16 @@ function decodeFrame(buffer) {
     offset = 4;
   } else if (payloadLen === 127) {
     if (buffer.length < 10) return null;
-    payloadLen = Number(buffer.readBigUInt64BE(2));
+    const bigLen = buffer.readBigUInt64BE(2);
+    if (bigLen > BigInt(MAX_PAYLOAD_SIZE)) {
+      throw new Error('Frame payload exceeds maximum allowed size');
+    }
+    payloadLen = Number(bigLen);
     offset = 10;
+  }
+
+  if (payloadLen > MAX_PAYLOAD_SIZE) {
+    throw new Error('Frame payload exceeds maximum allowed size');
   }
 
   const maskOffset = offset;
@@ -72,6 +80,16 @@ function decodeFrame(buffer) {
 }
 
 // ========== Configuration ==========
+
+const MAX_PAYLOAD_SIZE = 1024 * 1024; // 1 MB limit on frame payloads
+const MAX_BUFFER_SIZE = 2 * 1024 * 1024; // 2 MB limit on socket buffer
+const SESSION_TOKEN = process.env.BRAINSTORM_TOKEN || crypto.randomBytes(16).toString('hex');
+
+function getCookie(req, name) {
+  const header = req.headers['cookie'] || '';
+  const match = header.split(';').map(c => c.trim().split('=')).find(([k]) => k === name);
+  return match ? match[1] : null;
+}
 
 const PORT = process.env.BRAINSTORM_PORT || (49152 + Math.floor(Math.random() * 16383));
 const HOST = process.env.BRAINSTORM_HOST || '127.0.0.1';
@@ -128,7 +146,24 @@ function getNewestScreen() {
 
 function handleRequest(req, res) {
   touchActivity();
-  if (req.method === 'GET' && req.url === '/') {
+  const hostHeader = req.headers['host'] || 'localhost';
+  let reqUrl;
+  try {
+    reqUrl = new URL(req.url, `http://${hostHeader}`);
+  } catch {
+    res.writeHead(400);
+    res.end('Bad Request');
+    return;
+  }
+
+  const token = reqUrl.searchParams.get('token') || getCookie(req, 'brainstorm_token');
+  if (token !== SESSION_TOKEN) {
+    res.writeHead(401, { 'Content-Type': 'text/plain' });
+    res.end('Unauthorized');
+    return;
+  }
+
+  if (req.method === 'GET' && reqUrl.pathname === '/') {
     const screenFile = getNewestScreen();
     let html = screenFile
       ? (raw => isFullDocument(raw) ? raw : wrapInFrame(raw))(fs.readFileSync(screenFile, 'utf-8'))
@@ -140,10 +175,13 @@ function handleRequest(req, res) {
       html += helperInjection;
     }
 
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Set-Cookie': `brainstorm_token=${SESSION_TOKEN}; Path=/; HttpOnly; SameSite=Strict`
+    });
     res.end(html);
-  } else if (req.method === 'GET' && req.url.startsWith('/files/')) {
-    const fileName = req.url.slice(7);
+  } else if (req.method === 'GET' && reqUrl.pathname.startsWith('/files/')) {
+    const fileName = reqUrl.pathname.slice(7);
     const filePath = path.join(CONTENT_DIR, path.basename(fileName));
     if (!fs.existsSync(filePath)) {
       res.writeHead(404);
@@ -168,6 +206,40 @@ function handleUpgrade(req, socket) {
   const key = req.headers['sec-websocket-key'];
   if (!key) { socket.destroy(); return; }
 
+  // 1. Validate Origin to prevent Cross-Site WebSocket Hijacking (CSWSH)
+  const origin = req.headers['origin'];
+  const host = req.headers['host'];
+  if (origin && host) {
+    try {
+      const originHost = new URL(origin).host;
+      if (originHost !== host) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+    } catch {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+  }
+
+  // 2. Validate Session Token
+  const hostHeader = req.headers['host'] || 'localhost';
+  let reqUrl;
+  try {
+    reqUrl = new URL(req.url, `http://${hostHeader}`);
+  } catch {
+    socket.destroy();
+    return;
+  }
+  const token = reqUrl.searchParams.get('token') || getCookie(req, 'brainstorm_token');
+  if (token !== SESSION_TOKEN) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
   const accept = computeAcceptKey(key);
   socket.write(
     'HTTP/1.1 101 Switching Protocols\r\n' +
@@ -181,6 +253,11 @@ function handleUpgrade(req, socket) {
 
   socket.on('data', (chunk) => {
     buffer = Buffer.concat([buffer, chunk]);
+    if (buffer.length > MAX_BUFFER_SIZE) {
+      socket.destroy();
+      clients.delete(socket);
+      return;
+    }
     while (buffer.length > 0) {
       let result;
       try {
@@ -337,9 +414,10 @@ function startServer() {
   }
 
   server.listen(PORT, HOST, () => {
+    const url = 'http://' + URL_HOST + ':' + PORT + '/?token=' + SESSION_TOKEN;
     const info = JSON.stringify({
       type: 'server-started', port: Number(PORT), host: HOST,
-      url_host: URL_HOST, url: 'http://' + URL_HOST + ':' + PORT,
+      url_host: URL_HOST, url: url, token: SESSION_TOKEN,
       screen_dir: CONTENT_DIR, state_dir: STATE_DIR
     });
     console.log(info);

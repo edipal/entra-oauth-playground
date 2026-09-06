@@ -333,7 +333,7 @@ export function issuerMatchesExpected(
     try {
       const parsedIssuer = new URL(issuer);
       const hostname = parsedIssuer.hostname.toLowerCase();
-      const tenant = parsedIssuer.pathname.split("/").filter(Boolean)[0];
+      const tenant = parsedIssuer.pathname.split("/").find(Boolean);
 
       return (
         PROVIDER_ISSUER_HOST_SUFFIXES.entra.includes(hostname) &&

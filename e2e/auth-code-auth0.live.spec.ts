@@ -278,7 +278,7 @@ async function authorizeConfidentialClient(
     if (options.pkceEnabled) {
       expect(params.code_challenge_method).toBe("S256");
     } else {
-      expect(params.code_challenge).toBe(undefined);
+      expect(params.code_challenge).toBeUndefined();
     }
     if (options.rarJson) {
       expect(params.authorization_details).toBe(options.rarJson);

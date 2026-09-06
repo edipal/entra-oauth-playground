@@ -60,30 +60,30 @@ async function applyClientAuthentication({
   clientAssertionX5t: unknown;
 }): Promise<NextResponse | null> {
   if (clientAuthMethod === "secret") {
-    if (!clientSecret) return errorResponse("missing_client_secret");
-    body.set("client_secret", String(clientSecret));
+    if (typeof clientSecret !== "string" || !clientSecret) return errorResponse("missing_client_secret");
+    body.set("client_secret", clientSecret);
     return null;
   }
 
   if (clientAuthMethod === "certificate") {
-    if (!privateKeyPem) return errorResponse("missing_private_key");
+    if (typeof privateKeyPem !== "string" || !privateKeyPem) return errorResponse("missing_private_key");
 
     const audience = getClientAssertionAudience(providerId, {
-      issuerUrl: issuerUrl ? String(issuerUrl) : undefined,
+      issuerUrl: typeof issuerUrl === "string" ? issuerUrl : undefined,
       tokenEndpoint,
     });
     if (!audience) return errorResponse("invalid_client_assertion_audience");
 
     // Auth0 identifies the signing key by its own `kid`; an x5t here could only
     // be a stale Entra thumbprint, so it is never forwarded.
-    const useX5t = providerId !== "auth0" && !!clientAssertionX5t;
+    const useX5t = providerId !== "auth0" && typeof clientAssertionX5t === "string" && !!clientAssertionX5t;
 
     const assertion = await buildClientAssertion({
       clientId,
       audience,
-      privateKeyPem: String(privateKeyPem),
-      x5t: useX5t ? String(clientAssertionX5t) : undefined,
-      kid: clientAssertionKid ? String(clientAssertionKid) : undefined,
+      privateKeyPem,
+      x5t: useX5t && typeof clientAssertionX5t === "string" ? clientAssertionX5t : undefined,
+      kid: typeof clientAssertionKid === "string" && clientAssertionKid ? clientAssertionKid : undefined,
       lifetimeSec: 60,
     });
     body.set(

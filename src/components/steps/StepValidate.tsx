@@ -123,6 +123,16 @@ const isMicrosoftIssuerHost = (issuer?: string) => {
   }
 };
 
+const getIssuerExpectationLabel = (
+  expectedIssuer: string | null,
+  providerId: IdentityProviderId,
+): string => {
+  if (!expectedIssuer) return "";
+  return providerId === "entra"
+    ? `(tenant ${expectedIssuer})`
+    : `(issuer ${expectedIssuer})`;
+};
+
 async function resolveJwksCandidates(
   issuer: string,
   tenantId?: string,
@@ -257,11 +267,10 @@ export default function StepValidate(props: Readonly<Props>) {
     tenantId,
     issuerUrl,
   });
-  const issuerExpectationLabel = expectedIssuer
-    ? providerId === "entra"
-      ? `(tenant ${expectedIssuer})`
-      : `(issuer ${expectedIssuer})`
-    : "";
+  const issuerExpectationLabel = getIssuerExpectationLabel(
+    expectedIssuer,
+    providerId,
+  );
   // Several rows below describe claims only Entra issues — a token version, `scp`,
   // `roles`, `wids`. Showing them for Auth0 describes its tokens with the wrong
   // model, so each is gated on the workspace rather than rendered unconditionally.

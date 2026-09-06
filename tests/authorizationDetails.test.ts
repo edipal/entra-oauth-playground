@@ -122,5 +122,17 @@ describe("normalizeAuthorizationDetailsParam", () => {
         authorization_details: "{",
       }),
     ).toBeNull();
+    expect(
+      normalizeAuthorizationDetailsParam({
+        client_id: "abc",
+        authorization_details: 123 as unknown as string,
+      }),
+    ).toBeNull();
+    expect(
+      normalizeAuthorizationDetailsParam({
+        client_id: "abc",
+        authorization_details: {} as unknown as string,
+      }),
+    ).toBeNull();
   });
 });

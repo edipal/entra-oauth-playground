@@ -380,17 +380,17 @@ const mergeProviderSettings = (
   return {
     authCodePublicClient: {
       ...defaults.authCodePublicClient!,
-      ...(persisted?.authCodePublicClient || {}),
+      ...persisted?.authCodePublicClient,
       providerId,
     },
     authCodeConfidentialClient: {
       ...defaults.authCodeConfidentialClient!,
-      ...(persisted?.authCodeConfidentialClient || {}),
+      ...persisted?.authCodeConfidentialClient,
       providerId,
     },
     clientCredentials: {
       ...defaults.clientCredentials!,
-      ...(persisted?.clientCredentials || {}),
+      ...persisted?.clientCredentials,
       providerId,
     },
   };
@@ -430,6 +430,51 @@ const migrateLegacySettings = () => {
     localStorage.removeItem(LEGACY_SETTINGS_KEY);
   } catch {
     // Storage unavailable, or full: hydration carries on with what it can read.
+  }
+};
+
+const readPersistedProviderSettings = (
+  providerId: ProviderAppId,
+): Settings | null => {
+  const key = storageKeyForProvider(providerId);
+  let raw: string | null = null;
+
+  try {
+    raw = localStorage.getItem(key);
+  } catch {
+    // Storage unavailable (private mode, blocked cookies): defaults stand.
+    return null;
+  }
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new TypeError("settings must be an object");
+    }
+    return mergeProviderSettings(
+      providerId,
+      parsed as Partial<Settings>,
+    );
+  } catch {
+    // Keep the unreadable value rather than letting the next edit in this
+    // workspace overwrite it, and carry on with defaults for this provider
+    // alone. Quarantine once: the original is removed so a later mount does
+    // not overwrite the copy.
+    //
+    // An existing quarantine is never replaced. A workspace can go unreadable
+    // a second time, and by then the surviving copy is the one worth keeping —
+    // overwriting it would discard the only readable settings left.
+    try {
+      const quarantineKey = `${key}:corrupt`;
+      if (localStorage.getItem(quarantineKey) === null) {
+        localStorage.setItem(quarantineKey, raw);
+      }
+      localStorage.removeItem(key);
+    } catch {
+      // nothing further to do — defaults are already in place
+    }
+    return null;
   }
 };
 
@@ -527,47 +572,13 @@ export function SettingsProvider({
     migrateLegacySettings();
 
     for (const providerId of ["entra", "auth0"] as const) {
-      const key = storageKeyForProvider(providerId);
-      let raw: string | null = null;
-
-      try {
-        raw = localStorage.getItem(key);
-      } catch {
-        // Storage unavailable (private mode, blocked cookies): defaults stand.
-        continue;
-      }
-      if (!raw) continue;
-
-      try {
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          throw new TypeError("settings must be an object");
-        }
-        next[providerId] = mergeProviderSettings(
-          providerId,
-          parsed as Partial<Settings>,
-        );
-      } catch {
-        // Keep the unreadable value rather than letting the next edit in this
-        // workspace overwrite it, and carry on with defaults for this provider
-        // alone. Quarantine once: the original is removed so a later mount does
-        // not overwrite the copy.
-        //
-        // An existing quarantine is never replaced. A workspace can go unreadable
-        // a second time, and by then the surviving copy is the one worth keeping —
-        // overwriting it would discard the only readable settings left.
-        try {
-          const quarantineKey = `${key}:corrupt`;
-          if (localStorage.getItem(quarantineKey) === null) {
-            localStorage.setItem(quarantineKey, raw);
-          }
-          localStorage.removeItem(key);
-        } catch {
-          // nothing further to do — defaults are already in place
-        }
+      const restored = readPersistedProviderSettings(providerId);
+      if (restored) {
+        next[providerId] = restored;
       }
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSettingsState(next);
     setHydrated(true);
   }, []);
@@ -607,6 +618,7 @@ export function SettingsProvider({
     lastRouteProviderRef.current = routeProvider;
     if (previous === null || previous === routeProvider) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAuthCodePublicClientRuntimeState(defaultAuthCodePublicClientRuntime);
     setAuthCodeConfidentialClientRuntimeState(
       defaultAuthCodeConfidentialClientRuntime,

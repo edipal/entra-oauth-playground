@@ -16,7 +16,13 @@ function appendAuthorizationParams(
   authorizationParams: AuthorizationParams,
 ) {
   for (const [key, value] of Object.entries(authorizationParams)) {
-    if (value === undefined || value === null) continue;
+    if (
+      typeof value !== "string" &&
+      typeof value !== "number" &&
+      typeof value !== "boolean"
+    ) {
+      continue;
+    }
     const text = String(value).trim();
     if (!text) continue;
     body.set(key, text);
@@ -36,10 +42,11 @@ export async function POST(request: Request) {
     } = json || {};
 
     if (
-      !issuerUrl ||
-      !isAllowedProviderIssuer("auth0", String(issuerUrl)) ||
+      typeof issuerUrl !== "string" ||
+      !isAllowedProviderIssuer("auth0", issuerUrl) ||
       !authorizationParams ||
-      typeof authorizationParams !== "object"
+      typeof authorizationParams !== "object" ||
+      Array.isArray(authorizationParams)
     ) {
       return NextResponse.json(
         { error: "invalid_parameters" },
@@ -49,7 +56,7 @@ export async function POST(request: Request) {
 
     const parEndpoint = getProviderExpectedParEndpoint(
       "auth0",
-      String(issuerUrl),
+      issuerUrl,
     );
     if (!parEndpoint) {
       return NextResponse.json(
@@ -72,15 +79,19 @@ export async function POST(request: Request) {
     appendAuthorizationParams(body, validatedParams);
 
     if (clientAuthMethod === "secret") {
-      if (!clientSecret) {
+      if (typeof clientSecret !== "string" || !clientSecret) {
         return NextResponse.json(
           { error: "missing_client_secret" },
           { status: 400, headers: CACHE_HEADERS },
         );
       }
-      body.set("client_secret", String(clientSecret));
+      body.set("client_secret", clientSecret);
     } else if (clientAuthMethod === "certificate") {
-      if (!privateKeyPem || !body.get("client_id")) {
+      if (
+        typeof privateKeyPem !== "string" ||
+        !privateKeyPem ||
+        !body.get("client_id")
+      ) {
         return NextResponse.json(
           { error: "missing_private_key" },
           { status: 400, headers: CACHE_HEADERS },
@@ -91,10 +102,13 @@ export async function POST(request: Request) {
       const assertion = await buildClientAssertion({
         clientId: body.get("client_id")!,
         audience: getClientAssertionAudience("auth0", {
-          issuerUrl: String(issuerUrl),
+          issuerUrl,
         }),
-        privateKeyPem: String(privateKeyPem),
-        kid: clientAssertionKid ? String(clientAssertionKid) : undefined,
+        privateKeyPem,
+        kid:
+          typeof clientAssertionKid === "string" && clientAssertionKid
+            ? clientAssertionKid
+            : undefined,
         lifetimeSec: 60,
       });
       body.set(

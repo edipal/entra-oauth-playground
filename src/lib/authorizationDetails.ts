@@ -78,11 +78,17 @@ export function normalizeAuthorizationDetailsParam<
   T extends Record<string, unknown>,
 >(params: T): T | null {
   const raw = params.authorization_details;
-  if (raw === undefined || raw === null || !String(raw).trim()) {
+  if (raw === undefined || raw === null) {
+    return params;
+  }
+  if (typeof raw !== "string") {
+    return null;
+  }
+  if (!raw.trim()) {
     return params;
   }
 
-  const validation = validateAuthorizationDetails(String(raw));
+  const validation = validateAuthorizationDetails(raw);
   if (validation.status !== "valid") {
     return null;
   }

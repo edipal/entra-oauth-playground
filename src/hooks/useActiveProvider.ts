@@ -14,23 +14,35 @@ const SELECTED_PROVIDER_EVENT = "provider-selection-changed";
 
 function readStoredProvider(): ProviderAppId {
   if (globalThis.window === undefined) return DEFAULT_PROVIDER_APP_ID;
-  const value = globalThis.window.localStorage.getItem(
-    SELECTED_PROVIDER_STORAGE_KEY,
-  );
-  return value === "auth0" || value === "entra"
-    ? value
-    : DEFAULT_PROVIDER_APP_ID;
+  try {
+    const value = globalThis.window.localStorage.getItem(
+      SELECTED_PROVIDER_STORAGE_KEY,
+    );
+    return value === "auth0" || value === "entra"
+      ? value
+      : DEFAULT_PROVIDER_APP_ID;
+  } catch {
+    return DEFAULT_PROVIDER_APP_ID;
+  }
 }
 
 function writeStoredProvider(providerId: ProviderAppId) {
   if (globalThis.window === undefined) return;
-  globalThis.window.localStorage.setItem(
-    SELECTED_PROVIDER_STORAGE_KEY,
-    providerId,
-  );
-  globalThis.window.dispatchEvent(
-    new CustomEvent(SELECTED_PROVIDER_EVENT, { detail: providerId }),
-  );
+  try {
+    globalThis.window.localStorage.setItem(
+      SELECTED_PROVIDER_STORAGE_KEY,
+      providerId,
+    );
+  } catch {
+    // Ignore storage write failures (e.g. storage disabled, quota exceeded)
+  }
+  try {
+    globalThis.window.dispatchEvent(
+      new CustomEvent(SELECTED_PROVIDER_EVENT, { detail: providerId }),
+    );
+  } catch {
+    // Ignore event dispatch failure
+  }
 }
 
 function subscribeToProviderChanges(listener: () => void) {

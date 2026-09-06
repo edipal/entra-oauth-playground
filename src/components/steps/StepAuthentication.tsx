@@ -2,7 +2,6 @@
 import { useId, useState } from "react";
 import Image from "next/image";
 import { Dropdown } from "primereact/dropdown";
-import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";

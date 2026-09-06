@@ -52,7 +52,7 @@ export function resolveClaimDescriptions(
   groups: ClaimDescriptionGroups,
   providerId: IdentityProviderId,
 ): Record<string, string> {
-  return { ...(groups.common ?? {}), ...(groups[providerId] ?? {}) };
+  return { ...groups.common, ...groups[providerId] };
 }
 
 // Providers let tenants add custom claims under a URI namespace, for example an

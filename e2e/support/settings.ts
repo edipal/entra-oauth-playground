@@ -62,7 +62,7 @@ export async function seedSettings(
       const merged = { ...existing };
       for (const [flow, values] of Object.entries(seeded)) {
         merged[flow] = {
-          ...((existing[flow] as Record<string, unknown>) || {}),
+          ...(existing[flow] as Record<string, unknown> | undefined),
           ...values,
         };
       }

@@ -7,11 +7,15 @@ import { defineConfig, devices } from "@playwright/test";
 const ENV_FILE = ".env.e2e.local";
 if (existsSync(ENV_FILE)) {
   for (const line of readFileSync(ENV_FILE, "utf8").split("\n")) {
-    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
-    if (!match) continue;
-    const [, key, rawValue] = match;
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx === -1) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    const rawValue = trimmed.slice(eqIdx + 1).trim();
+    if (!/^[A-Z0-9_]+$/.test(key)) continue;
     if (process.env[key] !== undefined) continue;
-    process.env[key] = rawValue.trim().replace(/^["']|["']$/g, "");
+    process.env[key] = rawValue.replace(/^["']|["']$/g, "");
   }
 }
 
@@ -51,13 +55,13 @@ export default defineConfig({
       // Compiles every route once before the parallel workers start; see
       // e2e/warmup.setup.ts.
       name: "warmup",
-      testMatch: /warmup\.setup\.ts/,
+      testMatch: /\.setup\.ts$/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       // Everything that can be proven without contacting an identity provider.
       name: "offline",
-      testMatch: /.*\.offline\.spec\.ts/,
+      testMatch: /\.offline\.spec\.ts$/,
       dependencies: ["warmup"],
       use: { ...devices["Desktop Chrome"] },
     },
@@ -65,7 +69,7 @@ export default defineConfig({
       // Round trips against real Entra and Auth0 tenants. Specs skip themselves
       // when the matching credentials are absent.
       name: "live",
-      testMatch: /.*\.live\.spec\.ts/,
+      testMatch: /\.live\.spec\.ts$/,
       dependencies: ["warmup"],
       retries: 1,
       use: { ...devices["Desktop Chrome"] },
@@ -74,7 +78,7 @@ export default defineConfig({
       // Regenerates docs/screenshots. Skips itself unless E2E_CAPTURE is set, so
       // a plain `pnpm e2e` never rewrites the images; see e2e/screenshots.capture.ts.
       name: "screenshots",
-      testMatch: /screenshots\.capture\.ts/,
+      testMatch: /screenshots\.capture\.ts$/,
       dependencies: ["warmup"],
       // the width every current screenshot was taken at
       use: {

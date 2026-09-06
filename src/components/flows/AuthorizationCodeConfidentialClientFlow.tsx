@@ -25,12 +25,10 @@ import {
 import { TranslationUtils } from "@/lib/translation";
 import { useSettings } from "@/components/SettingsContext";
 import { useProviderMetadata } from "@/hooks/useProviderMetadata";
-import type { IdentityProviderId } from "@/lib/identityProvider";
 import {
   DEFAULT_PROVIDER_ID,
   getClientAssertionAudience,
   getProviderDefaultApiEndpoint,
-  getProviderDefaultScopes,
   getProviderExpectedParEndpoint,
   isClientIdValidForProvider,
   isEntraProvider,
@@ -59,6 +57,78 @@ enum StepIndex {
   Decode = 7,
   Validate = 8,
   CallApi = 9,
+}
+
+interface RawAuthorizationParamsOptions {
+  clientIdValid: boolean;
+  providerConfigValid: boolean;
+  clientId: string;
+  responseType: string;
+  redirectUri: string;
+  scopes: string;
+  stateParam: string;
+  nonce: string;
+  audience: string;
+  isEntra: boolean;
+  rarValidation: ReturnType<typeof validateAuthorizationDetails>;
+  prompt: string;
+  loginHint: string;
+  responseMode: string;
+  auth0AuthorizationParameters: Auth0AuthorizationParameters;
+  pkceEnabled: boolean;
+  codeChallenge: string;
+}
+
+function appendOptionalParams(
+  params: Record<string, string>,
+  options: RawAuthorizationParamsOptions,
+): void {
+  if (options.scopes.trim()) params.scope = options.scopes.trim();
+  if (options.stateParam) params.state = options.stateParam;
+  if (options.nonce) params.nonce = options.nonce;
+  if (options.audience.trim()) params.audience = options.audience.trim();
+  if (options.prompt) params.prompt = options.prompt;
+  if (options.loginHint) params.login_hint = options.loginHint;
+  if (options.pkceEnabled && options.codeChallenge) {
+    params.code_challenge = options.codeChallenge;
+    params.code_challenge_method = "S256";
+  }
+}
+
+function appendProviderSpecificParams(
+  params: Record<string, string>,
+  options: RawAuthorizationParamsOptions,
+): void {
+  if (options.isEntra) {
+    if (options.responseMode) params.response_mode = options.responseMode;
+    return;
+  }
+  if (options.rarValidation.status === "valid") {
+    params.authorization_details = options.rarValidation.value;
+  }
+  const searchParams = new URLSearchParams();
+  appendAuth0AuthorizationParameters(
+    searchParams,
+    options.auth0AuthorizationParameters,
+  );
+  for (const [k, v] of searchParams.entries()) {
+    params[k] = v;
+  }
+}
+
+function buildRawAuthorizationParams(
+  options: RawAuthorizationParamsOptions,
+): Record<string, string> {
+  if (!options.clientIdValid || !options.providerConfigValid) return {};
+
+  const params: Record<string, string> = {
+    client_id: options.clientId,
+    response_type: options.responseType,
+    redirect_uri: options.redirectUri,
+  };
+  appendOptionalParams(params, options);
+  appendProviderSpecificParams(params, options);
+  return params;
 }
 
 export default function AuthorizationCodeConfidentialClientPage() {
@@ -302,60 +372,47 @@ export default function AuthorizationCodeConfidentialClientPage() {
     [providerId, issuerUrl],
   );
 
-  const rawAuthorizationParams = useMemo(() => {
-    if (!clientIdValid || !providerConfigValid) return {};
-
-    const params: Record<string, string> = {
-      client_id: clientId,
-      response_type: responseType,
-      redirect_uri: redirectUri,
-    };
-    if (scopes.trim()) params.scope = scopes.trim();
-    if (stateParam) params.state = stateParam;
-    if (nonce) params.nonce = nonce;
-    if (audience.trim()) params.audience = audience.trim();
-    if (!isEntra && rarValidation.status === "valid") {
-      params.authorization_details = rarValidation.value;
-    }
-    if (prompt) params.prompt = prompt;
-    if (loginHint) params.login_hint = loginHint;
-    if (isEntra && responseMode) {
-      params.response_mode = responseMode;
-    }
-    if (!isEntra) {
-      const searchParams = new URLSearchParams();
-      appendAuth0AuthorizationParameters(
-        searchParams,
+  const rawAuthorizationParams = useMemo(
+    () =>
+      buildRawAuthorizationParams({
+        clientIdValid,
+        providerConfigValid,
+        clientId,
+        responseType,
+        redirectUri,
+        scopes,
+        stateParam,
+        nonce,
+        audience,
+        isEntra,
+        rarValidation,
+        prompt,
+        loginHint,
+        responseMode,
         auth0AuthorizationParameters,
-      );
-      for (const [k, v] of searchParams.entries()) {
-        params[k] = v;
-      }
-    }
-    if (pkceEnabled && codeChallenge) {
-      params.code_challenge = codeChallenge;
-      params.code_challenge_method = "S256";
-    }
-    return params;
-  }, [
-    clientIdValid,
-    providerConfigValid,
-    clientId,
-    responseType,
-    redirectUri,
-    scopes,
-    stateParam,
-    nonce,
-    audience,
-    isEntra,
-    rarValidation,
-    prompt,
-    loginHint,
-    responseMode,
-    auth0AuthorizationParameters,
-    pkceEnabled,
-    codeChallenge,
-  ]);
+        pkceEnabled,
+        codeChallenge,
+      }),
+    [
+      clientIdValid,
+      providerConfigValid,
+      clientId,
+      responseType,
+      redirectUri,
+      scopes,
+      stateParam,
+      nonce,
+      audience,
+      isEntra,
+      rarValidation,
+      prompt,
+      loginHint,
+      responseMode,
+      auth0AuthorizationParameters,
+      pkceEnabled,
+      codeChallenge,
+    ],
+  );
 
   // Build authorization URL preview
   const authUrlPreview = useMemo(() => {

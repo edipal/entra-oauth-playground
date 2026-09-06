@@ -48,6 +48,19 @@ type Props = {
   showAudience?: boolean;
 };
 
+function getClientIdErrorMessage(
+  isEntra: boolean,
+  clientId: string,
+  t: (key: string) => string,
+): string {
+  if (!isEntra) {
+    return t("errors.clientIdRequiredGeneric");
+  }
+  return clientId
+    ? t("errors.clientIdInvalid")
+    : t("errors.clientIdRequired");
+}
+
 export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
   const {
     t,
@@ -249,11 +262,7 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
                 />
                 {!clientIdValid && (
                   <small className="p-error block mt-1">
-                    {isEntra
-                      ? clientId
-                        ? t("errors.clientIdInvalid")
-                        : t("errors.clientIdRequired")
-                      : t("errors.clientIdRequiredGeneric")}
+                    {getClientIdErrorMessage(isEntra, clientId, t)}
                   </small>
                 )}
               </div>
@@ -388,88 +397,114 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
         </div>
       </div>
 
-      <div className="mt-5">
-        <h5 className="mb-2">
-          {maybeT(
-            "sections.settings.resolvedTitle",
-            "Resolved (read-only) values",
-          )}
-        </h5>
-        <p className="mb-3 mt-3 text-sm opacity-75">
-          {maybeT(
-            "sections.settings.resolvedDescription",
-            "These values are derived from the provider and other inputs. Enable endpoint overrides to edit them.",
-          )}
-        </p>
+      <ResolvedEndpointsSection
+        t={t}
+        safeT={safeT}
+        maybeT={maybeT}
+        endpointOverrideEnabled={endpointOverrideEnabled}
+        setEndpointOverrideEnabled={setEndpointOverrideEnabled}
+        showAuthEndpoint={showAuthEndpoint}
+        authEndpointOverride={authEndpointOverride}
+        setAuthEndpointOverride={setAuthEndpointOverride}
+        resolvedAuthEndpoint={resolvedAuthEndpoint}
+        tokenEndpointOverride={tokenEndpointOverride}
+        setTokenEndpointOverride={setTokenEndpointOverride}
+        resolvedTokenEndpoint={resolvedTokenEndpoint}
+        showRedirectUri={showRedirectUri}
+        redirectUri={redirectUri}
+        redirectUriValid={redirectUriValid}
+      />
+    </>
+  );
+}
 
-        <div className="grid formgrid p-fluid gap-3">
-          <div className="col-12 md:col-12">
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
-                alignItems: "center",
-                columnGap: "1rem",
-              }}
-            >
-              <div style={{ textAlign: "left" }}>
-                <LabelWithHelp
-                  id="endpointOverrideEnabled"
-                  text={t("labels.endpointOverride")}
-                  help={t("help.endpointOverride")}
+type ResolvedEndpointsSectionProps = {
+  t: (key: string) => string;
+  safeT: (key: string, fallback?: string) => string;
+  maybeT: (key: string, fallback?: string) => string;
+  endpointOverrideEnabled: boolean;
+  setEndpointOverrideEnabled: (value: boolean) => void;
+  showAuthEndpoint?: boolean;
+  authEndpointOverride: string;
+  setAuthEndpointOverride: (value: string) => void;
+  resolvedAuthEndpoint: string;
+  tokenEndpointOverride: string;
+  setTokenEndpointOverride: (value: string) => void;
+  resolvedTokenEndpoint: string;
+  showRedirectUri?: boolean;
+  redirectUri: string;
+  redirectUriValid: boolean;
+};
+
+function ResolvedEndpointsSection(props: Readonly<ResolvedEndpointsSectionProps>) {
+  const {
+    t,
+    safeT,
+    maybeT,
+    endpointOverrideEnabled,
+    setEndpointOverrideEnabled,
+    showAuthEndpoint = true,
+    authEndpointOverride,
+    setAuthEndpointOverride,
+    resolvedAuthEndpoint,
+    tokenEndpointOverride,
+    setTokenEndpointOverride,
+    resolvedTokenEndpoint,
+    showRedirectUri = true,
+    redirectUri,
+    redirectUriValid,
+  } = props;
+
+  return (
+    <div className="mt-5">
+      <h5 className="mb-2">
+        {maybeT(
+          "sections.settings.resolvedTitle",
+          "Resolved (read-only) values",
+        )}
+      </h5>
+      <p className="mb-3 mt-3 text-sm opacity-75">
+        {maybeT(
+          "sections.settings.resolvedDescription",
+          "These values are derived from the provider and other inputs. Enable endpoint overrides to edit them.",
+        )}
+      </p>
+
+      <div className="grid formgrid p-fluid gap-3">
+        <div className="col-12 md:col-12">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
+              alignItems: "center",
+              columnGap: "1rem",
+            }}
+          >
+            <div style={{ textAlign: "left" }}>
+              <LabelWithHelp
+                id="endpointOverrideEnabled"
+                text={t("labels.endpointOverride")}
+                help={t("help.endpointOverride")}
+              />
+            </div>
+            <div>
+              <div className="flex align-items-center gap-2">
+                <InputSwitch
+                  inputId="endpointOverrideEnabled"
+                  checked={!!endpointOverrideEnabled}
+                  onChange={(e) => setEndpointOverrideEnabled(!!e.value)}
                 />
-              </div>
-              <div>
-                <div className="flex align-items-center gap-2">
-                  <InputSwitch
-                    inputId="endpointOverrideEnabled"
-                    checked={!!endpointOverrideEnabled}
-                    onChange={(e) => setEndpointOverrideEnabled(!!e.value)}
-                  />
-                  <label htmlFor="endpointOverrideEnabled" className="m-0">
-                    {endpointOverrideEnabled
-                      ? t("toggles.endpointOverrideOn")
-                      : t("toggles.endpointOverrideOff")}
-                  </label>
-                </div>
+                <label htmlFor="endpointOverrideEnabled" className="m-0">
+                  {endpointOverrideEnabled
+                    ? t("toggles.endpointOverrideOn")
+                    : t("toggles.endpointOverrideOff")}
+                </label>
               </div>
             </div>
           </div>
+        </div>
 
-          {showAuthEndpoint && (
-            <div className="col-12 md:col-12">
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
-                  alignItems: "center",
-                  columnGap: "1rem",
-                }}
-              >
-                <div style={{ textAlign: "left" }}>
-                  <LabelWithHelp
-                    id="authEndpoint"
-                    text={t("labels.authEndpoint")}
-                    help={safeT("help.authEndpoint")}
-                  />
-                </div>
-                <div>
-                  <InputText
-                    id="authEndpoint"
-                    value={
-                      endpointOverrideEnabled
-                        ? authEndpointOverride || resolvedAuthEndpoint
-                        : resolvedAuthEndpoint
-                    }
-                    onChange={(e) => setAuthEndpointOverride(e.target.value)}
-                    readOnly={!endpointOverrideEnabled}
-                    style={{ width: "100%" }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
+        {showAuthEndpoint && (
           <div className="col-12 md:col-12">
             <div
               style={{
@@ -481,63 +516,95 @@ export default function AuthCodeStepSettingsCommon(props: Readonly<Props>) {
             >
               <div style={{ textAlign: "left" }}>
                 <LabelWithHelp
-                  id="tokenEndpoint"
-                  text={t("labels.tokenEndpoint")}
-                  help={safeT("help.tokenEndpoint")}
+                  id="authEndpoint"
+                  text={t("labels.authEndpoint")}
+                  help={safeT("help.authEndpoint")}
                 />
               </div>
               <div>
                 <InputText
-                  id="tokenEndpoint"
+                  id="authEndpoint"
                   value={
                     endpointOverrideEnabled
-                      ? tokenEndpointOverride || resolvedTokenEndpoint
-                      : resolvedTokenEndpoint
+                      ? authEndpointOverride || resolvedAuthEndpoint
+                      : resolvedAuthEndpoint
                   }
-                  onChange={(e) => setTokenEndpointOverride(e.target.value)}
+                  onChange={(e) => setAuthEndpointOverride(e.target.value)}
                   readOnly={!endpointOverrideEnabled}
                   style={{ width: "100%" }}
                 />
               </div>
             </div>
           </div>
+        )}
 
-          {showRedirectUri && (
-            <div className="col-12 md:col-12">
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
-                  alignItems: "center",
-                  columnGap: "1rem",
-                }}
-              >
-                <div style={{ textAlign: "left" }}>
-                  <LabelWithHelp
-                    id="redirectUri"
-                    text={t("labels.redirectUri")}
-                    help={t("help.redirectUri")}
-                  />
-                </div>
-                <div>
-                  <InputText
-                    id="redirectUri"
-                    value={redirectUri}
-                    readOnly
-                    className={redirectUriValid ? "" : "p-invalid"}
-                    style={{ width: "100%" }}
-                  />
-                  {!redirectUriValid && (
-                    <small className="p-error block mt-1">
-                      {t("errors.redirectUriInvalid")}
-                    </small>
-                  )}
-                </div>
+        <div className="col-12 md:col-12">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
+              alignItems: "center",
+              columnGap: "1rem",
+            }}
+          >
+            <div style={{ textAlign: "left" }}>
+              <LabelWithHelp
+                id="tokenEndpoint"
+                text={t("labels.tokenEndpoint")}
+                help={safeT("help.tokenEndpoint")}
+              />
+            </div>
+            <div>
+              <InputText
+                id="tokenEndpoint"
+                value={
+                  endpointOverrideEnabled
+                    ? tokenEndpointOverride || resolvedTokenEndpoint
+                    : resolvedTokenEndpoint
+                }
+                onChange={(e) => setTokenEndpointOverride(e.target.value)}
+                readOnly={!endpointOverrideEnabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {showRedirectUri && (
+          <div className="col-12 md:col-12">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(15rem, 20rem) 1fr",
+                alignItems: "center",
+                columnGap: "1rem",
+              }}
+            >
+              <div style={{ textAlign: "left" }}>
+                <LabelWithHelp
+                  id="redirectUri"
+                  text={t("labels.redirectUri")}
+                  help={t("help.redirectUri")}
+                />
+              </div>
+              <div>
+                <InputText
+                  id="redirectUri"
+                  value={redirectUri}
+                  readOnly
+                  className={redirectUriValid ? "" : "p-invalid"}
+                  style={{ width: "100%" }}
+                />
+                {!redirectUriValid && (
+                  <small className="p-error block mt-1">
+                    {t("errors.redirectUriInvalid")}
+                  </small>
+                )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

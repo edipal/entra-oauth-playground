@@ -23,7 +23,7 @@
  * API Explorer gives one that covers all of it.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createPublicKey, generateKeyPairSync, randomBytes } from "node:crypto";
 import { calculateJwkThumbprint, exportJWK, importSPKI } from "jose";
 
@@ -120,7 +120,8 @@ function readToken(): string {
 }
 
 function fail(message: string): never {
-  console.error(`\n  ${message}\n`);
+  const sanitized = message.replace(/[\r\n]+/g, " ").trim();
+  console.error(`\n  ${sanitized}\n`);
   process.exit(1);
 }
 
@@ -201,8 +202,9 @@ async function api<T = any>(
     const payload = parseJsonBody(response, text);
 
     if (!response.ok) {
-      const detail =
+      const rawDetail =
         payload?.message || payload?.error_description || summarize(text);
+      const detail = rawDetail.replace(/[\r\n]+/g, " ").trim();
       fail(`${method} ${path} -> HTTP ${response.status}\n  ${detail}`);
     }
 
@@ -366,8 +368,8 @@ function isPending(clientId: string): boolean {
 }
 
 function sameSet(a: unknown, b: readonly string[]): boolean {
-  const left = [...((a as string[]) || [])].sort();
-  const right = [...b].sort();
+  const left = [...((a as string[]) || [])].sort((x, y) => x.localeCompare(y));
+  const right = [...b].sort((x, y) => x.localeCompare(y));
   return left.length === right.length && left.every((v, i) => v === right[i]);
 }
 
@@ -472,7 +474,7 @@ function loadOrCreateKeyPair() {
   // registered, instead of spending the second of the two slots an application
   // has on a duplicate.
   const fromEnv = readEnvValue("E2E_AUTH0_PRIVATE_KEY_PEM").replaceAll(
-    "\\n",
+    String.raw`\n`,
     "\n",
   );
   if (fromEnv.includes("BEGIN")) {
@@ -540,13 +542,13 @@ async function ensureGrants(
   );
 
   for (const subjectType of subjectTypes) {
-    const existing = (grants as any[]).find(
+    const hasGrant = (grants as any[]).some(
       (grant) =>
         grant.audience === API_IDENTIFIER &&
         (grant.subject_type ?? "client") === subjectType,
     );
 
-    if (existing) {
+    if (hasGrant) {
       note("=", `${label}: ${subjectType}-subject grant`);
       continue;
     }
@@ -577,13 +579,13 @@ async function ensureConnectionEnabled(clientIds: string[]) {
     "GET",
     `/connections/${connection.id}/clients`,
   );
-  const enabled: string[] = (enabledClients || []).map(
-    (client: any) => client.client_id,
+  const enabled = new Set<string>(
+    (enabledClients || []).map((client: any) => client.client_id),
   );
 
   const pending = clientIds.filter(isPending).length;
   const missing = clientIds.filter(
-    (id) => !isPending(id) && !enabled.includes(id),
+    (id) => !isPending(id) && !enabled.has(id),
   );
 
   if (missing.length + pending === 0) {
@@ -671,9 +673,12 @@ function resolveApiEndpoint(issuer: string): string {
   if (!existing) return derived;
 
   try {
-    const existingHost = new URL(existing).host;
-    const issuerHost = new URL(issuer).host;
-    if (existingHost !== issuerHost && existingHost.endsWith("auth0.com")) {
+    const existingHost = new URL(existing).hostname;
+    const issuerHost = new URL(issuer).hostname;
+    if (
+      existingHost !== issuerHost &&
+      (existingHost === "auth0.com" || existingHost.endsWith(".auth0.com"))
+    ) {
       return derived;
     }
   } catch {
@@ -686,7 +691,7 @@ function resolveApiEndpoint(issuer: string): string {
 function readEnvValue(key: string): string {
   if (!existsSync(ENV_PATH)) return "";
   for (const line of readFileSync(ENV_PATH, "utf8").split("\n")) {
-    const match = new RegExp(`^\\s*${key}\\s*=\\s*(.*)$`).exec(line);
+    const match = new RegExp(String.raw`^\s*${key}\s*=\s*(.*)$`).exec(line);
     if (match) return match[1].trim().replace(/^["']|["']$/g, "");
   }
   return "";
@@ -725,6 +730,11 @@ function writeEnv(values: Record<string, string>) {
   }
 
   writeFileSync(ENV_PATH, merged.join("\n"), { mode: 0o600 });
+  try {
+    chmodSync(ENV_PATH, 0o600);
+  } catch {
+    // Ignore permissions failure on platforms or filesystems that do not support POSIX modes
+  }
   console.log(`\n  wrote ${Object.keys(values).length} keys to ${ENV_PATH}`);
 }
 
@@ -774,7 +784,7 @@ async function main() {
     E2E_AUTH0_USER_SCOPES: `openid profile email ${API_SCOPE}`,
     E2E_AUTH0_USERNAME: user.email,
     ...(password ? { E2E_AUTH0_PASSWORD: password } : {}),
-    E2E_AUTH0_PRIVATE_KEY_PEM: privateKeyPem.trim().replaceAll("\n", "\\n"),
+    E2E_AUTH0_PRIVATE_KEY_PEM: privateKeyPem.trim().replaceAll("\n", String.raw`\n`),
     E2E_AUTH0_CREDENTIAL_KID: kid,
     // One application serves client credentials, confidential authorization code
     // and PAR/JAR, so both point at it.
@@ -792,11 +802,16 @@ async function main() {
     ...(password ? { E2E_AUTH0_PKJWT_PASSWORD: password } : {}),
   });
 
-  console.log(
-    changes.length === 0
-      ? "\nnothing to change — the tenant already matches.\n"
-      : `\n${changes.length} change(s)${DRY_RUN ? " would be applied" : " applied"}.\n`,
-  );
+  const appliedSuffix = DRY_RUN ? " would be applied" : " applied";
+  if (changes.length === 0) {
+    console.log("\nnothing to change — the tenant already matches.\n");
+  } else {
+    console.log(`\n${changes.length} change(s)${appliedSuffix}.\n`);
+  }
 }
 
-main().catch((error) => fail(String(error)));
+try {
+  await main();
+} catch (error) {
+  fail(String(error));
+}

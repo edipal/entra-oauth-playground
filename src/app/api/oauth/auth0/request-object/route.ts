@@ -13,7 +13,13 @@ function normalizeAuthorizationParams(value: unknown): Record<string, string> {
 
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
-      .map(([key, paramValue]) => [key, String(paramValue ?? "").trim()])
+      .filter(
+        ([, paramValue]) =>
+          typeof paramValue === "string" ||
+          typeof paramValue === "number" ||
+          typeof paramValue === "boolean",
+      )
+      .map(([key, paramValue]) => [key, String(paramValue).trim()])
       .filter(([, paramValue]) => !!paramValue),
   );
 }
@@ -59,12 +65,14 @@ export async function POST(request: Request) {
     // Empty for anything outside the Auth0 issuer allowlist, so this doubles as
     // the issuer check.
     const audience = getAuth0TenantAudience(
-      issuerUrl ? String(issuerUrl) : undefined,
+      typeof issuerUrl === "string" ? issuerUrl : undefined,
     );
 
     if (
-      !clientId ||
-      !privateKeyPem ||
+      typeof clientId !== "string" ||
+      !clientId.trim() ||
+      typeof privateKeyPem !== "string" ||
+      !privateKeyPem.trim() ||
       !audience ||
       !normalizedParams.redirect_uri ||
       !normalizedParams.response_type
@@ -86,16 +94,16 @@ export async function POST(request: Request) {
 
     const claims: AuthorizationRequestObjectClaims = {
       ...applyJsonParameterTypes(validatedParams),
-      client_id: String(clientId),
+      client_id: clientId,
       redirect_uri: normalizedParams.redirect_uri,
       response_type: normalizedParams.response_type,
     };
 
     const requestObject = await buildAuthorizationRequestObject({
       audience,
-      clientId: String(clientId),
-      privateKeyPem: String(privateKeyPem),
-      kid: kid ? String(kid) : undefined,
+      clientId,
+      privateKeyPem,
+      kid: typeof kid === "string" && kid.trim() ? kid.trim() : undefined,
       claims,
       lifetimeSec: 60,
     });
